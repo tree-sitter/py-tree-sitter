@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if which python3 > /dev/null; then
+  py=python3
+else
+  py=python
+fi
+
+
+CFLAGS="-O0 -g" $py -- setup.py --quiet test
