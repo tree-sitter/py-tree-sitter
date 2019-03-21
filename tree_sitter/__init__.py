@@ -25,7 +25,7 @@ class Language:
             raise ValueError('Must provide at least one language folder')
 
         source_paths = []
-        source_mtimes = []
+        source_mtimes = [path.getmtime(__file__)]
         for repo_path in repo_paths:
             src_path = path.join(repo_path, 'src')
             source_paths.append(path.join(src_path, "parser.c"))
@@ -42,9 +42,9 @@ class Language:
             with TemporaryDirectory(suffix = 'tree_sitter_language') as dir:
                 object_paths = []
                 for source_path in source_paths:
-                    flags = None
+                    flags = ['-fPIC']
                     if source_path.endswith('.c'):
-                        flags = ['-std=c99']
+                        flags.append('-std=c99')
                     object_paths.append(compiler.compile(
                         [source_path],
                         output_dir = dir,
