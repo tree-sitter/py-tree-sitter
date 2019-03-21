@@ -1,0 +1,5 @@
+include README.md
+include LICENSE
+include tree_sitter/core/lib/utf8proc/*
+include tree_sitter/core/lib/src/*
+include tree_sitter/core/lib/include/*
