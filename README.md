@@ -1,4 +1,4 @@
-Py-Tree-sitter
+py-tree-sitter
 ==================
 
 [![Build Status](https://travis-ci.org/tree-sitter/py-tree-sitter.svg?branch=master)](https://travis-ci.org/tree-sitter/py-tree-sitter)
