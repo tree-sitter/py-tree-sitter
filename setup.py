@@ -16,10 +16,12 @@ setup(
     url = "https://github.com/tree-sitter/py-tree-sitter",
     license = "MIT",
     platforms = ["any"],
-    python_requires = ">=2.7",
+    python_requires = ">=3.3",
     description = "Python bindings to the Tree-sitter parsing library",
     classifiers = [
-        "Topic :: Parsing",
+        "License :: OSI Approved :: MIT License",
+        "Topic :: Software Development :: Compilers",
+        "Topic :: Text Processing :: Linguistic",
     ],
     packages = ['tree_sitter'],
     ext_modules = [
