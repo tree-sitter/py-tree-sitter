@@ -6,4 +6,5 @@ else
   py=python
 fi
 
-CFLAGS="-O0 -g" $py -- setup.py --quiet test
+$py setup.py sdist bdist_wheel
+twine upload dist/*
