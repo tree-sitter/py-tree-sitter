@@ -1,6 +1,8 @@
 Py-Tree-sitter
 ==================
 
+[![Build Status](https://travis-ci.org/tree-sitter/py-tree-sitter.svg?branch=master)](https://travis-ci.org/tree-sitter/py-tree-sitter)
+
 This module provides Python bindings to the [tree-sitter](https://github.com/tree-sitter/tree-sitter) parsing library.
 
 ## Installation
