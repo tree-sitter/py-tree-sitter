@@ -42,10 +42,14 @@ class Language:
             with TemporaryDirectory(suffix = 'tree_sitter_language') as dir:
                 object_paths = []
                 for source_path in source_paths:
+                    flags = None
+                    if source_path.endswith('.c'):
+                        flags = ['-std=c99']
                     object_paths.append(compiler.compile(
                         [source_path],
                         output_dir = dir,
-                        include_dirs = [path.dirname(source_path)]
+                        include_dirs = [path.dirname(source_path)],
+                        extra_preargs = flags
                     )[0])
                 compiler.link_shared_object(object_paths, output_path)
             return True
