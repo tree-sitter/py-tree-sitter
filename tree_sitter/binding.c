@@ -4,36 +4,61 @@
 // Types
 
 typedef struct {
-  PyObject_HEAD
+  PyObject_HEAD;
   TSNode node;
 } Node;
 
 typedef struct {
-  PyObject_HEAD
+  PyObject_HEAD;
   TSTree *tree;
 } Tree;
 
 typedef struct {
-  PyObject_HEAD
+  PyObject_HEAD;
   TSParser *parser;
 } Parser;
 
+static TSTreeCursor default_cursor = {0};
+
+// Point
+
+static PyObject *point_new(TSPoint point) {
+  PyObject *row = PyLong_FromSize_t((size_t)point.row);
+  PyObject *column = PyLong_FromSize_t((size_t)point.column);
+  if (!row || !column) {
+    Py_XDECREF(row);
+    Py_XDECREF(column);
+    return NULL;
+  }
+  return PyTuple_Pack(2, row, column);
+}
+
 // Node
 
-static PyObject *node_new(
-  PyTypeObject *type,
-  PyObject *args,
-  PyObject *kwds
-) {
-  PyErr_SetString(PyExc_RuntimeError, "Illegal constructor");
-  return NULL;
-}
+static PyObject *node_new_internal(TSNode node);
 
 static void node_dealloc(PyObject *self) {
   Py_TYPE(self)->tp_free(self);
 }
 
-static PyObject *node_string(Node *self, PyObject *args) {
+static PyObject *node_repr(Node *self) {
+  const char *type = ts_node_type(self->node);
+  TSPoint start_point = ts_node_start_point(self->node);
+  TSPoint end_point = ts_node_end_point(self->node);
+  const char *format_string = ts_node_is_named(self->node)
+    ? "<Node kind=%s, start_point=(%u, %u), end_point=(%u, %u)>"
+    : "<Node kind=\"%s\", start_point=(%u, %u), end_point=(%u, %u)>";
+  return PyUnicode_FromFormat(
+    format_string,
+    type,
+    start_point.row,
+    start_point.column,
+    end_point.row,
+    end_point.column
+  );
+}
+
+static PyObject *node_sexp(Node *self, PyObject *args) {
   char *string = ts_node_string(self->node);
   PyObject *result = PyUnicode_FromString(string);
   free(string);
@@ -44,10 +69,44 @@ static PyObject *node_get_type(Node *self, void *payload) {
   return PyUnicode_FromString(ts_node_type(self->node));
 }
 
+static PyObject *node_get_named(Node *self, void *payload) {
+  return PyBool_FromLong(ts_node_is_named(self->node));
+}
+
+static PyObject *node_get_start_byte(Node *self, void *payload) {
+  return PyLong_FromSize_t((size_t)ts_node_start_byte(self->node));
+}
+
+static PyObject *node_get_end_byte(Node *self, void *payload) {
+  return PyLong_FromSize_t((size_t)ts_node_end_byte(self->node));
+}
+
+static PyObject *node_get_start_point(Node *self, void *payload) {
+  return point_new(ts_node_start_point(self->node));
+}
+
+static PyObject *node_get_end_point(Node *self, void *payload) {
+  return point_new(ts_node_end_point(self->node));
+}
+
+static PyObject *node_get_children(Node *self, void *payload) {
+  long length = (long)ts_node_child_count(self->node);
+  PyObject *result = PyList_New(length);
+  ts_tree_cursor_reset(&default_cursor, self->node);
+  ts_tree_cursor_goto_first_child(&default_cursor);
+  int i = 0;
+  do {
+    TSNode child = ts_tree_cursor_current_node(&default_cursor);
+    PyList_SetItem(result, i, node_new_internal(child));
+    i++;
+  } while (ts_tree_cursor_goto_next_sibling(&default_cursor));
+  return result;
+}
+
 static PyMethodDef node_methods[] = {
   {
     .ml_name = "sexp",
-    .ml_meth = (PyCFunction)node_string,
+    .ml_meth = (PyCFunction)node_sexp,
     .ml_flags = METH_NOARGS,
     .ml_doc = "Get an S-expression representing the name",
   },
@@ -55,7 +114,12 @@ static PyMethodDef node_methods[] = {
 };
 
 static PyGetSetDef node_accessors[] = {
-  {"type", (getter)node_get_type, NULL, "kind", NULL},
+  {"type", (getter)node_get_type, NULL, "The node's type", NULL},
+  {"start_byte", (getter)node_get_start_byte, NULL, "The node's start byte", NULL},
+  {"end_byte", (getter)node_get_end_byte, NULL, "The node's end byte", NULL},
+  {"start_point", (getter)node_get_start_point, NULL, "The node's start point", NULL},
+  {"end_point", (getter)node_get_end_point, NULL, "The node's end point", NULL},
+  {"children", (getter)node_get_children, NULL, "The node's children", NULL},
   {NULL}
 };
 
@@ -66,8 +130,8 @@ static PyTypeObject node_type = {
   .tp_basicsize = sizeof(Node),
   .tp_itemsize = 0,
   .tp_flags = Py_TPFLAGS_DEFAULT,
-  .tp_new = node_new,
   .tp_dealloc = node_dealloc,
+  .tp_repr = (reprfunc)node_repr,
   .tp_methods = node_methods,
   .tp_getset = node_accessors,
 };
@@ -79,15 +143,6 @@ static PyObject *node_new_internal(TSNode node) {
 }
 
 // Tree
-
-static PyObject *tree_new(
-  PyTypeObject *type,
-  PyObject *args,
-  PyObject *kwds
-) {
-  PyErr_SetString(PyExc_RuntimeError, "Illegal constructor");
-  return NULL;
-}
 
 static void tree_dealloc(Tree *self) {
   ts_tree_delete(self->tree);
@@ -114,7 +169,6 @@ static PyTypeObject tree_type = {
   .tp_basicsize = sizeof(Tree),
   .tp_itemsize = 0,
   .tp_flags = Py_TPFLAGS_DEFAULT,
-  .tp_new = tree_new,
   .tp_dealloc = (destructor)tree_dealloc,
   .tp_methods = tree_methods,
   .tp_getset = tree_accessors,
