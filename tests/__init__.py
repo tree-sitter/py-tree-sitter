@@ -54,3 +54,12 @@ class TestTreeSitter(unittest.TestCase):
             root_node.sexp(),
             "(program (function (identifier) (formal_parameters) (statement_block (expression_statement (call_expression (identifier) (arguments))))))"
         )
+
+    def test_children(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        tree = parser.parse("// foo")
+        self.assertEqual(len(tree.root_node.children), 1)
+
+        comment_node = tree.root_node.children[0]
+        self.assertEqual(len(comment_node.children), 0)
