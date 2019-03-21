@@ -1,4 +1,5 @@
 from ctypes import cdll, c_void_p
+from ctypes.util import find_library
 from distutils.ccompiler import new_compiler
 from tempfile import TemporaryDirectory
 from tree_sitter_binding import Parser
@@ -15,8 +16,6 @@ class Language:
         the library already existed and was modified more recently than
         any of the source files.
         """
-        compiler = new_compiler()
-
         output_mtime = 0
         if path.exists(output_path):
             output_mtime = path.getmtime(output_path)
@@ -24,6 +23,7 @@ class Language:
         if len(repo_paths) == 0:
             raise ValueError('Must provide at least one language folder')
 
+        cpp = False
         source_paths = []
         source_mtimes = [path.getmtime(__file__)]
         for repo_path in repo_paths:
@@ -31,12 +31,19 @@ class Language:
             source_paths.append(path.join(src_path, "parser.c"))
             source_mtimes.append(path.getmtime(source_paths[-1]))
             if path.exists(path.join(src_path, "scanner.cc")):
-                compiler.add_library('c++')
+                cpp = True
                 source_paths.append(path.join(src_path, "scanner.cc"))
                 source_mtimes.append(path.getmtime(source_paths[-1]))
             elif path.exists(path.join(src_path, "scanner.c")):
                 source_paths.append(path.join(src_path, "scanner.c"))
                 source_mtimes.append(path.getmtime(source_paths[-1]))
+
+        compiler = new_compiler()
+        if cpp:
+            if find_library('c++'):
+                compiler.add_library('c++')
+            elif find_library('stdc++'):
+                compiler.add_library('stdc++')
 
         if max(source_mtimes) > output_mtime:
             with TemporaryDirectory(suffix = 'tree_sitter_language') as dir:
