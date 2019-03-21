@@ -2,11 +2,10 @@ import unittest
 from tree_sitter import Parser, Language
 
 LIB_PATH = "build/languages.so"
-Language.build_library(
-    LIB_PATH,
+Language.build_library(LIB_PATH, [
     "tests/fixtures/tree-sitter-python",
     "tests/fixtures/tree-sitter-javascript",
-)
+])
 PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 

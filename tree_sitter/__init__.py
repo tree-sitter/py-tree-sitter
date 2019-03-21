@@ -5,11 +5,8 @@ from tree_sitter_binding import Parser
 import os.path as path
 
 
-INCLUDE_PATH = path.join(path.dirname(__file__), "core", "lib", "include")
-
-
 class Language:
-    def build_library(output_path, *repo_paths):
+    def build_library(output_path, repo_paths):
         """
         Build a dynamic library at the given path, based on the parser
         repositories at the given paths.
@@ -19,11 +16,13 @@ class Language:
         any of the source files.
         """
         compiler = new_compiler()
-        compiler.add_include_dir(INCLUDE_PATH)
 
         output_mtime = 0
         if path.exists(output_path):
             output_mtime = path.getmtime(output_path)
+
+        if len(repo_paths) == 0:
+            raise ValueError('Must provide at least one language folder')
 
         source_paths = []
         source_mtimes = []
@@ -43,7 +42,11 @@ class Language:
             with TemporaryDirectory(suffix = 'tree_sitter_language') as dir:
                 object_paths = []
                 for source_path in source_paths:
-                    object_paths.append(compiler.compile([source_path], output_dir = dir)[0])
+                    object_paths.append(compiler.compile(
+                        [source_path],
+                        output_dir = dir,
+                        include_dirs = [path.dirname(source_path)]
+                    )[0])
                 compiler.link_shared_object(object_paths, output_path)
             return True
         else:

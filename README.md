@@ -33,9 +33,11 @@ Language.build_library(
   'build/my-languages.so',
 
   # Include one or more languages
-  'vendor/tree-sitter-go',
-  'vendor/tree-sitter-javascript',
-  'vendor/tree-sitter-python'
+  [
+    'vendor/tree-sitter-go',
+    'vendor/tree-sitter-javascript',
+    'vendor/tree-sitter-python'
+  ]
 )
 ```
 
