@@ -4,18 +4,18 @@
 // Types
 
 typedef struct {
-  PyObject_HEAD;
+  PyObject_HEAD
   TSNode node;
   PyObject *children;
 } Node;
 
 typedef struct {
-  PyObject_HEAD;
+  PyObject_HEAD
   TSTree *tree;
 } Tree;
 
 typedef struct {
-  PyObject_HEAD;
+  PyObject_HEAD
   TSParser *parser;
 } Parser;
 

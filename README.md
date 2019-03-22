@@ -2,6 +2,7 @@ py-tree-sitter
 ==================
 
 [![Build Status](https://travis-ci.org/tree-sitter/py-tree-sitter.svg?branch=master)](https://travis-ci.org/tree-sitter/py-tree-sitter)
+[![Build status](https://ci.appveyor.com/api/projects/status/mde790v0v9gux85w/branch/master?svg=true)](https://ci.appveyor.com/project/maxbrunsfeld/py-tree-sitter/branch/master)
 
 This module provides Python bindings to the [tree-sitter](https://github.com/tree-sitter/tree-sitter) parsing library.
 
