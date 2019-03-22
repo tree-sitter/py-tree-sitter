@@ -1,15 +1,13 @@
 build: false
 
 platform:
-  # TODO - get 64 bit build working
-  # - x64
   - x86
 
 install:
   - git submodule update --init --recursive
-  - IF "%PLATFORM%" == "x86" set PYTHON=C:\Python37
-  - IF "%PLATFORM%" == "x64" set PYTHON=C:\Python37-x64
+  - IF "%PLATFORM%" == "x86" set PATH=C:\Python37;%PATH%
+  - IF "%PLATFORM%" == "x64" set PATH=C:\Python37-x64;%PATH%
 
 test_script:
   - script\fetch-fixtures.cmd
-  - "%PYTHON%\\python.exe setup.py test"
+  - python.exe setup.py --quiet test

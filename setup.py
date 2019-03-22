@@ -3,6 +3,7 @@ Py-Tree-sitter
 """
 
 
+import platform
 from setuptools import setup, Extension
 
 
@@ -35,9 +36,9 @@ setup(
                 "tree_sitter/core/lib/include",
                 "tree_sitter/core/lib/utf8proc",
             ],
-            extra_compile_args = [
-                "-std=c99",
-            ],
+            extra_compile_args = (
+                ['-std=c99'] if platform.system() != 'Windows' else None
+            )
         )
     ],
     project_urls = {

@@ -4,6 +4,7 @@ from distutils.ccompiler import new_compiler
 from tempfile import TemporaryDirectory
 from tree_sitter_binding import Parser
 import os.path as path
+import platform
 
 
 class Language:
@@ -49,9 +50,12 @@ class Language:
             with TemporaryDirectory(suffix = 'tree_sitter_language') as dir:
                 object_paths = []
                 for source_path in source_paths:
-                    flags = ['-fPIC']
-                    if source_path.endswith('.c'):
-                        flags.append('-std=c99')
+                    if platform.system() == 'Windows':
+                        flags = None
+                    else:
+                        flags = ['-fPIC']
+                        if source_path.endswith('.c'):
+                            flags.append('-std=c99')
                     object_paths.append(compiler.compile(
                         [source_path],
                         output_dir = dir,
