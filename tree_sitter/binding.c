@@ -6,6 +6,7 @@
 typedef struct {
   PyObject_HEAD;
   TSNode node;
+  PyObject *children;
 } Node;
 
 typedef struct {
@@ -37,7 +38,8 @@ static PyObject *point_new(TSPoint point) {
 
 static PyObject *node_new_internal(TSNode node);
 
-static void node_dealloc(PyObject *self) {
+static void node_dealloc(Node *self) {
+  Py_XDECREF(self->children);
   Py_TYPE(self)->tp_free(self);
 }
 
@@ -69,7 +71,7 @@ static PyObject *node_get_type(Node *self, void *payload) {
   return PyUnicode_FromString(ts_node_type(self->node));
 }
 
-static PyObject *node_get_named(Node *self, void *payload) {
+static PyObject *node_get_is_named(Node *self, void *payload) {
   return PyBool_FromLong(ts_node_is_named(self->node));
 }
 
@@ -90,6 +92,11 @@ static PyObject *node_get_end_point(Node *self, void *payload) {
 }
 
 static PyObject *node_get_children(Node *self, void *payload) {
+  if (self->children) {
+    Py_INCREF(self->children);
+    return self->children;
+  }
+
   long length = (long)ts_node_child_count(self->node);
   PyObject *result = PyList_New(length);
   if (length > 0) {
@@ -102,6 +109,8 @@ static PyObject *node_get_children(Node *self, void *payload) {
       i++;
     } while (ts_tree_cursor_goto_next_sibling(&default_cursor));
   }
+  Py_INCREF(result);
+  self->children = result;
   return result;
 }
 
@@ -117,6 +126,7 @@ static PyMethodDef node_methods[] = {
 
 static PyGetSetDef node_accessors[] = {
   {"type", (getter)node_get_type, NULL, "The node's type", NULL},
+  {"is_named", (getter)node_get_is_named, NULL, "Is this a named node", NULL},
   {"start_byte", (getter)node_get_start_byte, NULL, "The node's start byte", NULL},
   {"end_byte", (getter)node_get_end_byte, NULL, "The node's end byte", NULL},
   {"start_point", (getter)node_get_start_point, NULL, "The node's start point", NULL},
@@ -132,7 +142,7 @@ static PyTypeObject node_type = {
   .tp_basicsize = sizeof(Node),
   .tp_itemsize = 0,
   .tp_flags = Py_TPFLAGS_DEFAULT,
-  .tp_dealloc = node_dealloc,
+  .tp_dealloc = (destructor)node_dealloc,
   .tp_repr = (reprfunc)node_repr,
   .tp_methods = node_methods,
   .tp_getset = node_accessors,
@@ -140,7 +150,10 @@ static PyTypeObject node_type = {
 
 static PyObject *node_new_internal(TSNode node) {
   Node *self = (Node *)node_type.tp_alloc(&node_type, 0);
-  if (self != NULL) self->node = node;
+  if (self != NULL) {
+    self->node = node;
+    self->children = NULL;
+  }
   return (PyObject *)self;
 }
 
@@ -245,7 +258,7 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     return NULL;
   }
 
-  return (PyObject *)tree_new_internal(new_tree);
+  return tree_new_internal(new_tree);
 }
 
 static PyObject *parser_set_language(Parser *self, PyObject *arg) {
