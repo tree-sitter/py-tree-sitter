@@ -64,11 +64,11 @@ parser.set_language(PY_LANGUAGE)
 Parse some source code:
 
 ```python
-tree = parser.parse("""
+tree = parser.parse(bytes("""
 def foo():
     if bar:
         baz()
-""")
+""", "utf8"))
 ```
 
 Inspect the resulting `Tree`:
