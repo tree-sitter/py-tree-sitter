@@ -16,22 +16,39 @@ class TestTreeSitter(unittest.TestCase):
     def test_set_language(self):
         parser = Parser()
         parser.set_language(PYTHON)
-        tree = parser.parse("def foo():\n  bar()")
+        tree = parser.parse(b"def foo():\n  bar()")
         self.assertEqual(
             tree.root_node.sexp(),
             "(module (function_definition (identifier) (parameters) (expression_statement (call (identifier) (argument_list)))))"
         )
         parser.set_language(JAVASCRIPT)
-        tree = parser.parse("function foo() {\n  bar();\n}")
+        tree = parser.parse(b"function foo() {\n  bar();\n}")
         self.assertEqual(
             tree.root_node.sexp(),
             "(program (function (identifier) (formal_parameters) (statement_block (expression_statement (call_expression (identifier) (arguments))))))"
         )
 
+    def test_multibyte_characters(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        source_code = bytes("'😎' && '🐍'", "utf8")
+        tree = parser.parse(source_code)
+        root_node = tree.root_node
+        statement_node = root_node.children[0]
+        binary_node = statement_node.children[0]
+        snake_node = binary_node.children[2]
+
+        self.assertEqual(binary_node.type, "binary_expression")
+        self.assertEqual(snake_node.type, "string")
+        self.assertEqual(
+            source_code[snake_node.start_byte:snake_node.end_byte].decode('utf8'),
+            "'🐍'"
+        )
+
     def test_node_children(self):
         parser = Parser()
         parser.set_language(PYTHON)
-        tree = parser.parse("def foo():\n  bar()")
+        tree = parser.parse(b"def foo():\n  bar()")
 
         root_node = tree.root_node
         self.assertEqual(root_node.type, "module")

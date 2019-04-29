@@ -219,8 +219,8 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     return NULL;
   }
 
-  if (!PyUnicode_Check(source_code)) {
-    PyErr_SetString(PyExc_TypeError, "First argument to parse must be a string");
+  if (!PyBytes_Check(source_code)) {
+    PyErr_SetString(PyExc_TypeError, "First argument to parse must be bytes");
     return NULL;
   }
 
@@ -234,24 +234,9 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     old_tree = ((Tree *)old_tree_arg)->tree;
   }
 
-  TSTree *new_tree = NULL;
-
-  PyUnicode_READY(source_code);
-  size_t length = PyUnicode_GET_LENGTH(source_code);
-  int kind = PyUnicode_KIND(source_code);
-  if (kind == PyUnicode_1BYTE_KIND) {
-    Py_UCS1 *source_bytes = PyUnicode_1BYTE_DATA(source_code);
-    new_tree = ts_parser_parse_string(self->parser, old_tree, (char *)source_bytes, length);
-  } else if (kind == PyUnicode_2BYTE_KIND) {
-    Py_UCS2 *source_bytes = PyUnicode_2BYTE_DATA(source_code);
-    new_tree = ts_parser_parse_string_encoding(self->parser, old_tree, (char *)source_bytes, length, TSInputEncodingUTF16);
-  } else if (kind == PyUnicode_4BYTE_KIND) {
-    PyErr_SetString(PyExc_ValueError, "4 byte strings are not yet supported");
-    return NULL;
-  } else {
-    PyErr_SetString(PyExc_ValueError, "Unknown string kind");
-    return NULL;
-  }
+  size_t length = PyBytes_Size(source_code);
+  char *source_bytes = PyBytes_AsString(source_code);
+  TSTree *new_tree = ts_parser_parse_string(self->parser, old_tree, source_bytes, length);
 
   if (!new_tree) {
     PyErr_SetString(PyExc_ValueError, "Parsing failed");
