@@ -9,7 +9,7 @@ from setuptools import setup, Extension
 
 setup(
     name = "tree_sitter",
-    version = "0.0.5",
+    version = "0.0.6",
     maintainer = "Max Brunsfeld",
     maintainer_email = "maxbrunsfeld@gmail.com",
     author = "Max Brunsfeld",
