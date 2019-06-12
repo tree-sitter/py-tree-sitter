@@ -29,7 +29,7 @@ git clone https://github.com/tree-sitter/tree-sitter-python
 Use the `Language.build_library` method to compile these into a library that's usable from Python. This function will return immediately if the library has already been compiled since the last time its source code was modified:
 
 ```python
-from tree_sitter import Language
+from tree_sitter import Language, Parser
 
 Language.build_library(
   # Store the library in the `build` directory
