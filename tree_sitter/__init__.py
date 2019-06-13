@@ -1,8 +1,9 @@
+from types import MethodType
 from ctypes import cdll, c_void_p
 from ctypes.util import find_library
 from distutils.ccompiler import new_compiler
 from tempfile import TemporaryDirectory
-from tree_sitter_binding import Parser
+from tree_sitter_binding import Parser, Tree
 import os.path as path
 import platform
 
@@ -77,3 +78,19 @@ class Language:
         language_function = getattr(self.lib, "tree_sitter_%s" % name)
         language_function.restype = c_void_p
         self.language_id = language_function()
+
+
+# def edit(self, *, start_byte, old_end_byte, new_end_byte, start_point, old_end_point, new_end_point):
+#     self._edit(
+#         start_byte,
+#         old_end_byte,
+#         new_end_byte,
+#         start_point[0],
+#         old_end_point[0],
+#         new_end_point[0],
+#         start_column[0],
+#         old_end_column[0],
+#         new_end_column[0],
+#     )
+#
+# Tree.edit = MethodType(edit, Tree)

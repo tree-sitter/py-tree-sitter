@@ -127,3 +127,40 @@ class TestTreeSitter(unittest.TestCase):
         self.assertTrue(cursor.goto_next_sibling())
         self.assertEqual(cursor.node.type, "parameters")
         self.assertEqual(cursor.node.is_named, True)
+
+    def test_edit(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()")
+
+        edit_offset = len(b"def foo(")
+        tree.edit(
+            start_byte = edit_offset,
+            old_end_byte = edit_offset,
+            new_end_byte = edit_offset + 2,
+            start_point = (0, edit_offset),
+            old_end_point = (0, edit_offset),
+            new_end_point = (0, edit_offset + 2),
+        )
+
+        fn_node = tree.root_node.children[0]
+        self.assertEqual(fn_node.type, 'function_definition')
+        self.assertTrue(fn_node.has_changes)
+        self.assertFalse(fn_node.children[0].has_changes)
+        self.assertFalse(fn_node.children[1].has_changes)
+        self.assertFalse(fn_node.children[3].has_changes)
+
+        params_node = fn_node.children[2]
+        self.assertEqual(params_node.type, 'parameters')
+        self.assertTrue(params_node.has_changes)
+        self.assertEqual(params_node.start_point, (0, edit_offset - 1))
+        self.assertEqual(params_node.end_point, (0, edit_offset + 3))
+
+        new_tree = parser.parse(b"def foo(ab):\n  bar()", tree)
+        self.assertEqual(
+            new_tree.root_node.sexp(),
+            "(module (function_definition "
+                "(identifier) "
+                "(parameters (identifier)) "
+                "(expression_statement (call (identifier) (argument_list)))))"
+        )

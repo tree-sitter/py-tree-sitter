@@ -118,3 +118,27 @@ assert cursor.node.type == 'parameters'
 assert cursor.goto_parent()
 assert cursor.node.type == 'function_definition'
 ```
+
+#### Editing
+
+When a source file is edited, you can edit the syntax tree to keep it in sync with the source:
+
+```python
+tree.edit(
+    start_byte = 5,
+    old_end_byte = 5,
+    new_end_byte = 5 + 2,
+    start_point = (0, 5),
+    old_end_point = (0, 5),
+    new_end_point = (0, 5 + 2),
+)
+```
+
+Then, when you're ready to incorporate the changes into a new syntax tree,
+you can call `Parser.parse` again, but pass in the old tree:
+
+```python
+new_tree = parser.parse(new_source, tree)
+```
+
+This will run much faster than if you were parsing from scratch.

@@ -86,6 +86,14 @@ static PyObject *node_get_is_named(Node *self, void *payload) {
   return PyBool_FromLong(ts_node_is_named(self->node));
 }
 
+static PyObject *node_get_has_changes(Node *self, void *payload) {
+  return PyBool_FromLong(ts_node_has_changes(self->node));
+}
+
+static PyObject *node_get_has_error(Node *self, void *payload) {
+  return PyBool_FromLong(ts_node_has_error(self->node));
+}
+
 static PyObject *node_get_start_byte(Node *self, void *payload) {
   return PyLong_FromSize_t((size_t)ts_node_start_byte(self->node));
 }
@@ -144,6 +152,8 @@ static PyMethodDef node_methods[] = {
 static PyGetSetDef node_accessors[] = {
   {"type", (getter)node_get_type, NULL, "The node's type", NULL},
   {"is_named", (getter)node_get_is_named, NULL, "Is this a named node", NULL},
+  {"has_changes", (getter)node_get_has_changes, NULL, "Does this node have text changes since it was parsed", NULL},
+  {"has_error", (getter)node_get_has_error, NULL, "Does this node contain any errors", NULL},
   {"start_byte", (getter)node_get_start_byte, NULL, "The node's start byte", NULL},
   {"end_byte", (getter)node_get_end_byte, NULL, "The node's end byte", NULL},
   {"start_point", (getter)node_get_start_point, NULL, "The node's start point", NULL},
@@ -189,12 +199,63 @@ static PyObject *tree_walk(Tree *self, PyObject *args) {
   return tree_cursor_new_internal(ts_tree_root_node(self->tree));
 }
 
+static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
+  unsigned start_byte, start_row, start_column;
+  unsigned old_end_byte, old_end_row, old_end_column;
+  unsigned new_end_byte, new_end_row, new_end_column;
+
+  char *keywords[] = {
+    "start_byte",
+    "old_end_byte",
+    "new_end_byte",
+    "start_point",
+    "old_end_point",
+    "new_end_point",
+    NULL,
+  };
+
+  int ok = PyArg_ParseTupleAndKeywords(
+    args,
+    kwargs,
+    "III(II)(II)(II)",
+    keywords,
+    &start_byte,
+    &old_end_byte,
+    &new_end_byte,
+    &start_row,
+    &start_column,
+    &old_end_row,
+    &old_end_column,
+    &new_end_row,
+    &new_end_column
+  );
+
+  if (ok) {
+    TSInputEdit edit = {
+      .start_byte = start_byte,
+      .old_end_byte = old_end_byte,
+      .new_end_byte = new_end_byte,
+      .start_point = {start_row, start_column},
+      .old_end_point = {old_end_row, old_end_column},
+      .new_end_point = {new_end_row, new_end_column},
+    };
+    ts_tree_edit(self->tree, &edit);
+  }
+  return Py_None;
+}
+
 static PyMethodDef tree_methods[] = {
   {
     .ml_name = "walk",
     .ml_meth = (PyCFunction)tree_walk,
     .ml_flags = METH_NOARGS,
     .ml_doc = "Get a tree cursor for walking this tree",
+  },
+  {
+    .ml_name = "edit",
+    .ml_meth = (PyCFunction)tree_edit,
+    .ml_flags = METH_KEYWORDS|METH_VARARGS,
+    .ml_doc = "Edit a syntax tree",
   },
   {NULL},
 };
