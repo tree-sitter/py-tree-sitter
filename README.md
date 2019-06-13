@@ -89,3 +89,32 @@ assert function_name_node.end_point == (1, 7)
 
 assert root_node.sexp() == ''
 ```
+
+#### Walking Syntax Trees
+
+If you need to traverse a large number of nodes efficiently, you can use
+a `TreeCursor`:
+
+```python
+cursor = tree.walk()
+
+assert cursor.node.type == 'module'
+
+assert cursor.goto_first_child()
+assert cursor.node.type == 'function_definition'
+
+assert cursor.goto_first_child()
+assert cursor.node.type == 'def'
+
+# Returns `False` because the `def` node has no children
+assert not cursor.goto_first_child()
+
+assert cursor.goto_next_sibling()
+assert cursor.node.type == 'identifier'
+
+assert cursor.goto_next_sibling()
+assert cursor.node.type == 'parameters'
+
+assert cursor.goto_parent()
+assert cursor.node.type == 'function_definition'
+```

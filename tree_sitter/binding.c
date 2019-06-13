@@ -19,6 +19,12 @@ typedef struct {
   TSParser *parser;
 } Parser;
 
+typedef struct {
+  PyObject_HEAD
+  TSTreeCursor cursor;
+  PyObject *node;
+} TreeCursor;
+
 static TSTreeCursor default_cursor = {0};
 
 // Point
@@ -37,6 +43,7 @@ static PyObject *point_new(TSPoint point) {
 // Node
 
 static PyObject *node_new_internal(TSNode node);
+static PyObject *tree_cursor_new_internal(TSNode node);
 
 static void node_dealloc(Node *self) {
   Py_XDECREF(self->children);
@@ -65,6 +72,10 @@ static PyObject *node_sexp(Node *self, PyObject *args) {
   PyObject *result = PyUnicode_FromString(string);
   free(string);
   return result;
+}
+
+static PyObject *node_walk(Node *self, PyObject *args) {
+  return tree_cursor_new_internal(self->node);
 }
 
 static PyObject *node_get_type(Node *self, void *payload) {
@@ -115,6 +126,12 @@ static PyObject *node_get_children(Node *self, void *payload) {
 }
 
 static PyMethodDef node_methods[] = {
+  {
+    .ml_name = "walk",
+    .ml_meth = (PyCFunction)node_walk,
+    .ml_flags = METH_NOARGS,
+    .ml_doc = "Get a tree cursor for walking the tree starting at this node",
+  },
   {
     .ml_name = "sexp",
     .ml_meth = (PyCFunction)node_sexp,
@@ -168,7 +185,17 @@ static PyObject *tree_get_root_node(Tree *self, void *payload) {
   return node_new_internal(ts_tree_root_node(self->tree));
 }
 
+static PyObject *tree_walk(Tree *self, PyObject *args) {
+  return tree_cursor_new_internal(ts_tree_root_node(self->tree));
+}
+
 static PyMethodDef tree_methods[] = {
+  {
+    .ml_name = "walk",
+    .ml_meth = (PyCFunction)tree_walk,
+    .ml_flags = METH_NOARGS,
+    .ml_doc = "Get a tree cursor for walking this tree",
+  },
   {NULL},
 };
 
@@ -193,6 +220,95 @@ static PyObject *tree_new_internal(TSTree *tree) {
   Tree *self = (Tree *)tree_type.tp_alloc(&tree_type, 0);
   if (self != NULL) self->tree = tree;
   return (PyObject *)self;
+}
+
+// TreeCursor
+
+static void tree_cursor_dealloc(TreeCursor *self) {
+  ts_tree_cursor_delete(&self->cursor);
+  Py_XDECREF(self->node);
+  Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static PyObject *tree_cursor_get_node(TreeCursor *self, void *payload) {
+  if (!self->node) {
+    self->node = node_new_internal(ts_tree_cursor_current_node(&self->cursor));
+  }
+
+  Py_INCREF(self->node);
+  return self->node;
+}
+
+static PyObject *tree_cursor_goto_parent(TreeCursor *self, PyObject *args) {
+  bool result = ts_tree_cursor_goto_parent(&self->cursor);
+  if (result) {
+    Py_XDECREF(self->node);
+    self->node = NULL;
+  }
+  return PyBool_FromLong(result);
+}
+
+static PyObject *tree_cursor_goto_first_child(TreeCursor *self, PyObject *args) {
+  bool result = ts_tree_cursor_goto_first_child(&self->cursor);
+  if (result) {
+    Py_XDECREF(self->node);
+    self->node = NULL;
+  }
+  return PyBool_FromLong(result);
+}
+
+static PyObject *tree_cursor_goto_next_sibling(TreeCursor *self, PyObject *args) {
+  bool result = ts_tree_cursor_goto_next_sibling(&self->cursor);
+  if (result) {
+    Py_XDECREF(self->node);
+    self->node = NULL;
+  }
+  return PyBool_FromLong(result);
+}
+
+static PyMethodDef tree_cursor_methods[] = {
+  {
+    .ml_name = "goto_parent",
+    .ml_meth = (PyCFunction)tree_cursor_goto_parent,
+    .ml_flags = METH_NOARGS,
+    .ml_doc = "If the current node is not the root, move to its parent and return True. Otherwise, return false.",
+  },
+  {
+    .ml_name = "goto_first_child",
+    .ml_meth = (PyCFunction)tree_cursor_goto_first_child,
+    .ml_flags = METH_NOARGS,
+    .ml_doc = "If the current node has children, move to the first child and return True. Otherwise, return false.",
+  },
+  {
+    .ml_name = "goto_next_sibling",
+    .ml_meth = (PyCFunction)tree_cursor_goto_next_sibling,
+    .ml_flags = METH_NOARGS,
+    .ml_doc = "If the current node has a next sibling, move to the next sibling and return True. Otherwise, return false.",
+  },
+  {NULL},
+};
+
+static PyGetSetDef tree_cursor_accessors[] = {
+  {"node", (getter)tree_cursor_get_node, NULL, "node", NULL},
+  {NULL},
+};
+
+static PyTypeObject tree_cursor_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  .tp_name = "tree_sitter.TreeCursor",
+  .tp_doc = "A syntax tree cursor",
+  .tp_basicsize = sizeof(TreeCursor),
+  .tp_itemsize = 0,
+  .tp_flags = Py_TPFLAGS_DEFAULT,
+  .tp_dealloc = (destructor)tree_cursor_dealloc,
+  .tp_methods = tree_cursor_methods,
+  .tp_getset = tree_cursor_accessors,
+};
+
+static PyObject *tree_cursor_new_internal(TSNode node) {
+  TreeCursor *cursor = (TreeCursor *)tree_cursor_type.tp_alloc(&tree_cursor_type, 0);
+  if (cursor != NULL) cursor->cursor = ts_tree_cursor_new(node);
+  return (PyObject *)cursor;
 }
 
 // Parser
@@ -331,6 +447,10 @@ PyMODINIT_FUNC PyInit_tree_sitter_binding(void) {
   if (PyType_Ready(&node_type) < 0) return NULL;
   Py_INCREF(&node_type);
   PyModule_AddObject(module, "Node", (PyObject *)&node_type);
+
+  if (PyType_Ready(&tree_cursor_type) < 0) return NULL;
+  Py_INCREF(&tree_cursor_type);
+  PyModule_AddObject(module, "TreeCursor", (PyObject *)&tree_cursor_type);
 
   return module;
 }

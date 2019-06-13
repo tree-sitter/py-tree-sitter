@@ -87,3 +87,43 @@ class TestTreeSitter(unittest.TestCase):
         statement_node = fn_node.children[4]
         self.assertEqual(statement_node.type, "expression_statement")
         self.assertEqual(statement_node.is_named, True)
+
+    def test_tree_walk(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()")
+        cursor = tree.walk()
+
+        # Node always returns the same instance
+        self.assertIs(cursor.node, cursor.node)
+
+        self.assertEqual(cursor.node.type, "module")
+        self.assertEqual(cursor.node.start_byte, 0)
+        self.assertEqual(cursor.node.end_byte, 18)
+        self.assertEqual(cursor.node.start_point, (0, 0))
+        self.assertEqual(cursor.node.end_point, (1, 7))
+
+        self.assertTrue(cursor.goto_first_child())
+        self.assertEqual(cursor.node.type, "function_definition")
+        self.assertEqual(cursor.node.start_byte, 0)
+        self.assertEqual(cursor.node.end_byte, 18)
+        self.assertEqual(cursor.node.start_point, (0, 0))
+        self.assertEqual(cursor.node.end_point, (1, 7))
+
+        self.assertTrue(cursor.goto_first_child())
+        self.assertEqual(cursor.node.type, "def")
+        self.assertEqual(cursor.node.is_named, False)
+        def_node = cursor.node
+
+        # Node remains cached after a failure to move
+        self.assertFalse(cursor.goto_first_child())
+        self.assertIs(cursor.node, def_node)
+
+        self.assertTrue(cursor.goto_next_sibling())
+        self.assertEqual(cursor.node.type, "identifier")
+        self.assertEqual(cursor.node.is_named, True)
+        self.assertFalse(cursor.goto_first_child())
+
+        self.assertTrue(cursor.goto_next_sibling())
+        self.assertEqual(cursor.node.type, "parameters")
+        self.assertEqual(cursor.node.is_named, True)
