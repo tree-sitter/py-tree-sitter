@@ -19,13 +19,22 @@ class TestTreeSitter(unittest.TestCase):
         tree = parser.parse(b"def foo():\n  bar()")
         self.assertEqual(
             tree.root_node.sexp(),
-            "(module (function_definition (identifier) (parameters) (expression_statement (call (identifier) (argument_list)))))"
+            "(module (function_definition "
+                "name: (identifier) "
+                "parameters: (parameters) "
+                "body: (block (expression_statement (call "
+                    "function: (identifier) "
+                    "arguments: (argument_list))))))"
         )
         parser.set_language(JAVASCRIPT)
         tree = parser.parse(b"function foo() {\n  bar();\n}")
         self.assertEqual(
             tree.root_node.sexp(),
-            "(program (function (identifier) (formal_parameters) (statement_block (expression_statement (call_expression (identifier) (arguments))))))"
+            "(program (function_declaration "
+                "name: (identifier) "
+                "parameters: (formal_parameters) "
+                "body: (statement_block "
+                    "(expression_statement (call_expression function: (identifier) arguments: (arguments))))))"
         )
 
     def test_multibyte_characters(self):
@@ -85,7 +94,7 @@ class TestTreeSitter(unittest.TestCase):
         self.assertEqual(colon_node.is_named, False)
 
         statement_node = fn_node.children[4]
-        self.assertEqual(statement_node.type, "expression_statement")
+        self.assertEqual(statement_node.type, "block")
         self.assertEqual(statement_node.is_named, True)
 
     def test_tree_walk(self):
@@ -160,7 +169,10 @@ class TestTreeSitter(unittest.TestCase):
         self.assertEqual(
             new_tree.root_node.sexp(),
             "(module (function_definition "
-                "(identifier) "
-                "(parameters (identifier)) "
-                "(expression_statement (call (identifier) (argument_list)))))"
+                "name: (identifier) "
+                "parameters: (parameters (identifier)) "
+                "body: (block "
+                    "(expression_statement (call "
+                        "function: (identifier) "
+                        "arguments: (argument_list))))))"
         )
