@@ -122,6 +122,7 @@ class TestTreeSitter(unittest.TestCase):
         self.assertTrue(cursor.goto_first_child())
         self.assertEqual(cursor.node.type, "def")
         self.assertEqual(cursor.node.is_named, False)
+        self.assertEqual(cursor.node.sexp(), '("def")')
         def_node = cursor.node
 
         # Node remains cached after a failure to move
