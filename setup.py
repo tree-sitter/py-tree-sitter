@@ -43,6 +43,5 @@ setup(
     ],
     project_urls = {
         'Source': 'https://github.com/tree-sitter/py-tree-sitter',
-        'Documentation': 'http://initd.org/psycopg/docs/',
     }
 )
