@@ -54,6 +54,23 @@ class TestTreeSitter(unittest.TestCase):
             "'🐍'"
         )
 
+    def test_node_child_by_field_id(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()")
+        root_node = tree.root_node
+        fn_node = tree.root_node.children[0]
+
+        try:
+            root_node.child_by_field_id('')
+            assert False
+        except TypeError:
+            pass
+        self.assertEqual(root_node.child_by_field_id(1), None)
+        self.assertEqual(root_node.child_by_field_id(16), None)
+        self.assertEqual(fn_node.child_by_field_id(1), None)
+        self.assertEqual(fn_node.child_by_field_id(16).type, 'identifier')
+
     def test_node_children(self):
         parser = Parser()
         parser.set_language(PYTHON)
