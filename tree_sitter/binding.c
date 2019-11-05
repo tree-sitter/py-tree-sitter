@@ -504,7 +504,7 @@ static PyMethodDef parser_methods[] = {
     .ml_name = "set_language",
     .ml_meth = (PyCFunction)parser_set_language,
     .ml_flags = METH_O,
-    .ml_doc = "Parse source code, creating a syntax tree",
+    .ml_doc = "Set the parser language",
   },
   {NULL},
 };
