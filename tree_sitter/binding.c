@@ -90,6 +90,19 @@ static PyObject *node_chield_by_field_id(Node *self, PyObject *args) {
   return node_new_internal(child);
 }
 
+static PyObject *node_chield_by_field_name(Node *self, PyObject *args) {
+  char *name;
+  int length;
+  if (!PyArg_ParseTuple(args, "s#", &name, &length)) {
+    return NULL;
+  }
+  TSNode child = ts_node_child_by_field_name(self->node, name, length);
+  if (ts_node_is_null(child)) {
+    Py_RETURN_NONE;
+  }
+  return node_new_internal(child);
+}
+
 static PyObject *node_get_type(Node *self, void *payload) {
   return PyUnicode_FromString(ts_node_type(self->node));
 }
@@ -163,6 +176,12 @@ static PyMethodDef node_methods[] = {
     .ml_meth = (PyCFunction)node_chield_by_field_id,
     .ml_flags = METH_VARARGS,
     .ml_doc = "Get child for the given field id.",
+  },
+  {
+    .ml_name = "child_by_field_name",
+    .ml_meth = (PyCFunction)node_chield_by_field_name,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "Get child for the given field name.",
   },
   {NULL},
 };

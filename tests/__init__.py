@@ -70,6 +70,8 @@ class TestTreeSitter(unittest.TestCase):
         self.assertEqual(root_node.child_by_field_id(16), None)
         self.assertEqual(fn_node.child_by_field_id(1), None)
         self.assertEqual(fn_node.child_by_field_id(16).type, 'identifier')
+        self.assertEqual(fn_node.child_by_field_name('name').type, 'identifier')
+        self.assertEqual(fn_node.child_by_field_name('asdfasdfname'), None)
 
     def test_node_children(self):
         parser = Parser()
