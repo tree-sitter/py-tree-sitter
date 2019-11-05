@@ -278,7 +278,7 @@ static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
     };
     ts_tree_edit(self->tree, &edit);
   }
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyMethodDef tree_methods[] = {
@@ -490,7 +490,7 @@ static PyObject *parser_set_language(Parser *self, PyObject *arg) {
   }
 
   ts_parser_set_language(self->parser, language);
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyMethodDef parser_methods[] = {
