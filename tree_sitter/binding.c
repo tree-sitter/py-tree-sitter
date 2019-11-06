@@ -523,11 +523,39 @@ static PyTypeObject parser_type = {
 
 // Module
 
+
+static PyObject *language_field_id_for_name(Node *self, PyObject *args) {
+  TSLanguage *language;
+  char *field_name;
+  int length;
+  if (!PyArg_ParseTuple(args, "ls#", &language, &field_name, &length)) {
+    return NULL;
+  }
+
+  TSFieldId field_id = ts_language_field_id_for_name(language, field_name, length);
+  if (field_id == 0) {
+    Py_RETURN_NONE;
+  }
+
+  return PyLong_FromSize_t((size_t)field_id);
+}
+
+static PyMethodDef module_methods[] = {
+  {
+    .ml_name = "language_field_id_for_name",
+    .ml_meth = (PyCFunction)language_field_id_for_name,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "",
+  },
+  {NULL},
+};
+
 static struct PyModuleDef module_definition = {
   .m_base = PyModuleDef_HEAD_INIT,
   .m_name = "tree_sitter",
   .m_doc = NULL,
   .m_size = -1,
+  .m_methods = module_methods,
 };
 
 PyMODINIT_FUNC PyInit_tree_sitter_binding(void) {

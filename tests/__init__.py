@@ -61,14 +61,25 @@ class TestTreeSitter(unittest.TestCase):
         root_node = tree.root_node
         fn_node = tree.root_node.children[0]
 
+        self.assertEqual(PYTHON.field_id_for_name('nameasdf'), None)
+        name_field = PYTHON.field_id_for_name('name')
+        alias_field = PYTHON.field_id_for_name('alias')
+        self.assertIsInstance(alias_field, int)
+        self.assertIsInstance(name_field, int)
         self.assertRaises(TypeError, root_node.child_by_field_id, '')
-        self.assertEqual(root_node.child_by_field_id(1), None)
-        self.assertEqual(root_node.child_by_field_id(16), None)
-        self.assertEqual(fn_node.child_by_field_id(1), None)
-        self.assertEqual(fn_node.child_by_field_id(16).type, 'identifier')
+        self.assertEqual(root_node.child_by_field_id(alias_field), None)
+        self.assertEqual(root_node.child_by_field_id(name_field), None)
+        self.assertEqual(fn_node.child_by_field_id(alias_field), None)
+        self.assertEqual(
+            fn_node.child_by_field_id(name_field).type,
+            'identifier'
+        )
         self.assertRaises(TypeError, root_node.child_by_field_name, True)
         self.assertRaises(TypeError, root_node.child_by_field_name, 1)
-        self.assertEqual(fn_node.child_by_field_name('name').type, 'identifier')
+        self.assertEqual(
+            fn_node.child_by_field_name('name').type,
+            'identifier'
+        )
         self.assertEqual(fn_node.child_by_field_name('asdfasdfname'), None)
 
     def test_node_children(self):
