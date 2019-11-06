@@ -61,15 +61,13 @@ class TestTreeSitter(unittest.TestCase):
         root_node = tree.root_node
         fn_node = tree.root_node.children[0]
 
-        try:
-            root_node.child_by_field_id('')
-            assert False
-        except TypeError:
-            pass
+        self.assertRaises(TypeError, root_node.child_by_field_id, '')
         self.assertEqual(root_node.child_by_field_id(1), None)
         self.assertEqual(root_node.child_by_field_id(16), None)
         self.assertEqual(fn_node.child_by_field_id(1), None)
         self.assertEqual(fn_node.child_by_field_id(16).type, 'identifier')
+        self.assertRaises(TypeError, root_node.child_by_field_name, True)
+        self.assertRaises(TypeError, root_node.child_by_field_name, 1)
         self.assertEqual(fn_node.child_by_field_name('name').type, 'identifier')
         self.assertEqual(fn_node.child_by_field_name('asdfasdfname'), None)
 
