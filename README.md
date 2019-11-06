@@ -81,6 +81,7 @@ assert root_node.end_point == (3, 13)
 
 function_node = root_node.children[0]
 assert root_node.type == 'function_definition'
+assert root_node.child_by_field_name('name').type == 'identifier'
 
 function_name_node = function_node.children[1]
 assert function_name_node.type == 'identifier'

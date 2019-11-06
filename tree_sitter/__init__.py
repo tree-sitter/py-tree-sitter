@@ -3,7 +3,7 @@ from ctypes import cdll, c_void_p
 from ctypes.util import find_library
 from distutils.ccompiler import new_compiler
 from tempfile import TemporaryDirectory
-from tree_sitter_binding import Parser, Tree
+from tree_sitter_binding import Parser, Tree, language_field_id_for_name
 import os.path as path
 import platform
 
@@ -78,3 +78,6 @@ class Language:
         language_function = getattr(self.lib, "tree_sitter_%s" % name)
         language_function.restype = c_void_p
         self.language_id = language_function()
+
+    def field_id_for_name(self, name):
+        return language_field_id_for_name(self.language_id, name)

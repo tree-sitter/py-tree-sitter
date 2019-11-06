@@ -78,6 +78,31 @@ static PyObject *node_walk(Node *self, PyObject *args) {
   return tree_cursor_new_internal(self->node);
 }
 
+static PyObject *node_chield_by_field_id(Node *self, PyObject *args) {
+  TSFieldId field_id;
+  if (!PyArg_ParseTuple(args, "H", &field_id)) {
+    return NULL;
+  }
+  TSNode child = ts_node_child_by_field_id(self->node, field_id);
+  if (ts_node_is_null(child)) {
+    Py_RETURN_NONE;
+  }
+  return node_new_internal(child);
+}
+
+static PyObject *node_chield_by_field_name(Node *self, PyObject *args) {
+  char *name;
+  int length;
+  if (!PyArg_ParseTuple(args, "s#", &name, &length)) {
+    return NULL;
+  }
+  TSNode child = ts_node_child_by_field_name(self->node, name, length);
+  if (ts_node_is_null(child)) {
+    Py_RETURN_NONE;
+  }
+  return node_new_internal(child);
+}
+
 static PyObject *node_get_type(Node *self, void *payload) {
   return PyUnicode_FromString(ts_node_type(self->node));
 }
@@ -145,6 +170,18 @@ static PyMethodDef node_methods[] = {
     .ml_meth = (PyCFunction)node_sexp,
     .ml_flags = METH_NOARGS,
     .ml_doc = "Get an S-expression representing the name",
+  },
+  {
+    .ml_name = "child_by_field_id",
+    .ml_meth = (PyCFunction)node_chield_by_field_id,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "Get child for the given field id.",
+  },
+  {
+    .ml_name = "child_by_field_name",
+    .ml_meth = (PyCFunction)node_chield_by_field_name,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "Get child for the given field name.",
   },
   {NULL},
 };
@@ -241,7 +278,7 @@ static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
     };
     ts_tree_edit(self->tree, &edit);
   }
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyMethodDef tree_methods[] = {
@@ -453,7 +490,7 @@ static PyObject *parser_set_language(Parser *self, PyObject *arg) {
   }
 
   ts_parser_set_language(self->parser, language);
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyMethodDef parser_methods[] = {
@@ -467,7 +504,7 @@ static PyMethodDef parser_methods[] = {
     .ml_name = "set_language",
     .ml_meth = (PyCFunction)parser_set_language,
     .ml_flags = METH_O,
-    .ml_doc = "Parse source code, creating a syntax tree",
+    .ml_doc = "Set the parser language",
   },
   {NULL},
 };
@@ -486,11 +523,39 @@ static PyTypeObject parser_type = {
 
 // Module
 
+
+static PyObject *language_field_id_for_name(Node *self, PyObject *args) {
+  TSLanguage *language;
+  char *field_name;
+  int length;
+  if (!PyArg_ParseTuple(args, "ls#", &language, &field_name, &length)) {
+    return NULL;
+  }
+
+  TSFieldId field_id = ts_language_field_id_for_name(language, field_name, length);
+  if (field_id == 0) {
+    Py_RETURN_NONE;
+  }
+
+  return PyLong_FromSize_t((size_t)field_id);
+}
+
+static PyMethodDef module_methods[] = {
+  {
+    .ml_name = "language_field_id_for_name",
+    .ml_meth = (PyCFunction)language_field_id_for_name,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "",
+  },
+  {NULL},
+};
+
 static struct PyModuleDef module_definition = {
   .m_base = PyModuleDef_HEAD_INIT,
   .m_name = "tree_sitter",
   .m_doc = NULL,
   .m_size = -1,
+  .m_methods = module_methods,
 };
 
 PyMODINIT_FUNC PyInit_tree_sitter_binding(void) {
