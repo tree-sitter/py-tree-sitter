@@ -4,10 +4,13 @@ from tree_sitter import Parser, Language
 
 
 LIB_PATH = path.join("build", "languages.so")
-Language.build_library(LIB_PATH, [
-    path.join("tests", "fixtures", "tree-sitter-python"),
-    path.join("tests", "fixtures", "tree-sitter-javascript"),
-])
+Language.build_library(
+    LIB_PATH,
+    [
+        path.join("tests", "fixtures", "tree-sitter-python"),
+        path.join("tests", "fixtures", "tree-sitter-javascript"),
+    ],
+)
 PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 
@@ -17,6 +20,7 @@ class TestTreeSitter(unittest.TestCase):
         parser = Parser()
         parser.set_language(PYTHON)
         tree = parser.parse(b"def foo():\n  bar()")
+        # fmt: off
         self.assertEqual(
             tree.root_node.sexp(),
             "(module (function_definition "
@@ -36,6 +40,7 @@ class TestTreeSitter(unittest.TestCase):
                 "body: (statement_block "
                     "(expression_statement (call_expression function: (identifier) arguments: (arguments))))))"
         )
+        # fmt: on
 
     def test_multibyte_characters(self):
         parser = Parser()
@@ -50,8 +55,8 @@ class TestTreeSitter(unittest.TestCase):
         self.assertEqual(binary_node.type, "binary_expression")
         self.assertEqual(snake_node.type, "string")
         self.assertEqual(
-            source_code[snake_node.start_byte:snake_node.end_byte].decode('utf8'),
-            "'🐍'"
+            source_code[snake_node.start_byte : snake_node.end_byte].decode("utf8"),
+            "'🐍'",
         )
 
     def test_node_child_by_field_id(self):
@@ -61,26 +66,20 @@ class TestTreeSitter(unittest.TestCase):
         root_node = tree.root_node
         fn_node = tree.root_node.children[0]
 
-        self.assertEqual(PYTHON.field_id_for_name('nameasdf'), None)
-        name_field = PYTHON.field_id_for_name('name')
-        alias_field = PYTHON.field_id_for_name('alias')
+        self.assertEqual(PYTHON.field_id_for_name("nameasdf"), None)
+        name_field = PYTHON.field_id_for_name("name")
+        alias_field = PYTHON.field_id_for_name("alias")
         self.assertIsInstance(alias_field, int)
         self.assertIsInstance(name_field, int)
-        self.assertRaises(TypeError, root_node.child_by_field_id, '')
+        self.assertRaises(TypeError, root_node.child_by_field_id, "")
         self.assertEqual(root_node.child_by_field_id(alias_field), None)
         self.assertEqual(root_node.child_by_field_id(name_field), None)
         self.assertEqual(fn_node.child_by_field_id(alias_field), None)
-        self.assertEqual(
-            fn_node.child_by_field_id(name_field).type,
-            'identifier'
-        )
+        self.assertEqual(fn_node.child_by_field_id(name_field).type, "identifier")
         self.assertRaises(TypeError, root_node.child_by_field_name, True)
         self.assertRaises(TypeError, root_node.child_by_field_name, 1)
-        self.assertEqual(
-            fn_node.child_by_field_name('name').type,
-            'identifier'
-        )
-        self.assertEqual(fn_node.child_by_field_name('asdfasdfname'), None)
+        self.assertEqual(fn_node.child_by_field_name("name").type, "identifier")
+        self.assertEqual(fn_node.child_by_field_name("asdfasdfname"), None)
 
     def test_node_children(self):
         parser = Parser()
@@ -173,28 +172,29 @@ class TestTreeSitter(unittest.TestCase):
 
         edit_offset = len(b"def foo(")
         tree.edit(
-            start_byte = edit_offset,
-            old_end_byte = edit_offset,
-            new_end_byte = edit_offset + 2,
-            start_point = (0, edit_offset),
-            old_end_point = (0, edit_offset),
-            new_end_point = (0, edit_offset + 2),
+            start_byte=edit_offset,
+            old_end_byte=edit_offset,
+            new_end_byte=edit_offset + 2,
+            start_point=(0, edit_offset),
+            old_end_point=(0, edit_offset),
+            new_end_point=(0, edit_offset + 2),
         )
 
         fn_node = tree.root_node.children[0]
-        self.assertEqual(fn_node.type, 'function_definition')
+        self.assertEqual(fn_node.type, "function_definition")
         self.assertTrue(fn_node.has_changes)
         self.assertFalse(fn_node.children[0].has_changes)
         self.assertFalse(fn_node.children[1].has_changes)
         self.assertFalse(fn_node.children[3].has_changes)
 
         params_node = fn_node.children[2]
-        self.assertEqual(params_node.type, 'parameters')
+        self.assertEqual(params_node.type, "parameters")
         self.assertTrue(params_node.has_changes)
         self.assertEqual(params_node.start_point, (0, edit_offset - 1))
         self.assertEqual(params_node.end_point, (0, edit_offset + 3))
 
         new_tree = parser.parse(b"def foo(ab):\n  bar()", tree)
+        # fmt: off
         self.assertEqual(
             new_tree.root_node.sexp(),
             "(module (function_definition "
@@ -205,3 +205,4 @@ class TestTreeSitter(unittest.TestCase):
                         "function: (identifier) "
                         "arguments: (argument_list))))))"
         )
+        # fmt: on
