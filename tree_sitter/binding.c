@@ -163,25 +163,29 @@ static PyMethodDef node_methods[] = {
     .ml_name = "walk",
     .ml_meth = (PyCFunction)node_walk,
     .ml_flags = METH_NOARGS,
-    .ml_doc = "Get a tree cursor for walking the tree starting at this node",
+    .ml_doc = "walk()\n--\n\n\
+               Get a tree cursor for walking the tree starting at this node.",
   },
   {
     .ml_name = "sexp",
     .ml_meth = (PyCFunction)node_sexp,
     .ml_flags = METH_NOARGS,
-    .ml_doc = "Get an S-expression representing the name",
+    .ml_doc = "sexp()\n--\n\n\
+               Get an S-expression representing the node.",
   },
   {
     .ml_name = "child_by_field_id",
     .ml_meth = (PyCFunction)node_chield_by_field_id,
     .ml_flags = METH_VARARGS,
-    .ml_doc = "Get child for the given field id.",
+    .ml_doc = "child_by_field_id(id)\n--\n\n\
+               Get child for the given field id.",
   },
   {
     .ml_name = "child_by_field_name",
     .ml_meth = (PyCFunction)node_chield_by_field_name,
     .ml_flags = METH_VARARGS,
-    .ml_doc = "Get child for the given field name.",
+    .ml_doc = "child_by_field_name(name)\n--\n\n\
+               Get child for the given field name.",
   },
   {NULL},
 };
@@ -286,19 +290,22 @@ static PyMethodDef tree_methods[] = {
     .ml_name = "walk",
     .ml_meth = (PyCFunction)tree_walk,
     .ml_flags = METH_NOARGS,
-    .ml_doc = "Get a tree cursor for walking this tree",
+    .ml_doc = "walk()\n--\n\n\
+               Get a tree cursor for walking this tree.",
   },
   {
     .ml_name = "edit",
     .ml_meth = (PyCFunction)tree_edit,
     .ml_flags = METH_KEYWORDS|METH_VARARGS,
-    .ml_doc = "Edit a syntax tree",
+    .ml_doc = "edit(start_byte, old_end_byte, new_end_byte,\
+               start_point, old_end_point, new_end_point)\n--\n\n\
+               Edit the syntax tree.",
   },
   {NULL},
 };
 
 static PyGetSetDef tree_accessors[] = {
-  {"root_node", (getter)tree_get_root_node, NULL, "root node", NULL},
+  {"root_node", (getter)tree_get_root_node, NULL, "The root node of this tree.", NULL},
   {NULL}
 };
 
@@ -369,32 +376,41 @@ static PyMethodDef tree_cursor_methods[] = {
     .ml_name = "goto_parent",
     .ml_meth = (PyCFunction)tree_cursor_goto_parent,
     .ml_flags = METH_NOARGS,
-    .ml_doc = "If the current node is not the root, move to its parent and return True. Otherwise, return false.",
+    .ml_doc = "goto_parent()\n--\n\n\
+               Go to parent.\n\n\
+               If the current node is not the root, move to its parent and\n\
+               return True. Otherwise, return False.",
   },
   {
     .ml_name = "goto_first_child",
     .ml_meth = (PyCFunction)tree_cursor_goto_first_child,
     .ml_flags = METH_NOARGS,
-    .ml_doc = "If the current node has children, move to the first child and return True. Otherwise, return false.",
+    .ml_doc = "goto_first_child()\n--\n\n\
+               Go to first child.\n\n\
+               If the current node has children, move to the first child and\n\
+               return True. Otherwise, return False.",
   },
   {
     .ml_name = "goto_next_sibling",
     .ml_meth = (PyCFunction)tree_cursor_goto_next_sibling,
     .ml_flags = METH_NOARGS,
-    .ml_doc = "If the current node has a next sibling, move to the next sibling and return True. Otherwise, return false.",
+    .ml_doc = "goto_next_sibling()\n--\n\n\
+               Go to next sibling.\n\n\
+               If the current node has a next sibling, move to the next sibling\n\
+               and return True. Otherwise, return False.",
   },
   {NULL},
 };
 
 static PyGetSetDef tree_cursor_accessors[] = {
-  {"node", (getter)tree_cursor_get_node, NULL, "node", NULL},
+  {"node", (getter)tree_cursor_get_node, NULL, "The current node.", NULL},
   {NULL},
 };
 
 static PyTypeObject tree_cursor_type = {
   PyVarObject_HEAD_INIT(NULL, 0)
   .tp_name = "tree_sitter.TreeCursor",
-  .tp_doc = "A syntax tree cursor",
+  .tp_doc = "A syntax tree cursor.",
   .tp_basicsize = sizeof(TreeCursor),
   .tp_itemsize = 0,
   .tp_flags = Py_TPFLAGS_DEFAULT,
@@ -498,13 +514,15 @@ static PyMethodDef parser_methods[] = {
     .ml_name = "parse",
     .ml_meth = (PyCFunction)parser_parse,
     .ml_flags = METH_VARARGS,
-    .ml_doc = "Parse source code, creating a syntax tree",
+    .ml_doc = "parse(bytes, old_tree=None)\n--\n\n\
+               Parse source code, creating a syntax tree.",
   },
   {
     .ml_name = "set_language",
     .ml_meth = (PyCFunction)parser_set_language,
     .ml_flags = METH_O,
-    .ml_doc = "Set the parser language",
+    .ml_doc = "set_language(language)\n--\n\n\
+               Set the parser language.",
   },
   {NULL},
 };
@@ -542,23 +560,23 @@ static PyObject *language_field_id_for_name(Node *self, PyObject *args) {
 
 static PyMethodDef module_methods[] = {
   {
-    .ml_name = "language_field_id_for_name",
+    .ml_name = "_language_field_id_for_name",
     .ml_meth = (PyCFunction)language_field_id_for_name,
     .ml_flags = METH_VARARGS,
-    .ml_doc = "",
+    .ml_doc = "(internal)",
   },
   {NULL},
 };
 
 static struct PyModuleDef module_definition = {
   .m_base = PyModuleDef_HEAD_INIT,
-  .m_name = "tree_sitter",
+  .m_name = "binding",
   .m_doc = NULL,
   .m_size = -1,
   .m_methods = module_methods,
 };
 
-PyMODINIT_FUNC PyInit_tree_sitter_binding(void) {
+PyMODINIT_FUNC PyInit_binding(void) {
   PyObject *module = PyModule_Create(&module_definition);
   if (module == NULL) return NULL;
 
