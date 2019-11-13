@@ -1,0 +1,7 @@
+include README.md
+include LICENSE
+prune tree_sitter/core
+graft tree_sitter/core/lib/src
+graft tree_sitter/core/lib/include/tree_sitter
+include tree_sitter/core/lib/utf8proc/*.c
+include tree_sitter/core/lib/utf8proc/*.h
