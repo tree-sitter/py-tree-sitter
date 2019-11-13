@@ -8,7 +8,7 @@ from distutils.ccompiler import new_compiler
 from os import path
 from tempfile import TemporaryDirectory
 
-# pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module,import-error
 from tree_sitter.binding import _language_field_id_for_name
 from tree_sitter.binding import Node
 from tree_sitter.binding import Parser
