@@ -1,6 +1,8 @@
 import unittest
-import os.path as path
-from tree_sitter import Parser, Language
+from os import path
+
+from tree_sitter import Language
+from tree_sitter import Parser
 
 
 LIB_PATH = path.join("build", "languages.so")
