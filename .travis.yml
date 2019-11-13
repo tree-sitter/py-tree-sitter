@@ -1,9 +1,10 @@
 language: python
 python: 3.6
+install: "pip install tox"
 
 script:
   - script/fetch-fixtures
-  - script/test
+  - tox
 
 branches:
   only:
