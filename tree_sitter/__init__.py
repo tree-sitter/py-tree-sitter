@@ -1,3 +1,5 @@
+"""Python bindings for tree-sitter."""
+
 import platform
 from ctypes import c_void_p
 from ctypes import cdll
@@ -6,6 +8,7 @@ from distutils.ccompiler import new_compiler
 from os import path
 from tempfile import TemporaryDirectory
 
+# pylint: disable=no-name-in-module
 from tree_sitter.binding import _language_field_id_for_name
 from tree_sitter.binding import Node
 from tree_sitter.binding import Parser
@@ -26,27 +29,26 @@ class Language:
         the library already existed and was modified more recently than
         any of the source files.
         """
-        output_mtime = 0
-        if path.exists(output_path):
-            output_mtime = path.getmtime(output_path)
+        output_mtime = (
+            path.getmtime(output_path) if path.exists(output_path) else 0
+        )
 
         if not repo_paths:
             raise ValueError("Must provide at least one language folder")
 
         cpp = False
         source_paths = []
-        source_mtimes = [path.getmtime(__file__)]
         for repo_path in repo_paths:
             src_path = path.join(repo_path, "src")
             source_paths.append(path.join(src_path, "parser.c"))
-            source_mtimes.append(path.getmtime(source_paths[-1]))
             if path.exists(path.join(src_path, "scanner.cc")):
                 cpp = True
                 source_paths.append(path.join(src_path, "scanner.cc"))
-                source_mtimes.append(path.getmtime(source_paths[-1]))
             elif path.exists(path.join(src_path, "scanner.c")):
                 source_paths.append(path.join(src_path, "scanner.c"))
-                source_mtimes.append(path.getmtime(source_paths[-1]))
+        source_mtimes = [path.getmtime(__file__)] + [
+            path.getmtime(path_) for path_ in source_paths
+        ]
 
         compiler = new_compiler()
         if cpp:

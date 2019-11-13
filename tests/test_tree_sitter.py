@@ -1,3 +1,6 @@
+# pylint: disable=missing-docstring
+
+import re
 import unittest
 from os import path
 
@@ -17,32 +20,41 @@ PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 
 
+def _collapse_ws(string):
+    return re.sub(r"\s+", " ", string).strip()
+
+
 class TestTreeSitter(unittest.TestCase):
     def test_set_language(self):
         parser = Parser()
         parser.set_language(PYTHON)
         tree = parser.parse(b"def foo():\n  bar()")
-        # fmt: off
         self.assertEqual(
             tree.root_node.sexp(),
-            "(module (function_definition "
-                "name: (identifier) "
-                "parameters: (parameters) "
-                "body: (block (expression_statement (call "
-                    "function: (identifier) "
-                    "arguments: (argument_list))))))"
+            _collapse_ws(
+                """(module (function_definition
+                name: (identifier)
+                parameters: (parameters)
+                body: (block (expression_statement (call
+                    function: (identifier)
+                    arguments: (argument_list))))))"""
+            ),
         )
         parser.set_language(JAVASCRIPT)
         tree = parser.parse(b"function foo() {\n  bar();\n}")
         self.assertEqual(
             tree.root_node.sexp(),
-            "(program (function_declaration "
-                "name: (identifier) "
-                "parameters: (formal_parameters) "
-                "body: (statement_block "
-                    "(expression_statement (call_expression function: (identifier) arguments: (arguments))))))"
+            _collapse_ws(
+                """(program (function_declaration
+                name: (identifier)
+                parameters: (formal_parameters)
+                body: (statement_block
+                    (expression_statement
+                         (call_expression
+                            function: (identifier)
+                            arguments: (arguments))))))"""
+            ),
         )
-        # fmt: on
 
     def test_multibyte_characters(self):
         parser = Parser()
@@ -57,7 +69,9 @@ class TestTreeSitter(unittest.TestCase):
         self.assertEqual(binary_node.type, "binary_expression")
         self.assertEqual(snake_node.type, "string")
         self.assertEqual(
-            source_code[snake_node.start_byte : snake_node.end_byte].decode("utf8"),
+            source_code[snake_node.start_byte : snake_node.end_byte].decode(
+                "utf8"
+            ),
             "'🐍'",
         )
 
@@ -77,10 +91,14 @@ class TestTreeSitter(unittest.TestCase):
         self.assertEqual(root_node.child_by_field_id(alias_field), None)
         self.assertEqual(root_node.child_by_field_id(name_field), None)
         self.assertEqual(fn_node.child_by_field_id(alias_field), None)
-        self.assertEqual(fn_node.child_by_field_id(name_field).type, "identifier")
+        self.assertEqual(
+            fn_node.child_by_field_id(name_field).type, "identifier"
+        )
         self.assertRaises(TypeError, root_node.child_by_field_name, True)
         self.assertRaises(TypeError, root_node.child_by_field_name, 1)
-        self.assertEqual(fn_node.child_by_field_name("name").type, "identifier")
+        self.assertEqual(
+            fn_node.child_by_field_name("name").type, "identifier"
+        )
         self.assertEqual(fn_node.child_by_field_name("asdfasdfname"), None)
 
     def test_node_children(self):
@@ -196,15 +214,15 @@ class TestTreeSitter(unittest.TestCase):
         self.assertEqual(params_node.end_point, (0, edit_offset + 3))
 
         new_tree = parser.parse(b"def foo(ab):\n  bar()", tree)
-        # fmt: off
         self.assertEqual(
             new_tree.root_node.sexp(),
-            "(module (function_definition "
-                "name: (identifier) "
-                "parameters: (parameters (identifier)) "
-                "body: (block "
-                    "(expression_statement (call "
-                        "function: (identifier) "
-                        "arguments: (argument_list))))))"
+            _collapse_ws(
+                """(module (function_definition
+                name: (identifier)
+                parameters: (parameters (identifier))
+                body: (block
+                    (expression_statement (call
+                        function: (identifier)
+                        arguments: (argument_list))))))"""
+            ),
         )
-        # fmt: on
