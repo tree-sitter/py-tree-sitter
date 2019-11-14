@@ -9,7 +9,7 @@ from os import path
 from tempfile import TemporaryDirectory
 
 # pylint: disable=no-name-in-module,import-error
-from tree_sitter.binding import _language_field_id_for_name
+from tree_sitter.binding import _language_field_id_for_name, _language_query
 from tree_sitter.binding import Node
 from tree_sitter.binding import Parser
 from tree_sitter.binding import Tree
@@ -94,3 +94,7 @@ class Language:
     def field_id_for_name(self, name):
         """Return the field id for a field name."""
         return _language_field_id_for_name(self.language_id, name)
+
+    def query(self, source):
+        """Create a Query with the given source code."""
+        return _language_query(self.language_id, source)

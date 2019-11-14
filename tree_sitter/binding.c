@@ -25,7 +25,14 @@ typedef struct {
   PyObject *node;
 } TreeCursor;
 
+typedef struct {
+  PyObject_HEAD
+  TSQuery *query;
+  PyObject *capture_names;
+} Query;
+
 static TSTreeCursor default_cursor = {0};
+static TSQueryCursor *query_cursor = NULL;
 
 // Point
 
@@ -539,10 +546,148 @@ static PyTypeObject parser_type = {
   .tp_methods = parser_methods,
 };
 
+// Query
+
+static PyObject *query_matches(Query *self, PyObject *args) {
+  PyErr_SetString(PyExc_NotImplementedError, "Not Implemented");
+  return NULL;
+}
+
+static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
+  char *keywords[] = {
+    "node",
+    "start_point",
+    "end_point",
+    NULL,
+  };
+
+  Node *node = NULL;
+  unsigned start_row = 0, start_column = 0, end_row = 0, end_column = 0;
+
+  int ok = PyArg_ParseTupleAndKeywords(
+    args,
+    kwargs,
+    "O|(II)(II)",
+    keywords,
+    (PyObject **)&node,
+    &start_row,
+    &start_column,
+    &end_row,
+    &end_column
+  );
+  if (!ok) return NULL;
+
+  if (!PyObject_IsInstance((PyObject *)node, (PyObject *)&node_type)) {
+    PyErr_SetString(PyExc_TypeError, "First argument to captures must be a Node");
+    return NULL;
+  }
+
+  if (!query_cursor) query_cursor = ts_query_cursor_new();
+  ts_query_cursor_exec(query_cursor, self->query, node->node);
+
+  PyObject *result = PyList_New(0);
+
+  uint32_t capture_index;
+  TSQueryMatch match;
+  while (ts_query_cursor_next_capture(query_cursor, &match, &capture_index)) {
+    const TSQueryCapture *capture = &match.captures[capture_index];
+    PyObject *node = node_new_internal(capture->node);
+    PyObject *capture_name = PyList_GetItem(self->capture_names, capture->index);
+    PyList_Append(result, PyTuple_Pack(2, node, capture_name));
+  }
+
+  return result;
+}
+
+static void query_dealloc(Query *self) {
+  if (self->query) ts_query_delete(self->query);
+  Py_XDECREF(self->capture_names);
+  Py_TYPE(self)->tp_free(self);
+}
+
+static PyMethodDef query_methods[] = {
+  {
+    .ml_name = "matches",
+    .ml_meth = (PyCFunction)query_matches,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "matches(node)\n--\n\n\
+               Get a list of all of the matches within the given node."
+  },
+  {
+    .ml_name = "captures",
+    .ml_meth = (PyCFunction)query_captures,
+    .ml_flags = METH_KEYWORDS|METH_VARARGS,
+    .ml_doc = "captures(node)\n--\n\n\
+               Get a list of all of the captures within the given node.",
+  },
+  {NULL},
+};
+
+static PyTypeObject query_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  .tp_name = "tree_sitter.Query",
+  .tp_doc = "A set of patterns to search for in a syntax tree.",
+  .tp_basicsize = sizeof(Query),
+  .tp_itemsize = 0,
+  .tp_flags = Py_TPFLAGS_DEFAULT,
+  .tp_dealloc = (destructor)query_dealloc,
+  .tp_methods = query_methods,
+};
+
+static PyObject *query_new_internal(
+  TSLanguage *language,
+  char *source,
+  int length
+) {
+  Query *query = (Query *)query_type.tp_alloc(&query_type, 0);
+  if (query == NULL) return NULL;
+
+  uint32_t error_offset;
+  TSQueryError error_type;
+  query->query = ts_query_new(
+    language, source, length, &error_offset, &error_type
+  );
+  if (!query->query) {
+    char *word_start = &source[error_offset];
+    char *word_end = word_start;
+    while (
+      word_end < &source[length] &&
+      (iswalnum(*word_end) || *word_end == '-' || *word_end == '_' || *word_end == '?' || *word_end == '.')
+    ) word_end++;
+    char c = *word_end;
+    *word_end = 0;
+    switch (error_type) {
+      case TSQueryErrorNodeType:
+        PyErr_Format(PyExc_NameError, "Invalid node type %s", &source[error_offset]);
+        break;
+      case TSQueryErrorField:
+        PyErr_Format(PyExc_NameError, "Invalid field name %s", &source[error_offset]);
+        break;
+      case TSQueryErrorCapture:
+        PyErr_Format(PyExc_NameError, "Invalid capture name %s", &source[error_offset]);
+        break;
+      default:
+        PyErr_Format(PyExc_SyntaxError, "Invalid syntax at offset %u", error_offset);
+    }
+    *word_end = c;
+    query_dealloc(query);
+    return NULL;
+  }
+
+  unsigned n = ts_query_capture_count(query->query);
+  query->capture_names = PyList_New(n);
+  Py_INCREF(Py_None);
+  for (unsigned i = 0; i < n; i++) {
+    unsigned length;
+    const char *capture_name = ts_query_capture_name_for_id(query->query, i, &length);
+    PyList_SetItem(query->capture_names, i, PyUnicode_FromStringAndSize(capture_name, length));
+  }
+  return (PyObject *)query;
+}
+
 // Module
 
-
-static PyObject *language_field_id_for_name(Node *self, PyObject *args) {
+static PyObject *language_field_id_for_name(PyObject *self, PyObject *args) {
   TSLanguage *language;
   char *field_name;
   int length;
@@ -558,10 +703,27 @@ static PyObject *language_field_id_for_name(Node *self, PyObject *args) {
   return PyLong_FromSize_t((size_t)field_id);
 }
 
+static PyObject *language_query(PyObject *self, PyObject *args) {
+  TSLanguage *language;
+  char *source;
+  int length;
+  if (!PyArg_ParseTuple(args, "ls#", &language, &source, &length)) {
+    return NULL;
+  }
+
+  return query_new_internal(language, source, length);
+}
+
 static PyMethodDef module_methods[] = {
   {
     .ml_name = "_language_field_id_for_name",
     .ml_meth = (PyCFunction)language_field_id_for_name,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "(internal)",
+  },
+  {
+    .ml_name = "_language_query",
+    .ml_meth = (PyCFunction)language_query,
     .ml_flags = METH_VARARGS,
     .ml_doc = "(internal)",
   },
@@ -595,6 +757,10 @@ PyMODINIT_FUNC PyInit_binding(void) {
   if (PyType_Ready(&tree_cursor_type) < 0) return NULL;
   Py_INCREF(&tree_cursor_type);
   PyModule_AddObject(module, "TreeCursor", (PyObject *)&tree_cursor_type);
+
+  if (PyType_Ready(&query_type) < 0) return NULL;
+  Py_INCREF(&query_type);
+  PyModule_AddObject(module, "Query", (PyObject *)&query_type);
 
   return module;
 }

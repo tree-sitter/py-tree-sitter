@@ -24,7 +24,7 @@ def _collapse_ws(string):
     return re.sub(r"\s+", " ", string).strip()
 
 
-class TestTreeSitter(unittest.TestCase):
+class TestParser(unittest.TestCase):
     def test_set_language(self):
         parser = Parser()
         parser.set_language(PYTHON)
@@ -75,7 +75,9 @@ class TestTreeSitter(unittest.TestCase):
             "'🐍'",
         )
 
-    def test_node_child_by_field_id(self):
+
+class TestNode(unittest.TestCase):
+    def test_child_by_field_id(self):
         parser = Parser()
         parser.set_language(PYTHON)
         tree = parser.parse(b"def foo():\n  bar()")
@@ -101,7 +103,7 @@ class TestTreeSitter(unittest.TestCase):
         )
         self.assertEqual(fn_node.child_by_field_name("asdfasdfname"), None)
 
-    def test_node_children(self):
+    def test_children(self):
         parser = Parser()
         parser.set_language(PYTHON)
         tree = parser.parse(b"def foo():\n  bar()")
@@ -144,7 +146,9 @@ class TestTreeSitter(unittest.TestCase):
         self.assertEqual(statement_node.type, "block")
         self.assertEqual(statement_node.is_named, True)
 
-    def test_tree_walk(self):
+
+class TestTree(unittest.TestCase):
+    def test_walk(self):
         parser = Parser()
         parser.set_language(PYTHON)
         tree = parser.parse(b"def foo():\n  bar()")
@@ -226,3 +230,49 @@ class TestTreeSitter(unittest.TestCase):
                         arguments: (argument_list))))))"""
             ),
         )
+
+
+class TestQuery(unittest.TestCase):
+    def test_errors(self):
+        with self.assertRaisesRegex(NameError, "Invalid node type foo"):
+            PYTHON.query("(list (foo))")
+        with self.assertRaisesRegex(NameError, "Invalid field name buzz"):
+            PYTHON.query("(function_definition buzz: (identifier))")
+        with self.assertRaisesRegex(NameError, "Invalid capture name garbage"):
+            PYTHON.query("((function_definition) (eq? @garbage foo))")
+        with self.assertRaisesRegex(SyntaxError, "Invalid syntax at offset 6"):
+            PYTHON.query("(list))")
+        PYTHON.query("(function_definition)")
+
+    def test_captures(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        source = b"def foo():\n  bar()\ndef baz():\n  quux()\n"
+        tree = parser.parse(source)
+        query = PYTHON.query(
+            """
+            (function_definition name: (identifier) @func-def)
+            (call function: (identifier) @func-call)
+            """
+        )
+
+        captures = query.captures(tree.root_node)
+        captures = query.captures(tree.root_node)
+        captures = query.captures(tree.root_node)
+        captures = query.captures(tree.root_node)
+
+        self.assertEqual(captures[0][0].start_point, (0, 4))
+        self.assertEqual(captures[0][0].end_point, (0, 7))
+        self.assertEqual(captures[0][1], "func-def")
+
+        self.assertEqual(captures[1][0].start_point, (1, 2))
+        self.assertEqual(captures[1][0].end_point, (1, 5))
+        self.assertEqual(captures[1][1], "func-call")
+
+        self.assertEqual(captures[2][0].start_point, (2, 4))
+        self.assertEqual(captures[2][0].end_point, (2, 7))
+        self.assertEqual(captures[2][1], "func-def")
+
+        self.assertEqual(captures[3][0].start_point, (3, 2))
+        self.assertEqual(captures[3][0].end_point, (3, 6))
+        self.assertEqual(captures[3][1], "func-call")
