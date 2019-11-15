@@ -1,8 +1,12 @@
 language: python
 python: 3.7
 
+install:
+  - pip install flake8
+
 script:
   - script/fetch-fixtures
+  - script/lint
   - script/test
 
 branches:

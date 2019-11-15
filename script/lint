@@ -1,0 +1,4 @@
+#!/bin/bash
+
+sources=$(git ls-files | grep '.py$')
+flake8 --max-line-length 90 $sources
