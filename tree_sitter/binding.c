@@ -74,6 +74,19 @@ static PyObject *node_repr(Node *self) {
   );
 }
 
+static bool node_is_instance(Node *self);
+
+static PyObject *node_compare(Node *self, Node *other, int op) {
+  if (node_is_instance(other)) {
+    bool result = ts_node_eq(self->node, other->node);
+    switch (op) {
+      case Py_EQ: return PyBool_FromLong(result);
+      case Py_NE: return PyBool_FromLong(!result);
+      default: Py_RETURN_FALSE;
+    }
+  }
+}
+
 static PyObject *node_sexp(Node *self, PyObject *args) {
   char *string = ts_node_string(self->node);
   PyObject *result = PyUnicode_FromString(string);
@@ -219,6 +232,7 @@ static PyTypeObject node_type = {
   .tp_flags = Py_TPFLAGS_DEFAULT,
   .tp_dealloc = (destructor)node_dealloc,
   .tp_repr = (reprfunc)node_repr,
+  .tp_richcompare = (richcmpfunc)node_compare,
   .tp_methods = node_methods,
   .tp_getset = node_accessors,
 };
@@ -230,6 +244,10 @@ static PyObject *node_new_internal(TSNode node) {
     self->children = NULL;
   }
   return (PyObject *)self;
+}
+
+static bool node_is_instance(Node *self) {
+  return PyObject_IsInstance(self, (PyObject *)&node_type);
 }
 
 // Tree

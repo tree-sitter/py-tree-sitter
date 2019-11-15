@@ -80,15 +80,21 @@ class TestNode(TestCase):
         alias_field = PYTHON.field_id_for_name("alias")
         self.assertIsInstance(alias_field, int)
         self.assertIsInstance(name_field, int)
-        self.assertRaises(TypeError, root_node.child_by_field_id, "")
         self.assertEqual(root_node.child_by_field_id(alias_field), None)
         self.assertEqual(root_node.child_by_field_id(name_field), None)
         self.assertEqual(fn_node.child_by_field_id(alias_field), None)
         self.assertEqual(fn_node.child_by_field_id(name_field).type, "identifier")
+        self.assertRaises(TypeError, root_node.child_by_field_id, "")
         self.assertRaises(TypeError, root_node.child_by_field_name, True)
         self.assertRaises(TypeError, root_node.child_by_field_name, 1)
+
         self.assertEqual(fn_node.child_by_field_name("name").type, "identifier")
         self.assertEqual(fn_node.child_by_field_name("asdfasdfname"), None)
+
+        self.assertEqual(
+            fn_node.child_by_field_name("name"),
+            fn_node.child_by_field_name("name"),
+        )
 
     def test_children(self):
         parser = Parser()
