@@ -74,16 +74,18 @@ static PyObject *node_repr(Node *self) {
   );
 }
 
-static bool node_is_instance(Node *self);
+static bool node_is_instance(PyObject *self);
 
 static PyObject *node_compare(Node *self, Node *other, int op) {
-  if (node_is_instance(other)) {
+  if (node_is_instance((PyObject *)other)) {
     bool result = ts_node_eq(self->node, other->node);
     switch (op) {
       case Py_EQ: return PyBool_FromLong(result);
       case Py_NE: return PyBool_FromLong(!result);
       default: Py_RETURN_FALSE;
     }
+  } else {
+    Py_RETURN_FALSE;
   }
 }
 
@@ -246,7 +248,7 @@ static PyObject *node_new_internal(TSNode node) {
   return (PyObject *)self;
 }
 
-static bool node_is_instance(Node *self) {
+static bool node_is_instance(PyObject *self) {
   return PyObject_IsInstance(self, (PyObject *)&node_type);
 }
 

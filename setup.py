@@ -35,7 +35,9 @@ setup(
             "tree_sitter.binding",
             ["tree_sitter/core/lib/src/lib.c", "tree_sitter/binding.c"],
             include_dirs=["tree_sitter/core/lib/include", "tree_sitter/core/lib/src"],
-            extra_compile_args=(["-std=c99"] if system() != "Windows" else None),
+            extra_compile_args=(
+                ["-std=c99", "-Wno-unused-variable"] if system() != "Windows" else None
+            ),
         )
     ],
     project_urls={"Source": "https://github.com/tree-sitter/py-tree-sitter"},
