@@ -1,12 +1,9 @@
 # pylint: disable=missing-docstring
 
 import re
-import unittest
+from unittest import TestCase
 from os import path
-
-from tree_sitter import Language
-from tree_sitter import Parser
-
+from tree_sitter import Language, Parser
 
 LIB_PATH = path.join("build", "languages.so")
 Language.build_library(
@@ -20,18 +17,14 @@ PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 
 
-def _collapse_ws(string):
-    return re.sub(r"\s+", " ", string).strip()
-
-
-class TestParser(unittest.TestCase):
+class TestParser(TestCase):
     def test_set_language(self):
         parser = Parser()
         parser.set_language(PYTHON)
         tree = parser.parse(b"def foo():\n  bar()")
         self.assertEqual(
             tree.root_node.sexp(),
-            _collapse_ws(
+            trim(
                 """(module (function_definition
                 name: (identifier)
                 parameters: (parameters)
@@ -44,7 +37,7 @@ class TestParser(unittest.TestCase):
         tree = parser.parse(b"function foo() {\n  bar();\n}")
         self.assertEqual(
             tree.root_node.sexp(),
-            _collapse_ws(
+            trim(
                 """(program (function_declaration
                 name: (identifier)
                 parameters: (formal_parameters)
@@ -69,14 +62,12 @@ class TestParser(unittest.TestCase):
         self.assertEqual(binary_node.type, "binary_expression")
         self.assertEqual(snake_node.type, "string")
         self.assertEqual(
-            source_code[snake_node.start_byte : snake_node.end_byte].decode(
-                "utf8"
-            ),
+            source_code[snake_node.start_byte:snake_node.end_byte].decode("utf8"),
             "'🐍'",
         )
 
 
-class TestNode(unittest.TestCase):
+class TestNode(TestCase):
     def test_child_by_field_id(self):
         parser = Parser()
         parser.set_language(PYTHON)
@@ -93,14 +84,10 @@ class TestNode(unittest.TestCase):
         self.assertEqual(root_node.child_by_field_id(alias_field), None)
         self.assertEqual(root_node.child_by_field_id(name_field), None)
         self.assertEqual(fn_node.child_by_field_id(alias_field), None)
-        self.assertEqual(
-            fn_node.child_by_field_id(name_field).type, "identifier"
-        )
+        self.assertEqual(fn_node.child_by_field_id(name_field).type, "identifier")
         self.assertRaises(TypeError, root_node.child_by_field_name, True)
         self.assertRaises(TypeError, root_node.child_by_field_name, 1)
-        self.assertEqual(
-            fn_node.child_by_field_name("name").type, "identifier"
-        )
+        self.assertEqual(fn_node.child_by_field_name("name").type, "identifier")
         self.assertEqual(fn_node.child_by_field_name("asdfasdfname"), None)
 
     def test_children(self):
@@ -147,7 +134,7 @@ class TestNode(unittest.TestCase):
         self.assertEqual(statement_node.is_named, True)
 
 
-class TestTree(unittest.TestCase):
+class TestTree(TestCase):
     def test_walk(self):
         parser = Parser()
         parser.set_language(PYTHON)
@@ -220,7 +207,7 @@ class TestTree(unittest.TestCase):
         new_tree = parser.parse(b"def foo(ab):\n  bar()", tree)
         self.assertEqual(
             new_tree.root_node.sexp(),
-            _collapse_ws(
+            trim(
                 """(module (function_definition
                 name: (identifier)
                 parameters: (parameters (identifier))
@@ -232,7 +219,7 @@ class TestTree(unittest.TestCase):
         )
 
 
-class TestQuery(unittest.TestCase):
+class TestQuery(TestCase):
     def test_errors(self):
         with self.assertRaisesRegex(NameError, "Invalid node type foo"):
             PYTHON.query("(list (foo))")
@@ -276,3 +263,7 @@ class TestQuery(unittest.TestCase):
         self.assertEqual(captures[3][0].start_point, (3, 2))
         self.assertEqual(captures[3][0].end_point, (3, 6))
         self.assertEqual(captures[3][1], "func-call")
+
+
+def trim(string):
+    return re.sub(r"\s+", " ", string).strip()

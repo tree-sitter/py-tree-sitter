@@ -1,19 +1,13 @@
 """Python bindings for tree-sitter."""
 
-import platform
-from ctypes import c_void_p
-from ctypes import cdll
+from ctypes import cdll, c_void_p
 from ctypes.util import find_library
 from distutils.ccompiler import new_compiler
 from os import path
+from platform import system
 from tempfile import TemporaryDirectory
-
-# pylint: disable=no-name-in-module,import-error
 from tree_sitter.binding import _language_field_id_for_name, _language_query
-from tree_sitter.binding import Node
-from tree_sitter.binding import Parser
-from tree_sitter.binding import Tree
-from tree_sitter.binding import TreeCursor
+from tree_sitter.binding import Node, Parser, Tree, TreeCursor  # noqa: F401
 
 
 class Language:
@@ -29,9 +23,7 @@ class Language:
         the library already existed and was modified more recently than
         any of the source files.
         """
-        output_mtime = (
-            path.getmtime(output_path) if path.exists(output_path) else 0
-        )
+        output_mtime = path.getmtime(output_path) if path.exists(output_path) else 0
 
         if not repo_paths:
             raise ValueError("Must provide at least one language folder")
@@ -63,7 +55,7 @@ class Language:
         with TemporaryDirectory(suffix="tree_sitter_language") as out_dir:
             object_paths = []
             for source_path in source_paths:
-                if platform.system() == "Windows":
+                if system() == "Windows":
                     flags = None
                 else:
                     flags = ["-fPIC"]
