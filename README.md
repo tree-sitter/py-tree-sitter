@@ -80,15 +80,25 @@ assert root_node.start_point == (1, 0)
 assert root_node.end_point == (3, 13)
 
 function_node = root_node.children[0]
-assert root_node.type == 'function_definition'
-assert root_node.child_by_field_name('name').type == 'identifier'
+assert function_node.type == 'function_definition'
+assert function_node.child_by_field_name('name').type == 'identifier'
 
 function_name_node = function_node.children[1]
 assert function_name_node.type == 'identifier'
 assert function_name_node.start_point == (1, 4)
 assert function_name_node.end_point == (1, 7)
 
-assert root_node.sexp() == ''
+assert root_node.sexp() == "(module "
+    "(function_definition "
+        "name: (identifier) "
+        "parameters: (parameters) "
+        "body: (block "
+            "(if_statement "
+                "condition: (identifier) "
+                "consequence: (block "
+                    "(expression_statement (call "
+                        "function: (identifier) "
+                        "arguments: (argument_list))))))))"
 ```
 
 #### Walking Syntax Trees
@@ -126,12 +136,12 @@ When a source file is edited, you can edit the syntax tree to keep it in sync wi
 
 ```python
 tree.edit(
-    start_byte = 5,
-    old_end_byte = 5,
-    new_end_byte = 5 + 2,
-    start_point = (0, 5),
-    old_end_point = (0, 5),
-    new_end_point = (0, 5 + 2),
+    start_byte=5,
+    old_end_byte=5,
+    new_end_byte=5 + 2,
+    start_point=(0, 5),
+    old_end_point=(0, 5),
+    new_end_point=(0, 5 + 2),
 )
 ```
 
@@ -143,3 +153,22 @@ new_tree = parser.parse(new_source, tree)
 ```
 
 This will run much faster than if you were parsing from scratch.
+
+#### Pattern-matching
+
+You can search for patterns in a syntax tree using a *tree query*:
+
+```python
+query = PY_LANGUAGE.query("""
+(function_definition
+  name: (identifier) @function.def)
+
+(call
+  function: (identifier) @function.call)
+""")
+
+captures = query.captures(tree.root_node)
+assert len(captures) == 2
+assert captures[0][0] == function_name_node
+assert captures[0][1] == "function.def"
+```
