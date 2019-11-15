@@ -12,7 +12,7 @@ with open(path.join(path.dirname(__file__), "README.md")) as f:
 
 setup(
     name="tree_sitter",
-    version="0.0.8",
+    version="0.0.9",
     maintainer="Max Brunsfeld",
     maintainer_email="maxbrunsfeld@gmail.com",
     author="Max Brunsfeld",
