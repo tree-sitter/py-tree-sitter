@@ -1,3 +1,4 @@
+#define PY_SSIZE_T_CLEAN
 #include "Python.h"
 #include "tree_sitter/api.h"
 
@@ -114,7 +115,7 @@ static PyObject *node_chield_by_field_id(Node *self, PyObject *args) {
 
 static PyObject *node_chield_by_field_name(Node *self, PyObject *args) {
   char *name;
-  int length;
+  Py_ssize_t length;
   if (!PyArg_ParseTuple(args, "s#", &name, &length)) {
     return NULL;
   }
@@ -710,7 +711,7 @@ static PyObject *query_new_internal(
 static PyObject *language_field_id_for_name(PyObject *self, PyObject *args) {
   TSLanguage *language;
   char *field_name;
-  int length;
+  Py_ssize_t length;
   if (!PyArg_ParseTuple(args, "ls#", &language, &field_name, &length)) {
     return NULL;
   }
@@ -726,7 +727,7 @@ static PyObject *language_field_id_for_name(PyObject *self, PyObject *args) {
 static PyObject *language_query(PyObject *self, PyObject *args) {
   TSLanguage *language;
   char *source;
-  int length;
+  Py_ssize_t length;
   if (!PyArg_ParseTuple(args, "ls#", &language, &source, &length)) {
     return NULL;
   }
