@@ -372,6 +372,14 @@ static PyObject *tree_cursor_get_node(TreeCursor *self, void *payload) {
   return self->node;
 }
 
+static PyObject *tree_cursor_current_field_name(TreeCursor *self, PyObject *args) {
+  const char *field_name = ts_tree_cursor_current_field_name(&self->cursor);
+  if (field_name == NULL) {
+    Py_RETURN_NONE;
+  }
+  return PyUnicode_FromString(field_name);
+}
+
 static PyObject *tree_cursor_goto_parent(TreeCursor *self, PyObject *args) {
   bool result = ts_tree_cursor_goto_parent(&self->cursor);
   if (result) {
@@ -400,6 +408,14 @@ static PyObject *tree_cursor_goto_next_sibling(TreeCursor *self, PyObject *args)
 }
 
 static PyMethodDef tree_cursor_methods[] = {
+  {
+    .ml_name = "current_field_name",
+    .ml_meth = (PyCFunction)tree_cursor_current_field_name,
+    .ml_flags = METH_NOARGS,
+    .ml_doc = "current_field_name()\n--\n\n\
+               Get the field name of the tree cursor's current node.\n\n\
+               If the current node has the field name, return str. Otherwise, return None.",
+  },
   {
     .ml_name = "goto_parent",
     .ml_meth = (PyCFunction)tree_cursor_goto_parent,
