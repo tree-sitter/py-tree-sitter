@@ -155,6 +155,7 @@ class TestTree(TestCase):
         self.assertEqual(cursor.node.end_byte, 18)
         self.assertEqual(cursor.node.start_point, (0, 0))
         self.assertEqual(cursor.node.end_point, (1, 7))
+        self.assertEqual(cursor.current_field_name(), None)
 
         self.assertTrue(cursor.goto_first_child())
         self.assertEqual(cursor.node.type, "function_definition")
@@ -162,11 +163,13 @@ class TestTree(TestCase):
         self.assertEqual(cursor.node.end_byte, 18)
         self.assertEqual(cursor.node.start_point, (0, 0))
         self.assertEqual(cursor.node.end_point, (1, 7))
+        self.assertEqual(cursor.current_field_name(), None)
 
         self.assertTrue(cursor.goto_first_child())
         self.assertEqual(cursor.node.type, "def")
         self.assertEqual(cursor.node.is_named, False)
         self.assertEqual(cursor.node.sexp(), '("def")')
+        self.assertEqual(cursor.current_field_name(), None)
         def_node = cursor.node
 
         # Node remains cached after a failure to move
@@ -176,11 +179,13 @@ class TestTree(TestCase):
         self.assertTrue(cursor.goto_next_sibling())
         self.assertEqual(cursor.node.type, "identifier")
         self.assertEqual(cursor.node.is_named, True)
+        self.assertEqual(cursor.current_field_name(), "name")
         self.assertFalse(cursor.goto_first_child())
 
         self.assertTrue(cursor.goto_next_sibling())
         self.assertEqual(cursor.node.type, "parameters")
         self.assertEqual(cursor.node.is_named, True)
+        self.assertEqual(cursor.current_field_name(), "parameters")
 
     def test_edit(self):
         parser = Parser()
