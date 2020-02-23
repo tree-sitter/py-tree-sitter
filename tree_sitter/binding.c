@@ -247,10 +247,8 @@ static PyObject *node_new_internal(TSNode node, PyObject *tree) {
   Node *self = (Node *)node_type.tp_alloc(&node_type, 0);
   if (self != NULL) {
     self->node = node;
-    if (tree != NULL) {
-      Py_INCREF(tree);
-      self->tree = tree;
-    }
+    Py_INCREF(tree);
+    self->tree = tree;
     self->children = NULL;
   }
   return (PyObject *)self;
@@ -475,10 +473,8 @@ static PyObject *tree_cursor_new_internal(TSNode node, PyObject *tree) {
   TreeCursor *self = (TreeCursor *)tree_cursor_type.tp_alloc(&tree_cursor_type, 0);
   if (self != NULL) {
     self->cursor = ts_tree_cursor_new(node);
-    if (tree != NULL) {
-      Py_INCREF(tree);
-      self->tree = tree;
-    }
+    Py_INCREF(tree);
+    self->tree = tree;
   }
   return (PyObject *)self;
 }
