@@ -162,6 +162,19 @@ class TestNode(TestCase):
 
 
 class TestTree(TestCase):
+    def test_tree_cursor_without_tree(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+
+        def parse():
+            tree = parser.parse(b"def foo():\n  bar()")
+            return tree.walk()
+
+        cursor = parse()
+        self.assertIs(cursor.node, cursor.node)
+        for item in cursor.node.children:
+            self.assertIsNotNone(item.is_named)
+
     def test_walk(self):
         parser = Parser()
         parser.set_language(PYTHON)
