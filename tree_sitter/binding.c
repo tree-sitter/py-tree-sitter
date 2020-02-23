@@ -25,6 +25,7 @@ typedef struct {
   PyObject_HEAD
   TSTreeCursor cursor;
   PyObject *node;
+  PyObject *tree;
 } TreeCursor;
 
 typedef struct {
@@ -52,7 +53,7 @@ static PyObject *point_new(TSPoint point) {
 // Node
 
 static PyObject *node_new_internal(TSNode node, PyObject *tree);
-static PyObject *tree_cursor_new_internal(TSNode node);
+static PyObject *tree_cursor_new_internal(TSNode node, PyObject *tree);
 
 static void node_dealloc(Node *self) {
   Py_XDECREF(self->children);
@@ -100,7 +101,7 @@ static PyObject *node_sexp(Node *self, PyObject *args) {
 }
 
 static PyObject *node_walk(Node *self, PyObject *args) {
-  return tree_cursor_new_internal(self->node);
+  return tree_cursor_new_internal(self->node, self->tree);
 }
 
 static PyObject *node_chield_by_field_id(Node *self, PyObject *args) {
@@ -271,7 +272,7 @@ static PyObject *tree_get_root_node(Tree *self, void *payload) {
 }
 
 static PyObject *tree_walk(Tree *self, PyObject *args) {
-  return tree_cursor_new_internal(ts_tree_root_node(self->tree));
+  return tree_cursor_new_internal(ts_tree_root_node(self->tree), (PyObject *)self);
 }
 
 static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
@@ -366,13 +367,13 @@ static PyObject *tree_new_internal(TSTree *tree) {
 static void tree_cursor_dealloc(TreeCursor *self) {
   ts_tree_cursor_delete(&self->cursor);
   Py_XDECREF(self->node);
+  Py_XDECREF(self->tree);
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static PyObject *tree_cursor_get_node(TreeCursor *self, void *payload) {
   if (!self->node) {
-    // TODO: !!!! tree cursor also needs a ref to tree?
-    self->node = node_new_internal(ts_tree_cursor_current_node(&self->cursor), NULL);
+    self->node = node_new_internal(ts_tree_cursor_current_node(&self->cursor), self->tree);
   }
 
   Py_INCREF(self->node);
@@ -470,10 +471,16 @@ static PyTypeObject tree_cursor_type = {
   .tp_getset = tree_cursor_accessors,
 };
 
-static PyObject *tree_cursor_new_internal(TSNode node) {
-  TreeCursor *cursor = (TreeCursor *)tree_cursor_type.tp_alloc(&tree_cursor_type, 0);
-  if (cursor != NULL) cursor->cursor = ts_tree_cursor_new(node);
-  return (PyObject *)cursor;
+static PyObject *tree_cursor_new_internal(TSNode node, PyObject *tree) {
+  TreeCursor *self = (TreeCursor *)tree_cursor_type.tp_alloc(&tree_cursor_type, 0);
+  if (self != NULL) {
+    self->cursor = ts_tree_cursor_new(node);
+    if (tree != NULL) {
+      Py_INCREF(tree);
+      self->tree = tree;
+    }
+  }
+  return (PyObject *)self;
 }
 
 // Parser
