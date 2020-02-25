@@ -1,5 +1,6 @@
 #define PY_SSIZE_T_CLEAN
 #include "Python.h"
+#include <wctype.h>
 #include "tree_sitter/api.h"
 
 // Types
@@ -8,6 +9,7 @@ typedef struct {
   PyObject_HEAD
   TSNode node;
   PyObject *children;
+  PyObject *tree;
 } Node;
 
 typedef struct {
@@ -24,6 +26,7 @@ typedef struct {
   PyObject_HEAD
   TSTreeCursor cursor;
   PyObject *node;
+  PyObject *tree;
 } TreeCursor;
 
 typedef struct {
@@ -50,11 +53,12 @@ static PyObject *point_new(TSPoint point) {
 
 // Node
 
-static PyObject *node_new_internal(TSNode node);
-static PyObject *tree_cursor_new_internal(TSNode node);
+static PyObject *node_new_internal(TSNode node, PyObject *tree);
+static PyObject *tree_cursor_new_internal(TSNode node, PyObject *tree);
 
 static void node_dealloc(Node *self) {
   Py_XDECREF(self->children);
+  Py_XDECREF(self->tree);
   Py_TYPE(self)->tp_free(self);
 }
 
@@ -98,7 +102,7 @@ static PyObject *node_sexp(Node *self, PyObject *args) {
 }
 
 static PyObject *node_walk(Node *self, PyObject *args) {
-  return tree_cursor_new_internal(self->node);
+  return tree_cursor_new_internal(self->node, self->tree);
 }
 
 static PyObject *node_chield_by_field_id(Node *self, PyObject *args) {
@@ -110,7 +114,7 @@ static PyObject *node_chield_by_field_id(Node *self, PyObject *args) {
   if (ts_node_is_null(child)) {
     Py_RETURN_NONE;
   }
-  return node_new_internal(child);
+  return node_new_internal(child, self->tree);
 }
 
 static PyObject *node_chield_by_field_name(Node *self, PyObject *args) {
@@ -123,7 +127,7 @@ static PyObject *node_chield_by_field_name(Node *self, PyObject *args) {
   if (ts_node_is_null(child)) {
     Py_RETURN_NONE;
   }
-  return node_new_internal(child);
+  return node_new_internal(child, self->tree);
 }
 
 static PyObject *node_get_type(Node *self, void *payload) {
@@ -172,7 +176,7 @@ static PyObject *node_get_children(Node *self, void *payload) {
     int i = 0;
     do {
       TSNode child = ts_tree_cursor_current_node(&default_cursor);
-      PyList_SetItem(result, i, node_new_internal(child));
+      PyList_SetItem(result, i, node_new_internal(child, self->tree));
       i++;
     } while (ts_tree_cursor_goto_next_sibling(&default_cursor));
   }
@@ -240,10 +244,12 @@ static PyTypeObject node_type = {
   .tp_getset = node_accessors,
 };
 
-static PyObject *node_new_internal(TSNode node) {
+static PyObject *node_new_internal(TSNode node, PyObject *tree) {
   Node *self = (Node *)node_type.tp_alloc(&node_type, 0);
   if (self != NULL) {
     self->node = node;
+    Py_INCREF(tree);
+    self->tree = tree;
     self->children = NULL;
   }
   return (PyObject *)self;
@@ -261,11 +267,11 @@ static void tree_dealloc(Tree *self) {
 }
 
 static PyObject *tree_get_root_node(Tree *self, void *payload) {
-  return node_new_internal(ts_tree_root_node(self->tree));
+  return node_new_internal(ts_tree_root_node(self->tree), (PyObject *)self);
 }
 
 static PyObject *tree_walk(Tree *self, PyObject *args) {
-  return tree_cursor_new_internal(ts_tree_root_node(self->tree));
+  return tree_cursor_new_internal(ts_tree_root_node(self->tree), (PyObject *)self);
 }
 
 static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
@@ -360,12 +366,13 @@ static PyObject *tree_new_internal(TSTree *tree) {
 static void tree_cursor_dealloc(TreeCursor *self) {
   ts_tree_cursor_delete(&self->cursor);
   Py_XDECREF(self->node);
+  Py_XDECREF(self->tree);
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static PyObject *tree_cursor_get_node(TreeCursor *self, void *payload) {
   if (!self->node) {
-    self->node = node_new_internal(ts_tree_cursor_current_node(&self->cursor));
+    self->node = node_new_internal(ts_tree_cursor_current_node(&self->cursor), self->tree);
   }
 
   Py_INCREF(self->node);
@@ -463,10 +470,14 @@ static PyTypeObject tree_cursor_type = {
   .tp_getset = tree_cursor_accessors,
 };
 
-static PyObject *tree_cursor_new_internal(TSNode node) {
-  TreeCursor *cursor = (TreeCursor *)tree_cursor_type.tp_alloc(&tree_cursor_type, 0);
-  if (cursor != NULL) cursor->cursor = ts_tree_cursor_new(node);
-  return (PyObject *)cursor;
+static PyObject *tree_cursor_new_internal(TSNode node, PyObject *tree) {
+  TreeCursor *self = (TreeCursor *)tree_cursor_type.tp_alloc(&tree_cursor_type, 0);
+  if (self != NULL) {
+    self->cursor = ts_tree_cursor_new(node);
+    Py_INCREF(tree);
+    self->tree = tree;
+  }
+  return (PyObject *)self;
 }
 
 // Parser
@@ -628,9 +639,9 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
   TSQueryMatch match;
   while (ts_query_cursor_next_capture(query_cursor, &match, &capture_index)) {
     const TSQueryCapture *capture = &match.captures[capture_index];
-    PyObject *node = node_new_internal(capture->node);
+    PyObject *capture_node = node_new_internal(capture->node, node->tree);
     PyObject *capture_name = PyList_GetItem(self->capture_names, capture->index);
-    PyList_Append(result, PyTuple_Pack(2, node, capture_name));
+    PyList_Append(result, PyTuple_Pack(2, capture_node, capture_name));
   }
 
   return result;

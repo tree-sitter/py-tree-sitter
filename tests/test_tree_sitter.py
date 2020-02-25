@@ -139,8 +139,42 @@ class TestNode(TestCase):
         self.assertEqual(statement_node.type, "block")
         self.assertEqual(statement_node.is_named, True)
 
+    def test_tree(self):
+        code = b"def foo():\n  bar()\n\ndef foo():\n  bar()"
+        parser = Parser()
+        parser.set_language(PYTHON)
+
+        def parse_root(bytes_):
+            tree = parser.parse(bytes_)
+            return tree.root_node
+
+        root = parse_root(code)
+        for item in root.children:
+            self.assertIsNotNone(item.is_named)
+
+        def parse_root_children(bytes_):
+            tree = parser.parse(bytes_)
+            return tree.root_node.children
+
+        children = parse_root_children(code)
+        for item in children:
+            self.assertIsNotNone(item.is_named)
+
 
 class TestTree(TestCase):
+    def test_tree_cursor_without_tree(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+
+        def parse():
+            tree = parser.parse(b"def foo():\n  bar()")
+            return tree.walk()
+
+        cursor = parse()
+        self.assertIs(cursor.node, cursor.node)
+        for item in cursor.node.children:
+            self.assertIsNotNone(item.is_named)
+
     def test_walk(self):
         parser = Parser()
         parser.set_language(PYTHON)
