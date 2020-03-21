@@ -414,6 +414,8 @@ static PyObject *tree_cursor_goto_next_sibling(TreeCursor *self, PyObject *args)
   return PyBool_FromLong(result);
 }
 
+static PyObject *tree_cursor_copy(PyObject *self);
+
 static PyMethodDef tree_cursor_methods[] = {
   {
     .ml_name = "current_field_name",
@@ -450,6 +452,13 @@ static PyMethodDef tree_cursor_methods[] = {
                If the current node has a next sibling, move to the next sibling\n\
                and return True. Otherwise, return False.",
   },
+  {
+    .ml_name = "copy",
+    .ml_meth = (PyCFunction)tree_cursor_copy,
+    .ml_flags = METH_NOARGS,
+    .ml_doc = "copy()\n--\n\n\
+               Make a independent copy of this cursor.\n",
+  },
   {NULL},
 };
 
@@ -478,6 +487,18 @@ static PyObject *tree_cursor_new_internal(TSNode node, PyObject *tree) {
     self->tree = tree;
   }
   return (PyObject *)self;
+}
+
+static PyObject *tree_cursor_copy(PyObject *self) {
+  TreeCursor *origin = (TreeCursor *)self;
+  PyObject* tree = origin->tree;
+  TreeCursor *copied = (TreeCursor *)tree_cursor_type.tp_alloc(&tree_cursor_type, 0);
+  if (copied != NULL) {
+    copied->cursor = ts_tree_cursor_copy(&origin->cursor);
+    Py_INCREF(tree);
+    copied->tree = tree;
+  }
+  return (PyObject *)copied;
 }
 
 // Parser
