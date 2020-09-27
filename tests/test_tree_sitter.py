@@ -139,6 +139,106 @@ class TestNode(TestCase):
         self.assertEqual(statement_node.type, "block")
         self.assertEqual(statement_node.is_named, True)
 
+    def test_named_and_sibling_and_count_and_parent(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"[1, 2, 3]")
+
+        root_node = tree.root_node
+        self.assertEqual(root_node.type, "module")
+        self.assertEqual(root_node.start_byte, 0)
+        self.assertEqual(root_node.end_byte, 9)
+        self.assertEqual(root_node.start_point, (0, 0))
+        self.assertEqual(root_node.end_point, (0, 9))
+
+        exp_stmt_node = root_node.children[0]
+        self.assertEqual(exp_stmt_node.type, "expression_statement")
+        self.assertEqual(exp_stmt_node.start_byte, 0)
+        self.assertEqual(exp_stmt_node.end_byte, 9)
+        self.assertEqual(exp_stmt_node.start_point, (0, 0))
+        self.assertEqual(exp_stmt_node.end_point, (0, 9))
+        self.assertEqual(exp_stmt_node.parent,
+                         root_node)
+
+        list_node = exp_stmt_node.children[0]
+        self.assertEqual(list_node.type, "list")
+        self.assertEqual(list_node.start_byte, 0)
+        self.assertEqual(list_node.end_byte, 9)
+        self.assertEqual(list_node.start_point, (0, 0))
+        self.assertEqual(list_node.end_point, (0, 9))
+        self.assertEqual(list_node.parent,
+                         exp_stmt_node)
+
+        open_delim_node = list_node.children[0]
+        self.assertEqual(open_delim_node.type, "[")
+        self.assertEqual(open_delim_node.start_byte, 0)
+        self.assertEqual(open_delim_node.end_byte, 1)
+        self.assertEqual(open_delim_node.start_point, (0, 0))
+        self.assertEqual(open_delim_node.end_point, (0, 1))
+        self.assertEqual(open_delim_node.parent,
+                         list_node)
+
+        first_num_node = list_node.children[1]
+        self.assertEqual(first_num_node,
+                         open_delim_node.next_named_sibling)
+        self.assertEqual(first_num_node.parent,
+                         list_node)
+
+        first_comma_node = list_node.children[2]
+        self.assertEqual(first_comma_node,
+                         first_num_node.next_sibling)
+        self.assertEqual(first_num_node,
+                         first_comma_node.prev_sibling)
+        self.assertEqual(first_comma_node.parent,
+                         list_node)
+
+        second_num_node = list_node.children[3]
+        self.assertEqual(second_num_node,
+                         first_comma_node.next_sibling)
+        self.assertEqual(second_num_node,
+                         first_num_node.next_named_sibling)
+        self.assertEqual(first_num_node,
+                         second_num_node.prev_named_sibling)
+        self.assertEqual(second_num_node.parent,
+                         list_node)
+
+        second_comma_node = list_node.children[4]
+        self.assertEqual(second_comma_node,
+                         second_num_node.next_sibling)
+        self.assertEqual(second_num_node,
+                         second_comma_node.prev_sibling)
+        self.assertEqual(second_comma_node.parent,
+                         list_node)
+
+        third_num_node = list_node.children[5]
+        self.assertEqual(third_num_node,
+                         second_comma_node.next_sibling)
+        self.assertEqual(third_num_node,
+                         second_num_node.next_named_sibling)
+        self.assertEqual(second_num_node,
+                         third_num_node.prev_named_sibling)
+        self.assertEqual(third_num_node.parent,
+                         list_node)
+
+        close_delim_node = list_node.children[6]
+        self.assertEqual(close_delim_node.type, "]")
+        self.assertEqual(close_delim_node.start_byte, 8)
+        self.assertEqual(close_delim_node.end_byte, 9)
+        self.assertEqual(close_delim_node.start_point, (0, 8))
+        self.assertEqual(close_delim_node.end_point, (0, 9))
+        self.assertEqual(close_delim_node,
+                         third_num_node.next_sibling)
+        self.assertEqual(third_num_node,
+                         close_delim_node.prev_sibling)
+        self.assertEqual(third_num_node,
+                         close_delim_node.prev_named_sibling)
+        self.assertEqual(close_delim_node.parent,
+                         list_node)
+
+
+        self.assertEqual(list_node.child_count, 7)
+        self.assertEqual(list_node.named_child_count, 3)
+
     def test_tree(self):
         code = b"def foo():\n  bar()\n\ndef foo():\n  bar()"
         parser = Parser()
