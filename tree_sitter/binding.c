@@ -138,6 +138,10 @@ static PyObject *node_get_is_named(Node *self, void *payload) {
   return PyBool_FromLong(ts_node_is_named(self->node));
 }
 
+static PyObject *node_get_is_missing(Node *self, void *payload) {
+  return PyBool_FromLong(ts_node_is_missing(self->node));
+}
+
 static PyObject *node_get_has_changes(Node *self, void *payload) {
   return PyBool_FromLong(ts_node_has_changes(self->node));
 }
@@ -185,6 +189,60 @@ static PyObject *node_get_children(Node *self, void *payload) {
   return result;
 }
 
+static PyObject *node_get_child_count(Node *self, void *payload) {
+  long length = (long)ts_node_child_count(self->node);
+  PyObject *result = PyLong_FromLong(length);
+  Py_INCREF(result);
+  return result;
+}
+
+static PyObject *node_get_named_child_count(Node *self, void *payload) {
+  long length = (long)ts_node_named_child_count(self->node);
+  PyObject *result = PyLong_FromLong(length);
+  Py_INCREF(result);
+  return result;
+}
+
+static PyObject *node_get_next_sibling(Node *self, void *payload) {
+  TSNode next_sibling = ts_node_next_sibling(self->node);
+  if (ts_node_is_null(next_sibling)) {
+    Py_RETURN_NONE;
+  }
+  return node_new_internal(next_sibling, self->tree);
+}
+
+static PyObject *node_get_prev_sibling(Node *self, void *payload) {
+  TSNode prev_sibling = ts_node_prev_sibling(self->node);
+  if (ts_node_is_null(prev_sibling)) {
+    Py_RETURN_NONE;
+  }
+  return node_new_internal(prev_sibling, self->tree);
+}
+
+static PyObject *node_get_next_named_sibling(Node *self, void *payload) {
+  TSNode next_named_sibling = ts_node_next_named_sibling(self->node);
+  if (ts_node_is_null(next_named_sibling)) {
+    Py_RETURN_NONE;
+  }
+  return node_new_internal(next_named_sibling, self->tree);
+}
+
+static PyObject *node_get_prev_named_sibling(Node *self, void *payload) {
+  TSNode prev_named_sibling = ts_node_prev_named_sibling(self->node);
+  if (ts_node_is_null(prev_named_sibling)) {
+    Py_RETURN_NONE;
+  }
+  return node_new_internal(prev_named_sibling, self->tree);
+}
+
+static PyObject *node_get_parent(Node *self, void *payload) {
+  TSNode parent = ts_node_parent(self->node);
+  if (ts_node_is_null(parent)) {
+    Py_RETURN_NONE;
+  }
+  return node_new_internal(parent, self->tree);
+}
+
 static PyMethodDef node_methods[] = {
   {
     .ml_name = "walk",
@@ -220,6 +278,7 @@ static PyMethodDef node_methods[] = {
 static PyGetSetDef node_accessors[] = {
   {"type", (getter)node_get_type, NULL, "The node's type", NULL},
   {"is_named", (getter)node_get_is_named, NULL, "Is this a named node", NULL},
+  {"is_missing", (getter)node_get_is_missing, NULL, "Is this a node inserted by the parser", NULL},
   {"has_changes", (getter)node_get_has_changes, NULL, "Does this node have text changes since it was parsed", NULL},
   {"has_error", (getter)node_get_has_error, NULL, "Does this node contain any errors", NULL},
   {"start_byte", (getter)node_get_start_byte, NULL, "The node's start byte", NULL},
@@ -227,6 +286,13 @@ static PyGetSetDef node_accessors[] = {
   {"start_point", (getter)node_get_start_point, NULL, "The node's start point", NULL},
   {"end_point", (getter)node_get_end_point, NULL, "The node's end point", NULL},
   {"children", (getter)node_get_children, NULL, "The node's children", NULL},
+  {"child_count", (getter)node_get_child_count, NULL, "The number of children for a node", NULL},
+  {"named_child_count", (getter)node_get_named_child_count, NULL, "The number of named children for a node", NULL},
+  {"next_sibling", (getter)node_get_next_sibling, NULL, "The node's next sibling", NULL},
+  {"prev_sibling", (getter)node_get_prev_sibling, NULL, "The node's previous sibling", NULL},
+  {"next_named_sibling", (getter)node_get_next_named_sibling, NULL, "The node's next named sibling", NULL},
+  {"prev_named_sibling", (getter)node_get_prev_named_sibling, NULL, "The node's previous named sibling", NULL},
+  {"parent", (getter)node_get_parent, NULL, "The node's parent", NULL},
   {NULL}
 };
 
