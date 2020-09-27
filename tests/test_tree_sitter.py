@@ -235,7 +235,6 @@ class TestNode(TestCase):
         self.assertEqual(close_delim_node.parent,
                          list_node)
 
-
         self.assertEqual(list_node.child_count, 7)
         self.assertEqual(list_node.named_child_count, 3)
 
