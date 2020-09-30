@@ -238,6 +238,70 @@ class TestNode(TestCase):
         self.assertEqual(list_node.child_count, 7)
         self.assertEqual(list_node.named_child_count, 3)
 
+    def test_node_text(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"[1, 2, 3]")
+
+        root_node = tree.root_node
+        print(root_node.text)
+
+        exp_stmt_node = root_node.children[0]
+        print(exp_stmt_node.text)
+
+        list_node = exp_stmt_node.children[0]
+        print(list_node.text)
+
+        open_delim_node = list_node.children[0]
+        print(open_delim_node.text)
+
+        first_num_node = list_node.children[1]
+        print(first_num_node.text)
+
+        first_comma_node = list_node.children[2]
+        print(first_comma_node.text)
+
+        second_num_node = list_node.children[3]
+        print(second_num_node.text)
+
+        second_comma_node = list_node.children[4]
+        print(second_comma_node.text)
+
+        third_num_node = list_node.children[5]
+        print(third_num_node.text)
+
+        close_delim_node = list_node.children[6]
+        print(close_delim_node.text)
+
+    def test_node_text_2(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"[0, [1, 2, 3]]")
+
+        root_node = tree.root_node
+        print(root_node.text)
+
+        exp_stmt_node = root_node.children[0]
+        print(exp_stmt_node.text)
+
+        list_node = exp_stmt_node.children[0]
+        print(list_node.text)
+
+        open_delim_node = list_node.children[0]
+        print(open_delim_node.text)
+
+        first_num_node = list_node.children[1]
+        print(first_num_node.text)
+
+        first_comma_node = list_node.children[2]
+        print(first_comma_node.text)
+
+        child_list_node = list_node.children[3]
+        print(child_list_node.text)
+
+        close_delim_node = list_node.children[4]
+        print(close_delim_node.text)
+
     def test_tree(self):
         code = b"def foo():\n  bar()\n\ndef foo():\n  bar()"
         parser = Parser()
