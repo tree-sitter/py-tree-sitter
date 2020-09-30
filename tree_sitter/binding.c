@@ -15,6 +15,7 @@ typedef struct {
 typedef struct {
   PyObject_HEAD
   TSTree *tree;
+  PyObject *source;
 } Tree;
 
 typedef struct {
@@ -243,6 +244,37 @@ static PyObject *node_get_parent(Node *self, void *payload) {
   return node_new_internal(parent, self->tree);
 }
 
+// forward declaraction
+static PyObject *tree_get_text(Tree *self, void *payload);
+
+static PyObject *node_get_text(Node *self, void *payload) {
+  Tree *tree = (Tree *)self->tree;
+  if (tree == NULL) {
+    Py_RETURN_NONE;
+  }
+  PyObject *source = tree_get_text(tree, NULL);
+  if (source == Py_None) {
+    Py_RETURN_NONE;
+  }
+  // "hello"[1:3] == "hello".__getitem__(slice(1, 3))
+  PyObject *slice = PySlice_New(PyLong_FromSize_t((size_t)ts_node_start_byte(self->node)),
+                                PyLong_FromSize_t((size_t)ts_node_end_byte(self->node)),
+                                NULL);
+  if (slice == Py_None) {
+    Py_RETURN_NONE;
+  }
+  PyObject *node_bytes = PyObject_GetItem(source, slice);
+  if (node_bytes == Py_None) {
+    Py_RETURN_NONE;
+  }
+  PyObject *node_text = PyObject_CallMethod(node_bytes, "decode", "s", "utf8");
+  if (node_text == NULL) {
+    Py_RETURN_NONE;
+  }
+  Py_INCREF(node_text);
+  return node_text;
+}
+
 static PyMethodDef node_methods[] = {
   {
     .ml_name = "walk",
@@ -293,6 +325,7 @@ static PyGetSetDef node_accessors[] = {
   {"next_named_sibling", (getter)node_get_next_named_sibling, NULL, "The node's next named sibling", NULL},
   {"prev_named_sibling", (getter)node_get_prev_named_sibling, NULL, "The node's previous named sibling", NULL},
   {"parent", (getter)node_get_parent, NULL, "The node's parent", NULL},
+  {"text", (getter)node_get_text, NULL, "The node's text", NULL},
   {NULL}
 };
 
@@ -329,6 +362,7 @@ static bool node_is_instance(PyObject *self) {
 
 static void tree_dealloc(Tree *self) {
   ts_tree_delete(self->tree);
+  Py_XDECREF(self->source);
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -336,10 +370,20 @@ static PyObject *tree_get_root_node(Tree *self, void *payload) {
   return node_new_internal(ts_tree_root_node(self->tree), (PyObject *)self);
 }
 
+static PyObject *tree_get_text(Tree *self, void *payload) {
+  PyObject *source = self->source;
+  if (source == NULL) {
+    Py_RETURN_NONE;
+  }
+  Py_INCREF(source);
+  return source;
+}
+
 static PyObject *tree_walk(Tree *self, PyObject *args) {
   return tree_cursor_new_internal(ts_tree_root_node(self->tree), (PyObject *)self);
 }
 
+// XXX: may be this needs to update the source of the tree?
 static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
   unsigned start_byte, start_row, start_column;
   unsigned old_end_byte, old_end_row, old_end_column;
@@ -406,6 +450,7 @@ static PyMethodDef tree_methods[] = {
 
 static PyGetSetDef tree_accessors[] = {
   {"root_node", (getter)tree_get_root_node, NULL, "The root node of this tree.", NULL},
+  {"text", (getter)tree_get_text, NULL, "The source text for this tree.", NULL},
   {NULL}
 };
 
@@ -421,9 +466,12 @@ static PyTypeObject tree_type = {
   .tp_getset = tree_accessors,
 };
 
-static PyObject *tree_new_internal(TSTree *tree) {
+static PyObject *tree_new_internal(TSTree *tree, PyObject *source) {
   Tree *self = (Tree *)tree_type.tp_alloc(&tree_type, 0);
   if (self != NULL) self->tree = tree;
+
+  self->source = source;
+  Py_INCREF(self->source);
   return (PyObject *)self;
 }
 
@@ -594,7 +642,7 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     return NULL;
   }
 
-  return tree_new_internal(new_tree);
+  return tree_new_internal(new_tree, source_code);
 }
 
 static PyObject *parser_set_language(Parser *self, PyObject *arg) {
