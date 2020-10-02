@@ -16,6 +16,7 @@ typedef struct {
   PyObject_HEAD
   TSTree *tree;
   PyObject *source;
+  int edited;
 } Tree;
 
 typedef struct {
@@ -267,12 +268,7 @@ static PyObject *node_get_text(Node *self, void *payload) {
   if (node_bytes == Py_None) {
     Py_RETURN_NONE;
   }
-  PyObject *node_text = PyObject_CallMethod(node_bytes, "decode", "s", "utf8");
-  if (node_text == NULL) {
-    Py_RETURN_NONE;
-  }
-  Py_INCREF(node_text);
-  return node_text;
+  return node_bytes;
 }
 
 static PyMethodDef node_methods[] = {
@@ -325,7 +321,7 @@ static PyGetSetDef node_accessors[] = {
   {"next_named_sibling", (getter)node_get_next_named_sibling, NULL, "The node's next named sibling", NULL},
   {"prev_named_sibling", (getter)node_get_prev_named_sibling, NULL, "The node's previous named sibling", NULL},
   {"parent", (getter)node_get_parent, NULL, "The node's parent", NULL},
-  {"text", (getter)node_get_text, NULL, "The node's text", NULL},
+  {"text", (getter)node_get_text, NULL, "The node's text, if tree has not been edited", NULL},
   {NULL}
 };
 
@@ -371,6 +367,9 @@ static PyObject *tree_get_root_node(Tree *self, void *payload) {
 }
 
 static PyObject *tree_get_text(Tree *self, void *payload) {
+  if (self->edited) {
+    Py_RETURN_NONE;
+  }
   PyObject *source = self->source;
   if (source == NULL) {
     Py_RETURN_NONE;
@@ -383,7 +382,6 @@ static PyObject *tree_walk(Tree *self, PyObject *args) {
   return tree_cursor_new_internal(ts_tree_root_node(self->tree), (PyObject *)self);
 }
 
-// XXX: may be this needs to update the source of the tree?
 static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
   unsigned start_byte, start_row, start_column;
   unsigned old_end_byte, old_end_row, old_end_column;
@@ -425,6 +423,7 @@ static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
       .new_end_point = {new_end_row, new_end_column},
     };
     ts_tree_edit(self->tree, &edit);
+    self->edited = 1;
   }
   Py_RETURN_NONE;
 }
@@ -450,7 +449,7 @@ static PyMethodDef tree_methods[] = {
 
 static PyGetSetDef tree_accessors[] = {
   {"root_node", (getter)tree_get_root_node, NULL, "The root node of this tree.", NULL},
-  {"text", (getter)tree_get_text, NULL, "The source text for this tree.", NULL},
+  {"text", (getter)tree_get_text, NULL, "The source text for this tree, if unedited.", NULL},
   {NULL}
 };
 
@@ -470,6 +469,7 @@ static PyObject *tree_new_internal(TSTree *tree, PyObject *source) {
   Tree *self = (Tree *)tree_type.tp_alloc(&tree_type, 0);
   if (self != NULL) self->tree = tree;
 
+  self->edited = 0;
   self->source = source;
   Py_INCREF(self->source);
   return (PyObject *)self;
