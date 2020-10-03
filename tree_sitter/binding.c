@@ -258,17 +258,23 @@ static PyObject *node_get_text(Node *self, void *payload) {
     Py_RETURN_NONE;
   }
   // "hello"[1:3] == "hello".__getitem__(slice(1, 3))
-  PyObject *slice = PySlice_New(PyLong_FromSize_t((size_t)ts_node_start_byte(self->node)),
-                                PyLong_FromSize_t((size_t)ts_node_end_byte(self->node)),
-                                NULL);
+  PyObject *slice =
+    PySlice_New(PyLong_FromSize_t((size_t)ts_node_start_byte(self->node)),
+                PyLong_FromSize_t((size_t)ts_node_end_byte(self->node)),
+                NULL);
   if (slice == Py_None) {
     Py_RETURN_NONE;
   }
-  PyObject *node_bytes = PyObject_GetItem(source, slice);
-  if (node_bytes == Py_None) {
+  PyObject *node_mv = PyMemoryView_FromObject(source);
+  if (node_mv == Py_None) {
     Py_RETURN_NONE;
   }
-  return node_bytes;
+  PyObject *node_slice = PyObject_GetItem(node_mv, slice);
+  if (node_slice == Py_None) {
+    Py_RETURN_NONE;
+  }
+  Py_INCREF(node_slice);
+  return node_slice;
 }
 
 static PyMethodDef node_methods[] = {
