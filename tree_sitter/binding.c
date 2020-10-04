@@ -271,6 +271,32 @@ static PyObject *node_get_children(Node *self, void *payload) {
   return result;
 }
 
+static PyObject *node_get_named_children(Node *self, void *payload) {
+  long length = (long)ts_node_child_count(self->node);
+  PyObject *result = PyList_New(length);
+  if (result == NULL) {
+    Py_RETURN_NONE;
+  }
+  if (length > 0) {
+    ts_tree_cursor_reset(&default_cursor, self->node);
+    ts_tree_cursor_goto_first_child(&default_cursor);
+    int i = 0;
+    do {
+      TSNode child = ts_tree_cursor_current_node(&default_cursor);
+      if (ts_node_is_named(child)) {
+        if (-1 == PyList_SetItem(result, i,
+                                 node_new_internal(child, self->tree)))
+        {
+          Py_RETURN_NONE;
+        }
+        i++;
+      }
+    } while (ts_tree_cursor_goto_next_sibling(&default_cursor));
+  }
+  Py_INCREF(result);
+  return result;
+}
+
 static PyObject *node_get_child_count(Node *self, void *payload) {
   long length = (long)ts_node_child_count(self->node);
   PyObject *result = PyLong_FromLong(length);
@@ -433,6 +459,7 @@ static PyGetSetDef node_accessors[] = {
   {"end_point", (getter)node_get_end_point, NULL, "The node's end point", NULL},
   {"children", (getter)node_get_children, NULL, "The node's children", NULL},
   {"child_count", (getter)node_get_child_count, NULL, "The number of children for a node", NULL},
+  {"named_children", (getter)node_get_named_children, NULL, "The node's named children", NULL},
   {"named_child_count", (getter)node_get_named_child_count, NULL, "The number of named children for a node", NULL},
   {"next_sibling", (getter)node_get_next_sibling, NULL, "The node's next sibling", NULL},
   {"prev_sibling", (getter)node_get_prev_sibling, NULL, "The node's previous sibling", NULL},
