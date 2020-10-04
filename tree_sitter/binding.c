@@ -251,27 +251,52 @@ static PyObject *tree_get_text(Tree *self, void *payload);
 static PyObject *node_get_text(Node *self, void *payload) {
   Tree *tree = (Tree *)self->tree;
   if (tree == NULL) {
-    Py_RETURN_NONE;
+    PyErr_SetString(PyExc_ValueError, "No tree");
+    return NULL;
   }
   PyObject *source = tree_get_text(tree, NULL);
   if (source == Py_None) {
     Py_RETURN_NONE;
   }
   // "hello"[1:3] == "hello".__getitem__(slice(1, 3))
-  PyObject *slice =
-    PySlice_New(PyLong_FromSize_t((size_t)ts_node_start_byte(self->node)),
-                PyLong_FromSize_t((size_t)ts_node_end_byte(self->node)),
-                NULL);
-  if (slice == Py_None) {
-    Py_RETURN_NONE;
+  PyObject *start_byte =
+    PyLong_FromSize_t((size_t)ts_node_start_byte(self->node));
+  if (start_byte == NULL) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Failed to determine start byte");
+    return NULL;
+  }
+  PyObject *end_byte =
+    PyLong_FromSize_t((size_t)ts_node_end_byte(self->node));
+  if (end_byte == NULL) {
+    Py_DECREF(start_byte);
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Failed to determine end byte");
+    return NULL;
+  }
+  PyObject *slice = PySlice_New(start_byte, end_byte, NULL);
+  Py_DECREF(start_byte);
+  Py_DECREF(end_byte);
+  if (slice == NULL) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "PySlice_New failed");
+    return NULL;
   }
   PyObject *node_mv = PyMemoryView_FromObject(source);
-  if (node_mv == Py_None) {
-    Py_RETURN_NONE;
+  Py_DECREF(source);
+  if (node_mv == NULL) {
+    Py_DECREF(slice);
+    PyErr_SetString(PyExc_RuntimeError,
+                    "PyMemoryView_FromObject failed");
+    return NULL;
   }
   PyObject *node_slice = PyObject_GetItem(node_mv, slice);
-  if (node_slice == Py_None) {
-    Py_RETURN_NONE;
+  Py_DECREF(slice);
+  Py_DECREF(node_mv);
+  if (node_slice == NULL) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "PyObject_GetItem failed");
+    return NULL;
   }
   Py_INCREF(node_slice);
   return node_slice;
