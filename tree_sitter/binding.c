@@ -256,13 +256,20 @@ static PyObject *node_get_children(Node *self, void *payload) {
 
   long length = (long)ts_node_child_count(self->node);
   PyObject *result = PyList_New(length);
+  if (result == NULL) {
+    Py_RETURN_NONE;
+  }
   if (length > 0) {
     ts_tree_cursor_reset(&default_cursor, self->node);
     ts_tree_cursor_goto_first_child(&default_cursor);
     int i = 0;
     do {
       TSNode child = ts_tree_cursor_current_node(&default_cursor);
-      PyList_SetItem(result, i, node_new_internal(child, self->tree));
+      if (-1 == PyList_SetItem(result, i,
+                               node_new_internal(child, self->tree)))
+      {
+        Py_RETURN_NONE;
+      }
       i++;
     } while (ts_tree_cursor_goto_next_sibling(&default_cursor));
   }
