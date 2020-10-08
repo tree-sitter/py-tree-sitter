@@ -192,14 +192,12 @@ static PyObject *node_get_children(Node *self, void *payload) {
 static PyObject *node_get_child_count(Node *self, void *payload) {
   long length = (long)ts_node_child_count(self->node);
   PyObject *result = PyLong_FromLong(length);
-  Py_INCREF(result);
   return result;
 }
 
 static PyObject *node_get_named_child_count(Node *self, void *payload) {
   long length = (long)ts_node_named_child_count(self->node);
   PyObject *result = PyLong_FromLong(length);
-  Py_INCREF(result);
   return result;
 }
 
