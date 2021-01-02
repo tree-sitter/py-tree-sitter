@@ -607,7 +607,7 @@ static PyObject *parser_set_language(Parser *self, PyObject *arg) {
     return NULL;
   }
 
-  TSLanguage *language = (TSLanguage *)PyLong_AsLong(language_id);
+  TSLanguage *language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
   if (!language) {
     PyErr_SetString(PyExc_ValueError, "Language ID must not be null");
     return NULL;
@@ -801,11 +801,14 @@ static PyObject *query_new_internal(
 
 static PyObject *language_field_id_for_name(PyObject *self, PyObject *args) {
   TSLanguage *language;
+  PyObject *language_id;
   char *field_name;
   Py_ssize_t length;
-  if (!PyArg_ParseTuple(args, "ls#", &language, &field_name, &length)) {
+  if (!PyArg_ParseTuple(args, "Os#", &language_id, &field_name, &length)) {
     return NULL;
   }
+
+  language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
 
   TSFieldId field_id = ts_language_field_id_for_name(language, field_name, length);
   if (field_id == 0) {
@@ -817,11 +820,14 @@ static PyObject *language_field_id_for_name(PyObject *self, PyObject *args) {
 
 static PyObject *language_query(PyObject *self, PyObject *args) {
   TSLanguage *language;
+  PyObject *language_id;
   char *source;
   Py_ssize_t length;
-  if (!PyArg_ParseTuple(args, "ls#", &language, &source, &length)) {
+  if (!PyArg_ParseTuple(args, "Os#", &language_id, &source, &length)) {
     return NULL;
   }
+
+  language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
 
   return query_new_internal(language, source, length);
 }
