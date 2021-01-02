@@ -2,6 +2,7 @@ build: false
 
 platform:
   - x86
+  - x64
 
 install:
   - git submodule update --init --recursive
