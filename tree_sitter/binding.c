@@ -48,7 +48,11 @@ static PyObject *point_new(TSPoint point) {
     Py_XDECREF(column);
     return NULL;
   }
-  return PyTuple_Pack(2, row, column);
+  
+  PyObject *obj = PyTuple_Pack(2, row, column);
+  Py_XDECREF(row);
+  Py_XDECREF(column);
+  return obj;
 }
 
 // Node
