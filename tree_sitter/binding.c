@@ -48,7 +48,7 @@ static PyObject *point_new(TSPoint point) {
     Py_XDECREF(column);
     return NULL;
   }
-  
+
   PyObject *obj = PyTuple_Pack(2, row, column);
   Py_XDECREF(row);
   Py_XDECREF(column);
@@ -710,6 +710,8 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
     PyObject *capture_node = node_new_internal(capture->node, node->tree);
     PyObject *capture_name = PyList_GetItem(self->capture_names, capture->index);
     PyList_Append(result, PyTuple_Pack(2, capture_node, capture_name));
+    Py_XDECREF(capture_node);
+    Py_XDECREF(capture_name);
   }
 
   return result;
