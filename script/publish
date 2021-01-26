@@ -7,4 +7,6 @@ else
 fi
 
 $py setup.py sdist bdist_wheel
-twine upload dist/*
+for file in dist/*; do
+  twine upload $file
+done
