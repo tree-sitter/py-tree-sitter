@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 
 import re
+from parameterized import parameterized
 from unittest import TestCase
 from os import path
 from tree_sitter import Language, Parser
@@ -18,10 +19,11 @@ JAVASCRIPT = Language(LIB_PATH, "javascript")
 
 
 class TestParser(TestCase):
-    def test_set_language(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_set_language(self, input_type):
         parser = Parser()
         parser.set_language(PYTHON)
-        tree = parser.parse(b"def foo():\n  bar()")
+        tree = parser.parse(input_type(b"def foo():\n  bar()"))
         self.assertEqual(
             tree.root_node.sexp(),
             trim(
@@ -34,7 +36,7 @@ class TestParser(TestCase):
             ),
         )
         parser.set_language(JAVASCRIPT)
-        tree = parser.parse(b"function foo() {\n  bar();\n}")
+        tree = parser.parse(input_type(b"function foo() {\n  bar();\n}"))
         self.assertEqual(
             tree.root_node.sexp(),
             trim(
@@ -49,7 +51,8 @@ class TestParser(TestCase):
             ),
         )
 
-    def test_multibyte_characters(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_multibyte_characters(self, input_type):
         parser = Parser()
         parser.set_language(JAVASCRIPT)
         source_code = bytes("'😎' && '🐍'", "utf8")
@@ -68,10 +71,11 @@ class TestParser(TestCase):
 
 
 class TestNode(TestCase):
-    def test_child_by_field_id(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_child_by_field_id(self, input_type):
         parser = Parser()
         parser.set_language(PYTHON)
-        tree = parser.parse(b"def foo():\n  bar()")
+        tree = parser.parse(input_type(b"def foo():\n  bar()"))
         root_node = tree.root_node
         fn_node = tree.root_node.children[0]
 
@@ -96,10 +100,11 @@ class TestNode(TestCase):
             fn_node.child_by_field_name("name"),
         )
 
-    def test_children(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_children(self, input_type):
         parser = Parser()
         parser.set_language(PYTHON)
-        tree = parser.parse(b"def foo():\n  bar()")
+        tree = parser.parse(input_type(b"def foo():\n  bar()"))
 
         root_node = tree.root_node
         self.assertEqual(root_node.type, "module")
@@ -139,10 +144,11 @@ class TestNode(TestCase):
         self.assertEqual(statement_node.type, "block")
         self.assertEqual(statement_node.is_named, True)
 
-    def test_named_and_sibling_and_count_and_parent(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_named_and_sibling_and_count_and_parent(self, input_type):
         parser = Parser()
         parser.set_language(PYTHON)
-        tree = parser.parse(b"[1, 2, 3]")
+        tree = parser.parse(input_type(b"[1, 2, 3]"))
 
         root_node = tree.root_node
         self.assertEqual(root_node.type, "module")
@@ -238,8 +244,9 @@ class TestNode(TestCase):
         self.assertEqual(list_node.child_count, 7)
         self.assertEqual(list_node.named_child_count, 3)
 
-    def test_tree(self):
-        code = b"def foo():\n  bar()\n\ndef foo():\n  bar()"
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_tree(self, input_type):
+        code = input_type(b"def foo():\n  bar()\n\ndef foo():\n  bar()")
         parser = Parser()
         parser.set_language(PYTHON)
 
@@ -261,12 +268,13 @@ class TestNode(TestCase):
 
 
 class TestTree(TestCase):
-    def test_tree_cursor_without_tree(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_tree_cursor_without_tree(self, input_type):
         parser = Parser()
         parser.set_language(PYTHON)
 
         def parse():
-            tree = parser.parse(b"def foo():\n  bar()")
+            tree = parser.parse(input_type(b"def foo():\n  bar()"))
             return tree.walk()
 
         cursor = parse()
@@ -274,10 +282,11 @@ class TestTree(TestCase):
         for item in cursor.node.children:
             self.assertIsNotNone(item.is_named)
 
-    def test_walk(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_walk(self, input_type):
         parser = Parser()
         parser.set_language(PYTHON)
-        tree = parser.parse(b"def foo():\n  bar()")
+        tree = parser.parse(input_type(b"def foo():\n  bar()"))
         cursor = tree.walk()
 
         # Node always returns the same instance
@@ -320,10 +329,11 @@ class TestTree(TestCase):
         self.assertEqual(cursor.node.is_named, True)
         self.assertEqual(cursor.current_field_name(), "parameters")
 
-    def test_edit(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_edit(self, input_type):
         parser = Parser()
         parser.set_language(PYTHON)
-        tree = parser.parse(b"def foo():\n  bar()")
+        tree = parser.parse(input_type(b"def foo():\n  bar()"))
 
         edit_offset = len(b"def foo(")
         tree.edit(
@@ -348,7 +358,7 @@ class TestTree(TestCase):
         self.assertEqual(params_node.start_point, (0, edit_offset - 1))
         self.assertEqual(params_node.end_point, (0, edit_offset + 3))
 
-        new_tree = parser.parse(b"def foo(ab):\n  bar()", tree)
+        new_tree = parser.parse(input_type(b"def foo(ab):\n  bar()"), tree)
         self.assertEqual(
             new_tree.root_node.sexp(),
             trim(
@@ -364,7 +374,8 @@ class TestTree(TestCase):
 
 
 class TestQuery(TestCase):
-    def test_errors(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_errors(self, input_type):
         with self.assertRaisesRegex(NameError, "Invalid node type foo"):
             PYTHON.query("(list (foo))")
         with self.assertRaisesRegex(NameError, "Invalid field name buzz"):
@@ -375,10 +386,11 @@ class TestQuery(TestCase):
             PYTHON.query("(list))")
         PYTHON.query("(function_definition)")
 
-    def test_captures(self):
+    @parameterized.expand([[bytes], [memoryview]])
+    def test_captures(self, input_type):
         parser = Parser()
         parser.set_language(PYTHON)
-        source = b"def foo():\n  bar()\ndef baz():\n  quux()\n"
+        source = input_type(b"def foo():\n  bar()\ndef baz():\n  quux()\n")
         tree = parser.parse(source)
         query = PYTHON.query(
             """
