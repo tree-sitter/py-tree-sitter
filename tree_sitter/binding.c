@@ -709,8 +709,10 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
     const TSQueryCapture *capture = &match.captures[capture_index];
     PyObject *capture_node = node_new_internal(capture->node, node->tree);
     PyObject *capture_name = PyList_GetItem(self->capture_names, capture->index);
-    PyList_Append(result, PyTuple_Pack(2, capture_node, capture_name));
+    PyObject *item = PyTuple_Pack(2, capture_node, capture_name);
     Py_XDECREF(capture_node);
+    PyList_Append(result, item);
+    Py_XDECREF(item);
   }
 
   return result;
