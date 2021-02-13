@@ -711,7 +711,6 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
     PyObject *capture_name = PyList_GetItem(self->capture_names, capture->index);
     PyList_Append(result, PyTuple_Pack(2, capture_node, capture_name));
     Py_XDECREF(capture_node);
-    Py_XDECREF(capture_name);
   }
 
   return result;
