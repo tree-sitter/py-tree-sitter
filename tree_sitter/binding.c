@@ -612,6 +612,7 @@ static PyObject *parser_set_language(Parser *self, PyObject *arg) {
   }
 
   TSLanguage *language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+  Py_XDECREF(language_id);
   if (!language) {
     PyErr_SetString(PyExc_ValueError, "Language ID must not be null");
     return NULL;
