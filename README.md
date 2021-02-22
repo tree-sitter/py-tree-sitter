@@ -71,6 +71,42 @@ def foo():
 """, "utf8"))
 ```
 
+If you have your source code in some data structure other than a bytes object,
+you can pass a "read" callable to the parse function.
+
+The read callable can use either the byte offset or point tuple to read from
+buffer and return source code as bytes object. An empty bytes object or None
+terminates parsing for that line. The bytes must encode the source as UTF-8.
+
+For example, to use the byte offset:
+
+```python
+src = bytes("""
+def foo():
+    if bar:
+        baz()
+""", "utf8")
+
+def read_callable(byte_offset, point):
+    return src[byte_offset:byte_offset+1]
+
+tree = parser.parse(read_callable)
+```
+
+And to use the point:
+
+```python
+src_lines = ["def foo():\n", "    if bar:\n", "        baz()"]
+
+def read_callable(byte_offset, point):
+    row, column = point
+    if row >= len(src_lines) or column >= len(src_lines[row]):
+        return None
+    return src_lines[row][column:].encode('utf8')
+
+tree = parser.parse(read_callable)
+```
+
 Inspect the resulting `Tree`:
 
 ```python
