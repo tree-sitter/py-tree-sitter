@@ -424,6 +424,30 @@ class TestTree(TestCase):
             ),
         )
 
+    def test_get_changed_ranges(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()")
+
+        edit_offset = len(b"def foo(")
+        tree.edit(
+            start_byte=edit_offset,
+            old_end_byte=edit_offset,
+            new_end_byte=edit_offset + 2,
+            start_point=(0, edit_offset),
+            old_end_point=(0, edit_offset),
+            new_end_point=(0, edit_offset + 2),
+        )
+
+        new_tree = parser.parse(b"def foo(ab):\n  bar()", tree)
+        changed_ranges = tree.get_changed_ranges(new_tree)
+
+        self.assertEqual(len(changed_ranges), 1)
+        self.assertEqual(changed_ranges[0].start_byte, edit_offset)
+        self.assertEqual(changed_ranges[0].start_point, (0, edit_offset))
+        self.assertEqual(changed_ranges[0].end_byte, edit_offset + 2)
+        self.assertEqual(changed_ranges[0].end_point, (0, edit_offset + 2))
+
 
 class TestQuery(TestCase):
     def test_errors(self):
