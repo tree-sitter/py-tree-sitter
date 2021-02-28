@@ -154,6 +154,18 @@ new_tree = parser.parse(new_source, tree)
 
 This will run much faster than if you were parsing from scratch.
 
+The `Tree.get_changed_ranges` method can be called on the *old* tree to return
+the list of ranges whose syntactic structure has been changed:
+
+```python
+for changed_range in tree.get_changed_ranges(new_tree):
+    print('Changed range:')
+    print(f'  Start point {changed_range.start_point}')
+    print(f'  Start byte {changed_range.start_byte}')
+    print(f'  End point {changed_range.end_point}')
+    print(f'  End byte {changed_range.end_byte}')
+```
+
 #### Pattern-matching
 
 You can search for patterns in a syntax tree using a *tree query*:
