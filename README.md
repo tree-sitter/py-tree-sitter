@@ -172,3 +172,9 @@ assert len(captures) == 2
 assert captures[0][0] == function_name_node
 assert captures[0][1] == "function.def"
 ```
+
+The `Query.captures()` method takes optional `start_point`, `end_point`,
+`start_byte` and `end_byte` keyword arguments which can be used to restrict the
+query's range. Only one of the `..._byte` or `..._point` pairs need to be given
+to restrict the range. If all are omitted, the entire range of the passed node
+is used.
