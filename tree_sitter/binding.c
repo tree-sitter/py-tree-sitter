@@ -134,6 +134,10 @@ static PyObject *node_chield_by_field_name(Node *self, PyObject *args) {
   return node_new_internal(child, self->tree);
 }
 
+static PyObject *node_get_id(Node *self, void *payload) {
+  return PyLong_FromSize_t((size_t)self->node.id);
+}
+
 static PyObject *node_get_type(Node *self, void *payload) {
   return PyUnicode_FromString(ts_node_type(self->node));
 }
@@ -278,6 +282,7 @@ static PyMethodDef node_methods[] = {
 };
 
 static PyGetSetDef node_accessors[] = {
+  {"id", (getter)node_get_id, NULL, "The node's numeric id", NULL},
   {"type", (getter)node_get_type, NULL, "The node's type", NULL},
   {"is_named", (getter)node_get_is_named, NULL, "Is this a named node", NULL},
   {"is_missing", (getter)node_get_is_missing, NULL, "Is this a node inserted by the parser", NULL},
