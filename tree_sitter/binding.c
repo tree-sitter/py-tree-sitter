@@ -622,7 +622,7 @@ static PyObject *parser_set_language(Parser *self, PyObject *arg) {
   if (version < TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION || TREE_SITTER_LANGUAGE_VERSION < version) {
     return PyErr_Format(
       PyExc_ValueError,
-      "Incompatible Language version %u. Must not be between %u and %u",
+      "Incompatible Language version %u. Must be between %u and %u",
       version,
       TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION,
       TREE_SITTER_LANGUAGE_VERSION
