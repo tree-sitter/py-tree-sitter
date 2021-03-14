@@ -109,7 +109,7 @@ static PyObject *node_walk(Node *self, PyObject *args) {
   return tree_cursor_new_internal(self->node, self->tree);
 }
 
-static PyObject *node_chield_by_field_id(Node *self, PyObject *args) {
+static PyObject *node_child_by_field_id(Node *self, PyObject *args) {
   TSFieldId field_id;
   if (!PyArg_ParseTuple(args, "H", &field_id)) {
     return NULL;
@@ -121,7 +121,7 @@ static PyObject *node_chield_by_field_id(Node *self, PyObject *args) {
   return node_new_internal(child, self->tree);
 }
 
-static PyObject *node_chield_by_field_name(Node *self, PyObject *args) {
+static PyObject *node_child_by_field_name(Node *self, PyObject *args) {
   char *name;
   Py_ssize_t length;
   if (!PyArg_ParseTuple(args, "s#", &name, &length)) {
@@ -262,14 +262,14 @@ static PyMethodDef node_methods[] = {
   },
   {
     .ml_name = "child_by_field_id",
-    .ml_meth = (PyCFunction)node_chield_by_field_id,
+    .ml_meth = (PyCFunction)node_child_by_field_id,
     .ml_flags = METH_VARARGS,
     .ml_doc = "child_by_field_id(id)\n--\n\n\
                Get child for the given field id.",
   },
   {
     .ml_name = "child_by_field_name",
-    .ml_meth = (PyCFunction)node_chield_by_field_name,
+    .ml_meth = (PyCFunction)node_child_by_field_name,
     .ml_flags = METH_VARARGS,
     .ml_doc = "child_by_field_name(name)\n--\n\n\
                Get child for the given field name.",
