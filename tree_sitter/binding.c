@@ -134,6 +134,45 @@ static PyObject *node_child_by_field_name(Node *self, PyObject *args) {
   return node_new_internal(child, self->tree);
 }
 
+static PyObject *node_children_by_field_id_internal(Node *self, TSFieldId field_id) {
+  PyObject *result = PyList_New(0);
+
+  ts_tree_cursor_reset(&default_cursor, self->node);
+  int ok = ts_tree_cursor_goto_first_child(&default_cursor);
+  while (ok) {
+    if (ts_tree_cursor_current_field_id(&default_cursor) == field_id) {
+      TSNode tsnode = ts_tree_cursor_current_node(&default_cursor);
+      PyObject *node = node_new_internal(tsnode, self->tree);
+      PyList_Append(result, node);
+      Py_XDECREF(node);
+    }
+    ok = ts_tree_cursor_goto_next_sibling(&default_cursor);
+  }
+
+  return result;
+}
+
+static PyObject *node_children_by_field_id(Node *self, PyObject *args) {
+  TSFieldId field_id;
+  if (!PyArg_ParseTuple(args, "H", &field_id)) {
+    return NULL;
+  }
+
+  return node_children_by_field_id_internal(self, field_id);
+}
+
+static PyObject *node_children_by_field_name(Node *self, PyObject *args) {
+  char *name;
+  Py_ssize_t length;
+  if (!PyArg_ParseTuple(args, "s#", &name, &length)) {
+    return NULL;
+  }
+
+  const TSLanguage *lang = ts_tree_language(((Tree*)self->tree)->tree);
+  TSFieldId field_id = ts_language_field_id_for_name(lang, name, length);
+  return node_children_by_field_id_internal(self, field_id);
+}
+
 static PyObject *node_get_type(Node *self, void *payload) {
   return PyUnicode_FromString(ts_node_type(self->node));
 }
@@ -273,6 +312,20 @@ static PyMethodDef node_methods[] = {
     .ml_flags = METH_VARARGS,
     .ml_doc = "child_by_field_name(name)\n--\n\n\
                Get child for the given field name.",
+  },
+  {
+    .ml_name = "children_by_field_id",
+    .ml_meth = (PyCFunction)node_children_by_field_id,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "children_by_field_id(id)\n--\n\n\
+               Get list of child nodes by the field id.",
+  },
+  {
+    .ml_name = "children_by_field_name",
+    .ml_meth = (PyCFunction)node_children_by_field_name,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "children_by_field_name(name)\n--\n\n\
+               Get list of child nodes by the field name.",
   },
   {NULL},
 };
