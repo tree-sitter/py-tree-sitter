@@ -61,6 +61,9 @@ class Language:
                     flags = ["-fPIC"]
                     if source_path.endswith(".c"):
                         flags.append("-std=c99")
+                    else:
+                        flags.append("-std=c++17")
+
                 object_paths.append(
                     compiler.compile(
                         [source_path],
