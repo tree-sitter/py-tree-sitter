@@ -1,8 +1,8 @@
 """Python bindings for tree-sitter."""
 
 from ctypes import cdll, c_void_p
-from ctypes.util import find_library
 from distutils.ccompiler import new_compiler
+from distutils.unixccompiler import UnixCCompiler
 from os import path
 from platform import system
 from tempfile import TemporaryDirectory
@@ -43,11 +43,8 @@ class Language:
         ]
 
         compiler = new_compiler()
-        if cpp:
-            if find_library("c++"):
-                compiler.add_library("c++")
-            elif find_library("stdc++"):
-                compiler.add_library("stdc++")
+        if isinstance(compiler, UnixCCompiler):
+            compiler.compiler_cxx[0] = "c++"
 
         if max(source_mtimes) <= output_mtime:
             return False
@@ -69,7 +66,11 @@ class Language:
                         extra_preargs=flags,
                     )[0]
                 )
-            compiler.link_shared_object(object_paths, output_path)
+            compiler.link_shared_object(
+                object_paths,
+                output_path,
+                target_lang="c++" if cpp else "c",
+            )
         return True
 
     def __init__(self, library_path, name):
