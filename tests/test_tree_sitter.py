@@ -238,6 +238,51 @@ class TestNode(TestCase):
         self.assertEqual(list_node.child_count, 7)
         self.assertEqual(list_node.named_child_count, 3)
 
+    def test_node_text(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"[0, [1, 2, 3]]")
+
+        self.assertEqual(tree.text, b"[0, [1, 2, 3]]")
+
+        root_node = tree.root_node
+        self.assertEqual(root_node.text, b'[0, [1, 2, 3]]')
+
+        exp_stmt_node = root_node.children[0]
+        self.assertEqual(exp_stmt_node.text, b'[0, [1, 2, 3]]')
+
+        list_node = exp_stmt_node.children[0]
+        self.assertEqual(list_node.text, b'[0, [1, 2, 3]]')
+
+        open_delim_node = list_node.children[0]
+        self.assertEqual(open_delim_node.text, b'[')
+
+        first_num_node = list_node.children[1]
+        self.assertEqual(first_num_node.text, b'0')
+
+        first_comma_node = list_node.children[2]
+        self.assertEqual(first_comma_node.text, b',')
+
+        child_list_node = list_node.children[3]
+        self.assertEqual(child_list_node.text, b'[1, 2, 3]')
+
+        close_delim_node = list_node.children[4]
+        self.assertEqual(close_delim_node.text, b']')
+
+        edit_offset = len(b"[0, [")
+        tree.edit(
+            start_byte=edit_offset,
+            old_end_byte=edit_offset,
+            new_end_byte=edit_offset + 2,
+            start_point=(0, edit_offset),
+            old_end_point=(0, edit_offset),
+            new_end_point=(0, edit_offset + 2),
+        )
+        self.assertEqual(tree.text, None)
+
+        root_node_again = tree.root_node
+        self.assertEqual(root_node_again.text, None)
+
     def test_tree(self):
         code = b"def foo():\n  bar()\n\ndef foo():\n  bar()"
         parser = Parser()
