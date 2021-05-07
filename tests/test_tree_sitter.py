@@ -408,6 +408,48 @@ class TestQuery(TestCase):
         self.assertEqual(captures[3][0].end_point, (3, 6))
         self.assertEqual(captures[3][1], "func-call")
 
+    def test_byte_range_captures(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        source = b"def foo():\n  bar()\ndef baz():\n  quux()\n"
+        tree = parser.parse(source)
+        query = PYTHON.query(
+            """
+            (function_definition name: (identifier) @func-def)
+            (call function: (identifier) @func-call)
+            """
+        )
+
+        captures = query.captures(tree.root_node, start_byte=10, end_byte=20)
+        captures = query.captures(tree.root_node, start_byte=10, end_byte=20)
+        captures = query.captures(tree.root_node, start_byte=10, end_byte=20)
+        captures = query.captures(tree.root_node, start_byte=10, end_byte=20)
+
+        self.assertEqual(captures[0][0].start_point, (1, 2))
+        self.assertEqual(captures[0][0].end_point, (1, 5))
+        self.assertEqual(captures[0][1], "func-call")
+
+    def test_point_range_captures(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        source = b"def foo():\n  bar()\ndef baz():\n  quux()\n"
+        tree = parser.parse(source)
+        query = PYTHON.query(
+            """
+            (function_definition name: (identifier) @func-def)
+            (call function: (identifier) @func-call)
+            """
+        )
+
+        captures = query.captures(tree.root_node, start_point=(1, 0), end_point=(2, 0))
+        captures = query.captures(tree.root_node, start_point=(1, 0), end_point=(2, 0))
+        captures = query.captures(tree.root_node, start_point=(1, 0), end_point=(2, 0))
+        captures = query.captures(tree.root_node, start_point=(1, 0), end_point=(2, 0))
+
+        self.assertEqual(captures[0][0].start_point, (1, 2))
+        self.assertEqual(captures[0][0].end_point, (1, 5))
+        self.assertEqual(captures[0][1], "func-call")
+
 
 def trim(string):
     return re.sub(r"\s+", " ", string).strip()
