@@ -178,18 +178,55 @@ static PyObject *node_get_children(Node *self, void *payload) {
 
   long length = (long)ts_node_child_count(self->node);
   PyObject *result = PyList_New(length);
+  if (result == NULL) {
+    PyErr_SetString(PyExc_RuntimeError, "PyList_New failed");
+    return NULL;
+  }
   if (length > 0) {
     ts_tree_cursor_reset(&default_cursor, self->node);
     ts_tree_cursor_goto_first_child(&default_cursor);
     int i = 0;
     do {
       TSNode child = ts_tree_cursor_current_node(&default_cursor);
-      PyList_SetItem(result, i, node_new_internal(child, self->tree));
+      if (-1 == PyList_SetItem(result, i,
+                               node_new_internal(child, self->tree)))
+      {
+        PyErr_SetString(PyExc_RuntimeError, "PyList_SetItem failed");
+        return NULL;
+      }
       i++;
     } while (ts_tree_cursor_goto_next_sibling(&default_cursor));
   }
   Py_INCREF(result);
   self->children = result;
+  return result;
+}
+
+static PyObject *node_get_named_children(Node *self, void *payload) {
+  PyObject* children = node_get_children(self, payload);
+  if (children == NULL) {
+    PyErr_SetString(PyExc_ValueError, "Failed to get node's children");
+    return NULL;
+  }
+  Py_DECREF(children);
+
+  PyObject *result = PyList_New(0);
+  if (result == NULL) {
+    PyErr_SetString(PyExc_RuntimeError, "PyList_new failed");
+    return NULL;
+  }
+
+  long length = (long)ts_node_child_count(self->node);
+  for (int i = 0; i < length; i++) {
+    Node *child = (Node *) PyList_GetItem(self->children, i);
+    if (ts_node_is_named(child->node)) {
+      if (-1 == PyList_Append(result, (PyObject *) child)) {
+        PyErr_SetString(PyExc_RuntimeError, "PyList_SetItem failed");
+        return NULL;
+      }
+    }
+  }
+  Py_INCREF(result);
   return result;
 }
 
@@ -289,6 +326,7 @@ static PyGetSetDef node_accessors[] = {
   {"end_point", (getter)node_get_end_point, NULL, "The node's end point", NULL},
   {"children", (getter)node_get_children, NULL, "The node's children", NULL},
   {"child_count", (getter)node_get_child_count, NULL, "The number of children for a node", NULL},
+  {"named_children", (getter)node_get_named_children, NULL, "The node's named children", NULL},
   {"named_child_count", (getter)node_get_named_child_count, NULL, "The number of named children for a node", NULL},
   {"next_sibling", (getter)node_get_next_sibling, NULL, "The node's next sibling", NULL},
   {"prev_sibling", (getter)node_get_prev_sibling, NULL, "The node's previous sibling", NULL},

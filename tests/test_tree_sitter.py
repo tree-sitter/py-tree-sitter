@@ -169,6 +169,8 @@ class TestNode(TestCase):
         self.assertEqual(list_node.parent,
                          exp_stmt_node)
 
+        named_children = list_node.named_children
+
         open_delim_node = list_node.children[0]
         self.assertEqual(open_delim_node.type, "[")
         self.assertEqual(open_delim_node.start_byte, 0)
@@ -183,6 +185,8 @@ class TestNode(TestCase):
                          open_delim_node.next_named_sibling)
         self.assertEqual(first_num_node.parent,
                          list_node)
+        self.assertEqual(named_children[0],
+                         first_num_node)
 
         first_comma_node = list_node.children[2]
         self.assertEqual(first_comma_node,
@@ -201,6 +205,8 @@ class TestNode(TestCase):
                          second_num_node.prev_named_sibling)
         self.assertEqual(second_num_node.parent,
                          list_node)
+        self.assertEqual(named_children[1],
+                         second_num_node)
 
         second_comma_node = list_node.children[4]
         self.assertEqual(second_comma_node,
@@ -219,6 +225,8 @@ class TestNode(TestCase):
                          third_num_node.prev_named_sibling)
         self.assertEqual(third_num_node.parent,
                          list_node)
+        self.assertEqual(named_children[2],
+                         third_num_node)
 
         close_delim_node = list_node.children[6]
         self.assertEqual(close_delim_node.type, "]")
