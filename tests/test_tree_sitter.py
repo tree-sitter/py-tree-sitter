@@ -96,6 +96,25 @@ class TestNode(TestCase):
             fn_node.child_by_field_name("name"),
         )
 
+    def test_children_by_field_id(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        tree = parser.parse(b"<div a={1} b={2} />")
+        jsx_node = tree.root_node.children[0].children[0]
+        attribute_field = PYTHON.field_id_for_name("attribute")
+
+        attributes = jsx_node.children_by_field_id(attribute_field)
+        self.assertEqual([a.type for a in attributes], ["jsx_attribute", "jsx_attribute"])
+
+    def test_children_by_field_name(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        tree = parser.parse(b"<div a={1} b={2} />")
+        jsx_node = tree.root_node.children[0].children[0]
+
+        attributes = jsx_node.children_by_field_name("attribute")
+        self.assertEqual([a.type for a in attributes], ["jsx_attribute", "jsx_attribute"])
+
     def test_children(self):
         parser = Parser()
         parser.set_language(PYTHON)

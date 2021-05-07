@@ -29,6 +29,9 @@ setup(
         "Topic :: Software Development :: Compilers",
         "Topic :: Text Processing :: Linguistic",
     ],
+    package_data={
+        "tree_sitter": ["__init__.pyi"],
+    },
     packages=["tree_sitter"],
     ext_modules=[
         Extension(
