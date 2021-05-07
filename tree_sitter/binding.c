@@ -572,8 +572,11 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     return NULL;
   }
 
-  if (!PyBytes_Check(source_code)) {
-    PyErr_SetString(PyExc_TypeError, "First argument to parse must be bytes");
+  if (!PyBytes_Check(source_code) &&
+      !(PyMemoryView_Check(source_code) &&
+        PyBuffer_IsContiguous(PyMemoryView_GET_BUFFER(source_code), 'A'))) {
+    PyErr_SetString(PyExc_TypeError,
+                    "First argument to parse must be bytes or contiguous memoryview");
     return NULL;
   }
 
@@ -587,8 +590,16 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     old_tree = ((Tree *)old_tree_arg)->tree;
   }
 
-  size_t length = PyBytes_Size(source_code);
-  char *source_bytes = PyBytes_AsString(source_code);
+  size_t length;
+  char *source_bytes;
+  if (PyBytes_Check(source_code)) {
+    length = PyBytes_Size(source_code);
+    source_bytes = PyBytes_AsString(source_code);
+  } else {  // Checked PyMemoryView_Check above
+    Py_buffer* buffer = PyMemoryView_GET_BUFFER(source_code);
+    length = buffer->len;
+    source_bytes = (char*)buffer->buf;
+  }
   TSTree *new_tree = ts_parser_parse_string(self->parser, old_tree, source_bytes, length);
 
   if (!new_tree) {
