@@ -565,15 +565,73 @@ static void parser_dealloc(Parser *self) {
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static PyObject *parser_parse(Parser *self, PyObject *args) {
-  PyObject *source_code = NULL;
-  PyObject *old_tree_arg = NULL;
-  if (!PyArg_UnpackTuple(args, "ref", 1, 2, &source_code, &old_tree_arg)) {
+typedef struct {
+  PyObject *read_cb;
+  PyObject *previous_return_value;
+} ReadWrapperPayload;
+
+static const char* parser_read_wrapper(void *payload, uint32_t byte_offset, TSPoint position, uint32_t* bytes_read) {
+  ReadWrapperPayload *wrapper_payload = payload;
+  PyObject *read_cb = wrapper_payload->read_cb;
+
+  // We assume that the parser only needs the return value until the next time
+  // this function is called or when ts_parser_parse() returns. We store the
+  // return value from the callable in wrapper_payload->previous_return_value so
+  // that its reference count will be decremented either during the next call to
+  // this wrapper or after ts_parser_parse() has returned.
+  Py_XDECREF(wrapper_payload->previous_return_value);
+  wrapper_payload->previous_return_value = NULL;
+
+  // Form arguments to callable.
+  PyObject *byte_offset_obj = PyLong_FromSize_t((size_t) byte_offset);
+  PyObject *position_obj = point_new(position);
+  if (!position_obj || !byte_offset_obj) {
+    *bytes_read = 0;
     return NULL;
   }
 
-  if (!PyBytes_Check(source_code)) {
-    PyErr_SetString(PyExc_TypeError, "First argument to parse must be bytes");
+  PyObject *args = PyTuple_Pack(2, byte_offset_obj, position_obj);
+  Py_XDECREF(byte_offset_obj);
+  Py_XDECREF(position_obj);
+
+  // Call callable.
+  PyObject* rv = PyObject_Call(read_cb, args, NULL);
+  Py_XDECREF(args);
+
+  // If error or None returned, we've done parsing.
+  if(!rv || (rv == Py_None)) {
+    Py_XDECREF(rv);
+    *bytes_read = 0;
+    return NULL;
+  }
+
+  // If something other than None is returned, it must be a bytes object.
+  if(!PyBytes_Check(rv)) {
+    Py_XDECREF(rv);
+    PyErr_SetString(PyExc_TypeError, "Read callable must return None or bytes");
+    *bytes_read = 0;
+    return NULL;
+  }
+
+  // Store return value in payload so its reference count can be decremented and
+  // return string representation of bytes.
+  wrapper_payload->previous_return_value = rv;
+  *bytes_read = PyBytes_Size(rv);
+  return PyBytes_AsString(rv);
+}
+
+static PyObject *parser_parse(Parser *self, PyObject *args) {
+  PyObject *source_code_or_read_cb = NULL;
+  PyObject *old_tree_arg = NULL;
+  if (!PyArg_UnpackTuple(args, "ref", 1, 2, &source_code_or_read_cb, &old_tree_arg)) {
+    return NULL;
+  }
+
+  int is_bytes = PyBytes_Check(source_code_or_read_cb);
+  int is_callable = PyCallable_Check(source_code_or_read_cb);
+
+  if (!is_bytes && !is_callable) {
+    PyErr_SetString(PyExc_TypeError, "First argument to parse must be bytes or callable");
     return NULL;
   }
 
@@ -587,9 +645,27 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     old_tree = ((Tree *)old_tree_arg)->tree;
   }
 
-  size_t length = PyBytes_Size(source_code);
-  char *source_bytes = PyBytes_AsString(source_code);
-  TSTree *new_tree = ts_parser_parse_string(self->parser, old_tree, source_bytes, length);
+  TSTree *new_tree = NULL;
+  if(is_bytes) {
+    size_t length = PyBytes_Size(source_code_or_read_cb);
+    char *source_bytes = PyBytes_AsString(source_code_or_read_cb);
+    new_tree = ts_parser_parse_string(self->parser, old_tree, source_bytes, length);
+  } else if(is_callable) {
+    ReadWrapperPayload payload = {
+      .read_cb = source_code_or_read_cb,
+      .previous_return_value = NULL,
+    };
+    TSInput input = {
+      .payload = &payload,
+      .read = parser_read_wrapper,
+      .encoding = TSInputEncodingUTF8,
+    };
+    new_tree = ts_parser_parse(self->parser, old_tree, input);
+    Py_XDECREF(payload.previous_return_value);
+  } else {
+    PyErr_SetString(PyExc_AssertionError, "Object not bytes or callable despite having checked");
+    return NULL;
+  }
 
   if (!new_tree) {
     PyErr_SetString(PyExc_ValueError, "Parsing failed");
