@@ -1,5 +1,6 @@
 include README.md
 include LICENSE
+include tree_sitter/binding.pyi
 prune tree_sitter/core
 graft tree_sitter/core/lib/src
 graft tree_sitter/core/lib/include/tree_sitter
