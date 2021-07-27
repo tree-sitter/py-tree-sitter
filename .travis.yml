@@ -8,7 +8,6 @@ script:
   - script/lint
   - script/test
 
-
 matrix:
   include:
     - python: 3.5

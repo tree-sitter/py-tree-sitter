@@ -161,7 +161,8 @@ class Parser:
 class Query:
     """A set of patterns to search for in a syntax tree."""
 
-    def matches(self, node: Node):
+    # Not implemented yet. Return type is wrong
+    def matches(self, node: Node) -> None:
         """Get a list of all of the matches within the given node."""
         ...
 
