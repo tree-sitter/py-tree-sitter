@@ -45,8 +45,8 @@ jobs:
         if: ${{ matrix.install_libcxx }}
         run: |
           DEBIAN_FRONTEND=noninteractive sudo apt-get install -y libc++-dev libc++abi-dev
-      - name: Install flake8 & mypy
-        run: python -m pip install flake8 mypy
+      - name: Install flake8
+        run: python -m pip install flake8
       - name: Fetch fixtures
         run: ./script/fetch-fixtures
       - name: Lint
@@ -55,7 +55,11 @@ jobs:
         shell: bash
         run: |
           CFLAGS="-O0 -g" python setup.py test
-      - name: Type Check
+      - name: Install mypy
+        if: ${{ !startsWith(matrix.python, 'pypy') }}
+        run: python -m pip install mypy
+      - name: Check types
         shell: bash
+        if: ${{ !startsWith(matrix.python, 'pypy') }}
         run: |
           mypy --config-file mypy.ini tests/test_tree_sitter.py
