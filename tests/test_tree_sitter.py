@@ -283,6 +283,16 @@ class TestNode(TestCase):
         root_node_again = tree.root_node
         self.assertEqual(root_node_again.text, None)
 
+        tree_text_false = parser.parse(b"[0, [1, 2, 3]]", keep_text=False)
+        self.assertIsNone(tree_text_false.text)
+        root_node_text_false = tree_text_false.root_node
+        self.assertIsNone(root_node_text_false.text)
+
+        tree_text_true = parser.parse(b"[0, [1, 2, 3]]", keep_text=True)
+        self.assertEqual(tree_text_true.text, b"[0, [1, 2, 3]]")
+        root_node_text_true = tree_text_true.root_node
+        self.assertEqual(root_node_text_true.text, b"[0, [1, 2, 3]]")
+
     def test_tree(self):
         code = b"def foo():\n  bar()\n\ndef foo():\n  bar()"
         parser = Parser()
