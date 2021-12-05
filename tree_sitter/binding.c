@@ -260,7 +260,7 @@ static PyObject *node_get_text(Node *self, void *payload) {
   if (source == Py_None) {
     Py_RETURN_NONE;
   }
-  // "hello"[1:3] == "hello".__getitem__(slice(1, 3))
+
   PyObject *start_byte =
     PyLong_FromSize_t((size_t)ts_node_start_byte(self->node));
   if (start_byte == NULL) {
@@ -301,7 +301,7 @@ static PyObject *node_get_text(Node *self, void *payload) {
     return NULL;
   }
   Py_INCREF(node_slice);
-  return node_slice;
+  return PyBytes_FromObject(node_slice);
 }
 
 static PyMethodDef node_methods[] = {
