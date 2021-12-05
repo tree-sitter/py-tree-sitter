@@ -498,12 +498,16 @@ static PyTypeObject tree_type = {
   .tp_getset = tree_accessors,
 };
 
-static PyObject *tree_new_internal(TSTree *tree, PyObject *source) {
+static PyObject *tree_new_internal(TSTree *tree, PyObject *source, int keep_text) {
   Tree *self = (Tree *)tree_type.tp_alloc(&tree_type, 0);
   if (self != NULL) self->tree = tree;
 
   self->edited = 0;
-  self->source = source;
+  if (keep_text) {
+    self->source = source;
+  } else {
+    self->source = Py_None;
+  }
   Py_INCREF(self->source);
   return (PyObject *)self;
 }
@@ -644,10 +648,12 @@ static void parser_dealloc(Parser *self) {
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static PyObject *parser_parse(Parser *self, PyObject *args) {
+static PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
   PyObject *source_code = NULL;
   PyObject *old_tree_arg = NULL;
-  if (!PyArg_UnpackTuple(args, "ref", 1, 2, &source_code, &old_tree_arg)) {
+  int keep_text = 1;
+  static char *keywords[] = {"source", "old_tree", "keep_text", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|Op:parse", keywords, &source_code, &old_tree_arg, &keep_text)) {
     return NULL;
   }
 
@@ -675,7 +681,7 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     return NULL;
   }
 
-  return tree_new_internal(new_tree, source_code);
+  return tree_new_internal(new_tree, source_code, keep_text);
 }
 
 static PyObject *parser_set_language(Parser *self, PyObject *arg) {
@@ -716,8 +722,8 @@ static PyMethodDef parser_methods[] = {
   {
     .ml_name = "parse",
     .ml_meth = (PyCFunction)parser_parse,
-    .ml_flags = METH_VARARGS,
-    .ml_doc = "parse(bytes, old_tree=None)\n--\n\n\
+    .ml_flags = METH_VARARGS | METH_KEYWORDS,
+    .ml_doc = "parse(bytes, old_tree=None, keep_text=True)\n--\n\n\
                Parse source code, creating a syntax tree.",
   },
   {
