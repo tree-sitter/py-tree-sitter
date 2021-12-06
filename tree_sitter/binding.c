@@ -300,7 +300,6 @@ static PyObject *node_get_text(Node *self, void *payload) {
                     "PyObject_GetItem failed");
     return NULL;
   }
-  Py_INCREF(node_slice);
   return PyBytes_FromObject(node_slice);
 }
 
