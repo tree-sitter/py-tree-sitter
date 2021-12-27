@@ -15,6 +15,7 @@ typedef struct {
 typedef struct {
   PyObject_HEAD
   TSTree *tree;
+  PyObject *source;
 } Tree;
 
 typedef struct {
@@ -245,6 +246,57 @@ static PyObject *node_get_parent(Node *self, void *payload) {
   return node_new_internal(parent, self->tree);
 }
 
+static PyObject *node_get_text(Node *self, void *payload) {
+  Tree *tree = (Tree *)self->tree;
+  if (tree == NULL) {
+    PyErr_SetString(PyExc_ValueError, "No tree");
+    return NULL;
+  }
+  if (tree->source == Py_None || tree->source == NULL) {
+    Py_RETURN_NONE;
+  }
+
+  PyObject *start_byte =
+    PyLong_FromSize_t((size_t)ts_node_start_byte(self->node));
+  if (start_byte == NULL) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Failed to determine start byte");
+    return NULL;
+  }
+  PyObject *end_byte =
+    PyLong_FromSize_t((size_t)ts_node_end_byte(self->node));
+  if (end_byte == NULL) {
+    Py_DECREF(start_byte);
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Failed to determine end byte");
+    return NULL;
+  }
+  PyObject *slice = PySlice_New(start_byte, end_byte, NULL);
+  Py_DECREF(start_byte);
+  Py_DECREF(end_byte);
+  if (slice == NULL) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "PySlice_New failed");
+    return NULL;
+  }
+  PyObject *node_mv = PyMemoryView_FromObject(tree->source);
+  if (node_mv == NULL) {
+    Py_DECREF(slice);
+    PyErr_SetString(PyExc_RuntimeError,
+                    "PyMemoryView_FromObject failed");
+    return NULL;
+  }
+  PyObject *node_slice = PyObject_GetItem(node_mv, slice);
+  Py_DECREF(slice);
+  Py_DECREF(node_mv);
+  if (node_slice == NULL) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "PyObject_GetItem failed");
+    return NULL;
+  }
+  return PyBytes_FromObject(node_slice);
+}
+
 static PyMethodDef node_methods[] = {
   {
     .ml_name = "walk",
@@ -295,6 +347,7 @@ static PyGetSetDef node_accessors[] = {
   {"next_named_sibling", (getter)node_get_next_named_sibling, NULL, "The node's next named sibling", NULL},
   {"prev_named_sibling", (getter)node_get_prev_named_sibling, NULL, "The node's previous named sibling", NULL},
   {"parent", (getter)node_get_parent, NULL, "The node's parent", NULL},
+  {"text", (getter)node_get_text, NULL, "The node's text, if tree has not been edited", NULL},
   {NULL}
 };
 
@@ -331,11 +384,21 @@ static bool node_is_instance(PyObject *self) {
 
 static void tree_dealloc(Tree *self) {
   ts_tree_delete(self->tree);
+  Py_XDECREF(self->source);
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static PyObject *tree_get_root_node(Tree *self, void *payload) {
   return node_new_internal(ts_tree_root_node(self->tree), (PyObject *)self);
+}
+
+static PyObject *tree_get_text(Tree *self, void *payload) {
+  PyObject *source = self->source;
+  if (source == NULL) {
+    Py_RETURN_NONE;
+  }
+  Py_INCREF(source);
+  return source;
 }
 
 static PyObject *tree_walk(Tree *self, PyObject *args) {
@@ -383,6 +446,9 @@ static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
       .new_end_point = {new_end_row, new_end_column},
     };
     ts_tree_edit(self->tree, &edit);
+    Py_XDECREF(self->source);
+    self->source = Py_None;
+    Py_INCREF(self->source);
   }
   Py_RETURN_NONE;
 }
@@ -408,6 +474,7 @@ static PyMethodDef tree_methods[] = {
 
 static PyGetSetDef tree_accessors[] = {
   {"root_node", (getter)tree_get_root_node, NULL, "The root node of this tree.", NULL},
+  {"text", (getter)tree_get_text, NULL, "The source text for this tree, if unedited.", NULL},
   {NULL}
 };
 
@@ -423,9 +490,16 @@ static PyTypeObject tree_type = {
   .tp_getset = tree_accessors,
 };
 
-static PyObject *tree_new_internal(TSTree *tree) {
+static PyObject *tree_new_internal(TSTree *tree, PyObject *source, int keep_text) {
   Tree *self = (Tree *)tree_type.tp_alloc(&tree_type, 0);
   if (self != NULL) self->tree = tree;
+
+  if (keep_text) {
+    self->source = source;
+  } else {
+    self->source = Py_None;
+  }
+  Py_INCREF(self->source);
   return (PyObject *)self;
 }
 
@@ -565,10 +639,12 @@ static void parser_dealloc(Parser *self) {
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static PyObject *parser_parse(Parser *self, PyObject *args) {
+static PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
   PyObject *source_code = NULL;
   PyObject *old_tree_arg = NULL;
-  if (!PyArg_UnpackTuple(args, "ref", 1, 2, &source_code, &old_tree_arg)) {
+  int keep_text = 1;
+  static char *keywords[] = {"source", "old_tree", "keep_text", NULL};
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|Op:parse", keywords, &source_code, &old_tree_arg, &keep_text)) {
     return NULL;
   }
 
@@ -596,7 +672,7 @@ static PyObject *parser_parse(Parser *self, PyObject *args) {
     return NULL;
   }
 
-  return tree_new_internal(new_tree);
+  return tree_new_internal(new_tree, source_code, keep_text);
 }
 
 static PyObject *parser_set_language(Parser *self, PyObject *arg) {
@@ -637,8 +713,8 @@ static PyMethodDef parser_methods[] = {
   {
     .ml_name = "parse",
     .ml_meth = (PyCFunction)parser_parse,
-    .ml_flags = METH_VARARGS,
-    .ml_doc = "parse(bytes, old_tree=None)\n--\n\n\
+    .ml_flags = METH_VARARGS | METH_KEYWORDS,
+    .ml_doc = "parse(bytes, old_tree=None, keep_text=True)\n--\n\n\
                Parse source code, creating a syntax tree.",
   },
   {
