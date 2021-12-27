@@ -16,7 +16,6 @@ typedef struct {
   PyObject_HEAD
   TSTree *tree;
   PyObject *source;
-  int edited;
 } Tree;
 
 typedef struct {
@@ -247,17 +246,13 @@ static PyObject *node_get_parent(Node *self, void *payload) {
   return node_new_internal(parent, self->tree);
 }
 
-// forward declaraction
-static PyObject *tree_get_text(Tree *self, void *payload);
-
 static PyObject *node_get_text(Node *self, void *payload) {
   Tree *tree = (Tree *)self->tree;
   if (tree == NULL) {
     PyErr_SetString(PyExc_ValueError, "No tree");
     return NULL;
   }
-  PyObject *source = tree_get_text(tree, NULL);
-  if (source == Py_None) {
+  if (tree->source == Py_None || tree->source == NULL) {
     Py_RETURN_NONE;
   }
 
@@ -284,8 +279,7 @@ static PyObject *node_get_text(Node *self, void *payload) {
                     "PySlice_New failed");
     return NULL;
   }
-  PyObject *node_mv = PyMemoryView_FromObject(source);
-  Py_DECREF(source);
+  PyObject *node_mv = PyMemoryView_FromObject(tree->source);
   if (node_mv == NULL) {
     Py_DECREF(slice);
     PyErr_SetString(PyExc_RuntimeError,
@@ -399,9 +393,6 @@ static PyObject *tree_get_root_node(Tree *self, void *payload) {
 }
 
 static PyObject *tree_get_text(Tree *self, void *payload) {
-  if (self->edited) {
-    Py_RETURN_NONE;
-  }
   PyObject *source = self->source;
   if (source == NULL) {
     Py_RETURN_NONE;
@@ -455,7 +446,9 @@ static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
       .new_end_point = {new_end_row, new_end_column},
     };
     ts_tree_edit(self->tree, &edit);
-    self->edited = 1;
+    Py_XDECREF(self->source);
+    self->source = Py_None;
+    Py_INCREF(self->source);
   }
   Py_RETURN_NONE;
 }
@@ -501,7 +494,6 @@ static PyObject *tree_new_internal(TSTree *tree, PyObject *source, int keep_text
   Tree *self = (Tree *)tree_type.tp_alloc(&tree_type, 0);
   if (self != NULL) self->tree = tree;
 
-  self->edited = 0;
   if (keep_text) {
     self->source = source;
   } else {
