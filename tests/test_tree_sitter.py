@@ -443,9 +443,6 @@ class TestQuery(TestCase):
         )
 
         captures = query.captures(tree.root_node)
-        captures = query.captures(tree.root_node)
-        captures = query.captures(tree.root_node)
-        captures = query.captures(tree.root_node)
 
         self.assertEqual(captures[0][0].start_point, (0, 4))
         self.assertEqual(captures[0][0].end_point, (0, 7))
@@ -462,6 +459,131 @@ class TestQuery(TestCase):
         self.assertEqual(captures[3][0].start_point, (3, 2))
         self.assertEqual(captures[3][0].end_point, (3, 6))
         self.assertEqual(captures[3][1], "func-call")
+
+    def test_text_predicates(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        source = b"""
+            keypair_object = {
+                key1: value1,
+                equal: equal
+            }
+            
+            function fun1(arg) {
+                return 1;
+            }
+            
+            function fun2(arg) {
+                return 2;
+            }
+        """
+        tree = parser.parse(source)
+        root_node = tree.root_node
+
+        # function with name equal to 'fun1' -> test for #eq? @capture string
+        query1 = JAVASCRIPT.query("""
+        (
+            (function_declaration
+                name: (identifier) @function-name
+            )
+            (#eq? @function-name fun1)
+        )
+        """)
+        captures1 = query1.captures(root_node)
+        self.assertEqual(1, len(captures1))
+        self.assertEqual(b"fun1", captures1[0][0].text)
+        self.assertEqual("function-name", captures1[0][1])
+
+        # functions with name not equal to 'fun1' -> test for #not-eq? @capture string
+        query2 = JAVASCRIPT.query("""
+        (
+            (function_declaration
+                name: (identifier) @function-name
+            )
+            (#not-eq? @function-name fun1)
+        )
+        """)
+        captures2 = query2.captures(root_node)
+        self.assertEqual(1, len(captures2))
+        self.assertEqual(b"fun2", captures2[0][0].text)
+        self.assertEqual("function-name", captures2[0][1])
+
+        # key pairs whose key is equal to its value -> test for #eq? @capture1 @capture2
+        query3 = JAVASCRIPT.query("""
+                    (
+                      (pair
+                        key: (property_identifier) @key-name
+                        value: (identifier) @value-name)
+                      (#eq? @key-name @value-name)
+                    )
+                    """)
+        captures3 = query3.captures(root_node)
+        self.assertEqual(2, len(captures3))
+        self.assertSetEqual({b"equal"}, set([c[0].text for c in captures3]))
+        self.assertSetEqual({"key-name", "value-name"}, set([c[1] for c in captures3]))
+
+        # key pairs whose key is not equal to its value -> test for #not-eq? @capture1 @capture2
+        query4 = JAVASCRIPT.query("""
+                    (
+                      (pair
+                        key: (property_identifier) @key-name
+                        value: (identifier) @value-name)
+                      (#not-eq? @key-name @value-name)
+                    )
+                    """)
+        captures4 = query4.captures(root_node)
+        self.assertEqual(2, len(captures4))
+        self.assertSetEqual({b"key1", b"value1"}, set([c[0].text for c in captures4]))
+        self.assertSetEqual({"key-name", "value-name"}, set([c[1] for c in captures4]))
+
+        # equality that is satisfied by *another* capture
+        query5 = JAVASCRIPT.query("""
+        (
+            (function_declaration
+                name: (identifier) @function-name
+                parameters: (formal_parameters (identifier) @parameter-name)
+            )
+            (#eq? @function-name arg)
+        )
+        """)
+        captures5 = query5.captures(root_node)
+        self.assertEqual(0, len(captures5))
+
+        # after editing there is no text property, so predicates are ignored
+        tree.edit(
+            start_byte=0,
+            old_end_byte=0,
+            new_end_byte=2,
+            start_point=(0, 0),
+            old_end_point=(0, 0),
+            new_end_point=(0, 2),
+        )
+        captures_notext = query1.captures(root_node)
+        self.assertEqual(2, len(captures_notext))
+        self.assertSetEqual({"function-name"}, set([c[1] for c in captures_notext]))
+
+    def test_text_predicates_errors(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        with self.assertRaises(RuntimeError):
+            JAVASCRIPT.query("""
+            (
+                (function_declaration
+                    name: (identifier) @function-name
+                )
+                (#eq? @function-name @function-name fun1)
+            )
+            """)
+
+        with self.assertRaises(RuntimeError):
+            JAVASCRIPT.query("""
+            (
+                (function_declaration
+                    name: (identifier) @function-name
+                )
+                (#eq? fun1 @function-name)
+            )
+            """)
 
 
 def trim(string):
