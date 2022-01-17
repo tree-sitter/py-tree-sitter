@@ -30,10 +30,19 @@ typedef struct {
   PyObject *tree;
 } TreeCursor;
 
-typedef enum {
-  CaptureEqCapture,
-  CaptureEqString
-} TextPredicateType;
+typedef struct {
+  PyObject_HEAD;
+  uint32_t capture1_value_id;
+  uint32_t capture2_value_id;
+  int is_positive;
+} CaptureEqCapture;
+
+typedef struct {
+  PyObject_HEAD;
+  uint32_t capture_value_id;
+  const char *string_value;
+  int is_positive;
+} CaptureEqString;
 
 typedef struct {
   PyObject_HEAD
@@ -775,6 +784,64 @@ static PyObject *query_capture_new_internal(TSQueryCapture capture) {
   return (PyObject *)self;
 }
 
+// Text Predicates
+
+static void capture_eq_capture_dealloc(CaptureEqCapture *self) {
+  Py_TYPE(self)->tp_free(self);
+}
+
+static void capture_eq_string_dealloc(CaptureEqString *self) {
+  Py_TYPE(self)->tp_free(self);
+}
+
+static PyTypeObject capture_eq_capture_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  .tp_name = "tree_sitter.CaptureEqCapture",
+  .tp_doc = "Text predicate of the form #eq? @capture1 @capture2",
+  .tp_basicsize = sizeof(CaptureEqCapture),
+  .tp_itemsize = 0,
+  .tp_flags = Py_TPFLAGS_DEFAULT,
+  .tp_dealloc = (destructor)capture_eq_capture_dealloc,
+};
+
+static PyTypeObject capture_eq_string_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  .tp_name = "tree_sitter.CaptureEqString",
+  .tp_doc = "Text predicate of the form #eq? @capture string",
+  .tp_basicsize = sizeof(CaptureEqString),
+  .tp_itemsize = 0,
+  .tp_flags = Py_TPFLAGS_DEFAULT,
+  .tp_dealloc = (destructor)capture_eq_string_dealloc,
+};
+
+static PyObject *capture_eq_capture_new_internal(uint32_t capture1_value_id, uint32_t capture2_value_id, int is_positive) {
+  CaptureEqCapture *self = (CaptureEqCapture *)capture_eq_capture_type.tp_alloc(&capture_eq_capture_type, 0);
+  if (self != NULL) {
+    self->capture1_value_id = capture1_value_id;
+    self->capture2_value_id = capture2_value_id;
+    self->is_positive = is_positive;
+  }
+  return (PyObject *)self;
+}
+
+static PyObject *capture_eq_string_new_internal(uint32_t capture_value_id, const char * string_value, int is_positive) {
+  CaptureEqString *self = (CaptureEqString *)capture_eq_string_type.tp_alloc(&capture_eq_string_type, 0);
+  if (self != NULL) {
+    self->capture_value_id = capture_value_id;
+    self->string_value = string_value;
+    self->is_positive = is_positive;
+  }
+  return (PyObject *)self;
+}
+
+static bool capture_eq_capture_is_instance(PyObject *self) {
+  return PyObject_IsInstance(self, (PyObject *)&capture_eq_capture_type);
+}
+
+static bool capture_eq_string_is_instance(PyObject *self) {
+  return PyObject_IsInstance(self, (PyObject *)&capture_eq_string_type);
+}
+
 // Query
 
 static PyObject *query_matches(Query *self, PyObject *args) {
@@ -803,37 +870,27 @@ static bool satisfies_text_predicates(TSQueryCapture capture, Query *query, TSQu
   // check if all text_predicates are satisfied
   for (Py_ssize_t j = 0; j < PyList_Size(pattern_text_predicates); j++) {
     PyObject *text_predicate = PyList_GetItem(pattern_text_predicates, j);
-    unsigned long value_id_1 = PyLong_AsUnsignedLong(PyList_GetItem(text_predicate, 1));
-    Node *node1 = node_for_capture_index(value_id_1, match, node->tree);
-    PyObject *is_positive = PyList_GetItem(text_predicate, 3);
-    PyObject *are_equal;
-    switch(PyLong_AsLong(PyList_GetItem(text_predicate, 0))) {
-      case CaptureEqCapture:
-        unsigned long value_id_2 = PyLong_AsUnsignedLong(PyList_GetItem(text_predicate, 2));
-        Node *node2 = node_for_capture_index(value_id_2, match, node->tree);
-        are_equal = PyObject_RichCompare(node_get_text(node1, NULL), node_get_text(node2, NULL), Py_EQ);
-        if (are_equal != is_positive) {
-          Py_XDECREF(node1);
-          Py_XDECREF(node2);
-          Py_DECREF(are_equal);
-          return false;
-        }
-        Py_XDECREF(node2);
-        break;
-      case CaptureEqString:
-        char *node_1_text = PyBytes_AsString(node_get_text(node1, NULL));
-        Py_ssize_t size;
-        const char *string_value = PyUnicode_AsUTF8AndSize(PyList_GetItem(text_predicate, 2), &size);
-        are_equal = PyBool_FromLong(strcmp(node_1_text, string_value) == 0);
-        if (are_equal != is_positive) {
-          Py_XDECREF(node1);
-          Py_DECREF(are_equal);
-          return false;
-        }
-        break;
+    int is_satisfied;
+    if (capture_eq_capture_is_instance(text_predicate)) {
+      uint32_t capture1_value_id = ((CaptureEqCapture *)text_predicate)->capture1_value_id;
+      uint32_t capture2_value_id = ((CaptureEqCapture *)text_predicate)->capture2_value_id;
+      Node *node1 = node_for_capture_index(capture1_value_id, match, node->tree);
+      Node *node2 = node_for_capture_index(capture2_value_id, match, node->tree);
+      is_satisfied = PyObject_RichCompareBool(node_get_text(node1, NULL), node_get_text(node2, NULL), Py_EQ) == ((CaptureEqCapture *)text_predicate)->is_positive;
+      Py_XDECREF(node1);
+      Py_XDECREF(node2);
+      if (!is_satisfied)
+        return false;
+    } else if (capture_eq_string_is_instance(text_predicate))  {
+      uint32_t capture_value_id = ((CaptureEqString *)text_predicate)->capture_value_id;
+      Node *node1 = node_for_capture_index(capture_value_id, match, node->tree);
+      char *node_1_text = PyBytes_AsString(node_get_text(node1, NULL));
+      const char *string_value = ((CaptureEqString *)text_predicate)->string_value;
+      is_satisfied = (strcmp(node_1_text, string_value) == 0) == ((CaptureEqString *)text_predicate)->is_positive;
+      Py_XDECREF(node1);
+      if (!is_satisfied)
+        return false;
     }
-    Py_XDECREF(node1);
-    Py_DECREF(are_equal);
   }
   return true;
 }
@@ -1014,14 +1071,6 @@ static PyObject *query_new_internal(
         return NULL;
       }
       PyObject *operator_name = PyList_GetItem(query->string_values, predicate_start->value_id);
-      // text_predicate = [type, operand1, operand2, is_positive]
-      PyObject *text_predicate = PyList_New(4);
-      if (text_predicate == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to allocate list for text_predicate");
-        query_dealloc(query);
-        Py_DECREF(pattern_text_predicates);
-        return NULL;
-      }
       // Build a predicate for each of the supported predicate function names
       if (PyUnicode_CompareWithASCIIString(operator_name, "eq?") == 0 ||
           PyUnicode_CompareWithASCIIString(operator_name, "not-eq?") == 0) {
@@ -1029,43 +1078,49 @@ static PyObject *query_new_internal(
           PyErr_SetString(PyExc_RuntimeError, "Wrong number of arguments to #eq? or #not-eq? predicate");
           query_dealloc(query);
           Py_DECREF(pattern_text_predicates);
-          Py_DECREF(text_predicate);
           return NULL;
         }
         if ((predicate_start + 1)->type != TSQueryPredicateStepTypeCapture) {
           PyErr_SetString(PyExc_RuntimeError, "First argument to #eq? or #not-eq? must be a capture name");
           query_dealloc(query);
           Py_DECREF(pattern_text_predicates);
-          Py_DECREF(text_predicate);
           return NULL;
         }
+        int is_positive = PyUnicode_CompareWithASCIIString(operator_name, "eq?") == 0;
         switch ((predicate_start + 2)->type) {
           case TSQueryPredicateStepTypeCapture:
-            PyList_SetItem(text_predicate, 0, PyLong_FromUnsignedLong(CaptureEqCapture));
-            PyList_SetItem(text_predicate, 1, PyLong_FromUnsignedLong((predicate_start+1)->value_id));
-            PyList_SetItem(text_predicate, 2, PyLong_FromUnsignedLong((predicate_start+2)->value_id));
+            CaptureEqCapture *capture_eq_capture_predicate = (CaptureEqCapture *)capture_eq_capture_new_internal((predicate_start+1)->value_id, (predicate_start+2)->value_id, is_positive);
+            if (capture_eq_capture_predicate == NULL) {
+              PyErr_SetString(PyExc_RuntimeError, "Failed to allocate CaptureEqCapture text predicate");
+              query_dealloc(query);
+              Py_DECREF(pattern_text_predicates);
+              return NULL;
+            }
+            PyList_Append(pattern_text_predicates, (PyObject *)capture_eq_capture_predicate);
+            Py_DECREF(capture_eq_capture_predicate);
             break;
           case TSQueryPredicateStepTypeString:
-            PyList_SetItem(text_predicate, 0, PyLong_FromUnsignedLong(CaptureEqString));
-            PyList_SetItem(text_predicate, 1, PyLong_FromUnsignedLong((predicate_start+1)->value_id));
-            PyObject *string_value = PyList_GetItem(query->string_values, (predicate_start+2)->value_id);
-            PyList_SetItem(text_predicate, 2, string_value);
-            Py_INCREF(string_value);
+            Py_ssize_t size;
+            const char *string_value = PyUnicode_AsUTF8AndSize(PyList_GetItem(query->string_values, (predicate_start+2)->value_id), &size);
+            CaptureEqString *capture_eq_string_predicate = (CaptureEqString *)capture_eq_string_new_internal((predicate_start+1)->value_id, string_value, is_positive);
+            if (capture_eq_string_predicate == NULL) {
+              PyErr_SetString(PyExc_RuntimeError, "Failed to allocate CaptureEqString text predicate");
+              query_dealloc(query);
+              Py_DECREF(pattern_text_predicates);
+              return NULL;
+            }
+            PyList_Append(pattern_text_predicates, (PyObject *)capture_eq_string_predicate);
+            Py_DECREF(capture_eq_string_predicate);
             break;
           default:
             PyErr_SetString(PyExc_RuntimeError, "Second argument to #eq? or #not-eq? must be a capture name or a string literal");
             query_dealloc(query);
             Py_DECREF(pattern_text_predicates);
-            Py_DECREF(text_predicate);
             return NULL;
         }
-        int is_positive = PyUnicode_CompareWithASCIIString(operator_name, "eq?") == 0;
-        PyList_SetItem(text_predicate, 3, PyBool_FromLong(is_positive));
       }
       predicate_step++;
       j += predicate_len;
-      PyList_Append(pattern_text_predicates, text_predicate);
-      Py_DECREF(text_predicate);
     }
     PyList_SetItem(query->text_predicates, i, pattern_text_predicates);
   }
@@ -1154,6 +1209,14 @@ PyMODINIT_FUNC PyInit_binding(void) {
   if (PyType_Ready(&query_capture_type) < 0) return NULL;
   Py_INCREF(&query_capture_type);
   PyModule_AddObject(module, "QueryCapture", (PyObject *)&query_capture_type);
+
+  if (PyType_Ready(&capture_eq_capture_type) < 0) return NULL;
+  Py_INCREF(&capture_eq_capture_type);
+  PyModule_AddObject(module, "CaptureEqCapture", (PyObject *)&capture_eq_capture_type);
+
+  if (PyType_Ready(&capture_eq_string_type) < 0) return NULL;
+  Py_INCREF(&capture_eq_string_type);
+  PyModule_AddObject(module, "CaptureEqString", (PyObject *)&capture_eq_string_type);
 
   if (PyType_Ready(&query_type) < 0) return NULL;
   Py_INCREF(&query_type);
