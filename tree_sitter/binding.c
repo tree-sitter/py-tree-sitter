@@ -889,11 +889,11 @@ static PyObject *query_matches(Query *self, PyObject *args) {
   return NULL;
 }
 
-static Node *node_for_capture_index(uint32_t index, TSQueryMatch match, PyObject *tree) {
+static Node *node_for_capture_index(uint32_t index, TSQueryMatch match, Tree *tree) {
     for (unsigned i=0; i<match.capture_count; i++) {
         TSQueryCapture capture = match.captures[i];
         if (capture.index == index) {
-          Node *capture_node = (Node *)node_new_internal(capture.node, tree);
+          Node *capture_node = (Node *)node_new_internal(capture.node, (PyObject *)tree);
           return capture_node;
         }
     }
@@ -901,10 +901,10 @@ static Node *node_for_capture_index(uint32_t index, TSQueryMatch match, PyObject
     return NULL;
 }
 
-static bool satisfies_text_predicates(TSQueryCapture capture, Query *query, TSQueryMatch match, Node *node) {
+static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tree) {
   PyObject *pattern_text_predicates = PyList_GetItem(query->text_predicates, match.pattern_index);
   // if there is no source, ignore the text predicates
-  if (((Tree *)node->tree)->source == Py_None || ((Tree *)node->tree)->source == NULL) {
+  if (tree->source == Py_None || tree->source == NULL) {
     return true;
   }
   // check if all text_predicates are satisfied
@@ -914,8 +914,8 @@ static bool satisfies_text_predicates(TSQueryCapture capture, Query *query, TSQu
     if (capture_eq_capture_is_instance(text_predicate)) {
       uint32_t capture1_value_id = ((CaptureEqCapture *)text_predicate)->capture1_value_id;
       uint32_t capture2_value_id = ((CaptureEqCapture *)text_predicate)->capture2_value_id;
-      Node *node1 = node_for_capture_index(capture1_value_id, match, node->tree);
-      Node *node2 = node_for_capture_index(capture2_value_id, match, node->tree);
+      Node *node1 = node_for_capture_index(capture1_value_id, match, tree);
+      Node *node2 = node_for_capture_index(capture2_value_id, match, tree);
       is_satisfied = PyObject_RichCompareBool(node_get_text(node1, NULL), node_get_text(node2, NULL), Py_EQ) == ((CaptureEqCapture *)text_predicate)->is_positive;
       Py_XDECREF(node1);
       Py_XDECREF(node2);
@@ -923,7 +923,7 @@ static bool satisfies_text_predicates(TSQueryCapture capture, Query *query, TSQu
         return false;
     } else if (capture_eq_string_is_instance(text_predicate)) {
       uint32_t capture_value_id = ((CaptureEqString *)text_predicate)->capture_value_id;
-      Node *node1 = node_for_capture_index(capture_value_id, match, node->tree);
+      Node *node1 = node_for_capture_index(capture_value_id, match, tree);
       char *node_1_text = PyBytes_AsString(node_get_text(node1, NULL));
       const char *string_value = ((CaptureEqString *)text_predicate)->string_value;
       is_satisfied = (strcmp(node_1_text, string_value) == 0) == ((CaptureEqString *)text_predicate)->is_positive;
@@ -932,7 +932,7 @@ static bool satisfies_text_predicates(TSQueryCapture capture, Query *query, TSQu
         return false;
     } else if (capture_match_string_is_instance(text_predicate)) {
       uint32_t capture_value_id = ((CaptureMatchString *)text_predicate)->capture_value_id;
-      Node *node1 = node_for_capture_index(capture_value_id, match, node->tree);
+      Node *node1 = node_for_capture_index(capture_value_id, match, tree);
       char *node_1_text = PyBytes_AsString(node_get_text(node1, NULL));
       Py_XDECREF(node1);
       int ret = regexec(&((CaptureMatchString *)text_predicate)->regex, node_1_text, 0, NULL, 0);
@@ -988,7 +988,7 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
   TSQueryMatch match;
   while (ts_query_cursor_next_capture(query_cursor, &match, &capture_index)) {
     QueryCapture *capture = (QueryCapture *)query_capture_new_internal(match.captures[capture_index]);
-    if (satisfies_text_predicates(capture->capture, self, match, node)) {
+    if (satisfies_text_predicates(self, match, (Tree *)node->tree)) {
       PyObject *capture_name = PyList_GetItem(self->capture_names, capture->capture.index);
       PyObject *capture_node = node_new_internal(capture->capture.node, node->tree);
       PyObject *item = PyTuple_Pack(2, capture_node, capture_name);
