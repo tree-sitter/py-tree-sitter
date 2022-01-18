@@ -468,11 +468,11 @@ class TestQuery(TestCase):
                 key1: value1,
                 equal: equal
             }
-            
+
             function fun1(arg) {
                 return 1;
             }
-            
+
             function fun2(arg) {
                 return 2;
             }
@@ -522,7 +522,8 @@ class TestQuery(TestCase):
         self.assertSetEqual({b"equal"}, set([c[0].text for c in captures3]))
         self.assertSetEqual({"key-name", "value-name"}, set([c[1] for c in captures3]))
 
-        # key pairs whose key is not equal to its value -> test for #not-eq? @capture1 @capture2
+        # key pairs whose key is not equal to its value
+        # -> test for #not-eq? @capture1 @capture2
         query4 = JAVASCRIPT.query("""
                     (
                       (pair
