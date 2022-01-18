@@ -1138,6 +1138,7 @@ static PyObject *query_new_internal(
         int is_positive = PyUnicode_CompareWithASCIIString(operator_name, "eq?") == 0;
         switch ((predicate_step + 2)->type) {
           case TSQueryPredicateStepTypeCapture:
+            ;
             CaptureEqCapture *capture_eq_capture_predicate = (CaptureEqCapture *)capture_eq_capture_new_internal(
               (predicate_step+1)->value_id, (predicate_step+2)->value_id, is_positive
             );
@@ -1149,6 +1150,7 @@ static PyObject *query_new_internal(
             Py_DECREF(capture_eq_capture_predicate);
             break;
           case TSQueryPredicateStepTypeString:
+            ;
             Py_ssize_t size;
             const char *string_value = PyUnicode_AsUTF8AndSize(
               PyList_GetItem(query->string_values, (predicate_step+2)->value_id), &size
