@@ -549,6 +549,32 @@ class TestQuery(TestCase):
         captures5 = query5.captures(root_node)
         self.assertEqual(0, len(captures5))
 
+        # functions that match the regex .*1 -> test for #match @capture regex
+        query6 = JAVASCRIPT.query("""
+                (
+                    (function_declaration
+                        name: (identifier) @function-name
+                    )
+                    (#match? @function-name ".*1")
+                )
+                """)
+        captures6 = query6.captures(root_node)
+        self.assertEqual(1, len(captures6))
+        self.assertEqual(b"fun1", captures6[0][0].text)
+
+        # functions that do not match the regex .*1 -> test for #not-match @capture regex
+        query6 = JAVASCRIPT.query("""
+                        (
+                            (function_declaration
+                                name: (identifier) @function-name
+                            )
+                            (#not-match? @function-name ".*1")
+                        )
+                        """)
+        captures6 = query6.captures(root_node)
+        self.assertEqual(1, len(captures6))
+        self.assertEqual(b"fun2", captures6[0][0].text)
+
         # after editing there is no text property, so predicates are ignored
         tree.edit(
             start_byte=0,
@@ -582,6 +608,36 @@ class TestQuery(TestCase):
                     name: (identifier) @function-name
                 )
                 (#eq? fun1 @function-name)
+            )
+            """)
+
+        with self.assertRaises(RuntimeError):
+            JAVASCRIPT.query("""
+            (
+                (function_declaration
+                    name: (identifier) @function-name
+                )
+                (#match? @function-name @function-name fun1)
+            )
+            """)
+
+        with self.assertRaises(RuntimeError):
+            JAVASCRIPT.query("""
+            (
+                (function_declaration
+                    name: (identifier) @function-name
+                )
+                (#match? fun1 @function-name)
+            )
+            """)
+
+        with self.assertRaises(RuntimeError):
+            JAVASCRIPT.query("""
+            (
+                (function_declaration
+                    name: (identifier) @function-name
+                )
+                (#match? @function-name @function-name)
             )
             """)
 
