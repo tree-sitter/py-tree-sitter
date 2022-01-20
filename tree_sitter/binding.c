@@ -65,7 +65,7 @@ typedef struct {
 
 static TSTreeCursor default_cursor = {0};
 static TSQueryCursor *query_cursor = NULL;
-static PyObject *re_module = NULL;
+static PyObject *re_compile = NULL;
 
 // Point
 
@@ -858,15 +858,11 @@ static PyObject *capture_eq_string_new_internal(uint32_t capture_value_id, const
 }
 
 static PyObject *capture_match_string_new_internal(uint32_t capture_value_id, const char *string_value, int is_positive) {
-  if (re_module == NULL)
-    re_module = PyImport_ImportModule("re");
   CaptureMatchString *self = (CaptureMatchString *)capture_match_string_type.tp_alloc(&capture_match_string_type, 0);
-  if (re_module == NULL || self == NULL)
+  if (self == NULL)
     return NULL;
   self->capture_value_id = capture_value_id;
-  PyObject *re_compile = PyObject_GetAttrString(re_module,(char*)"compile");
   self->regex = PyObject_CallFunction(re_compile, "s", string_value);
-  Py_DECREF(re_compile);
   self->is_positive = is_positive;
   return (PyObject *)self;
 }
@@ -1324,6 +1320,12 @@ PyMODINIT_FUNC PyInit_binding(void) {
   if (PyType_Ready(&query_type) < 0) return NULL;
   Py_INCREF(&query_type);
   PyModule_AddObject(module, "Query", (PyObject *)&query_type);
+
+  PyObject *re_module = PyImport_ImportModule("re");
+  if (re_module == NULL) return NULL;
+  re_compile = PyObject_GetAttrString(re_module,(char*)"compile");
+  Py_DECREF(re_module);
+  if (re_compile == NULL) return NULL;
 
   return module;
 }
