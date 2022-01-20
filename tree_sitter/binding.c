@@ -31,21 +31,21 @@ typedef struct {
 } TreeCursor;
 
 typedef struct {
-  PyObject_HEAD;
+  PyObject_HEAD
   uint32_t capture1_value_id;
   uint32_t capture2_value_id;
   int is_positive;
 } CaptureEqCapture;
 
 typedef struct {
-  PyObject_HEAD;
+  PyObject_HEAD
   uint32_t capture_value_id;
   PyObject *string_value;
   int is_positive;
 } CaptureEqString;
 
 typedef struct {
-  PyObject_HEAD;
+  PyObject_HEAD
   uint32_t capture_value_id;
   PyObject *regex;
   int is_positive;
