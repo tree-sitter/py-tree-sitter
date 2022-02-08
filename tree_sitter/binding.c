@@ -164,7 +164,7 @@ static PyObject *node_chield_by_field_name(Node *self, PyObject *args) {
 }
 
 static PyObject *node_get_id(Node *self, void *payload) {
-  return PyLong_FromSize_t((size_t)self->node.id);
+  return PyLong_FromVoidPtr((void *)self->node.id);
 }
 
 static PyObject *node_get_type(Node *self, void *payload) {
