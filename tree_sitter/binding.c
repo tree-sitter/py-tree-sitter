@@ -980,7 +980,7 @@ static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tr
     Py_XDECREF(node2);
     Py_XDECREF(node1_text);
     Py_XDECREF(node2_text);
-    return NULL;
+    return false;
 }
 
 static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
