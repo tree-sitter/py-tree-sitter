@@ -66,6 +66,13 @@ class TestParser(TestCase):
             "'🐍'",
         )
 
+    def test_buffer_protocol(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        parser.parse(b'test')
+        parser.parse(memoryview(b'test'))
+        parser.parse(bytearray(b'test'))
+
 
 class TestNode(TestCase):
     def test_child_by_field_id(self):
