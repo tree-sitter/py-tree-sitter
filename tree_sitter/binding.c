@@ -32,12 +32,40 @@ typedef struct {
 
 typedef struct {
   PyObject_HEAD
+  uint32_t capture1_value_id;
+  uint32_t capture2_value_id;
+  int is_positive;
+} CaptureEqCapture;
+
+typedef struct {
+  PyObject_HEAD
+  uint32_t capture_value_id;
+  PyObject *string_value;
+  int is_positive;
+} CaptureEqString;
+
+typedef struct {
+  PyObject_HEAD
+  uint32_t capture_value_id;
+  PyObject *regex;
+  int is_positive;
+} CaptureMatchString;
+
+typedef struct {
+  PyObject_HEAD
   TSQuery *query;
   PyObject *capture_names;
+  PyObject *text_predicates;
 } Query;
+
+typedef struct {
+  PyObject_HEAD
+  TSQueryCapture capture;
+} QueryCapture;
 
 static TSTreeCursor default_cursor = {0};
 static TSQueryCursor *query_cursor = NULL;
+static PyObject *re_compile = NULL;
 
 // Point
 
@@ -739,11 +767,213 @@ static PyTypeObject parser_type = {
   .tp_methods = parser_methods,
 };
 
+// Query Capture
+
+static void capture_dealloc(QueryCapture *self) {
+  Py_TYPE(self)->tp_free(self);
+}
+
+static PyTypeObject query_capture_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  .tp_name = "tree_sitter.Capture",
+  .tp_doc = "A query capture",
+  .tp_basicsize = sizeof(QueryCapture),
+  .tp_itemsize = 0,
+  .tp_flags = Py_TPFLAGS_DEFAULT,
+  .tp_dealloc = (destructor)capture_dealloc,
+};
+
+static PyObject *query_capture_new_internal(TSQueryCapture capture) {
+  QueryCapture *self = (QueryCapture *)query_capture_type.tp_alloc(&query_capture_type, 0);
+  if (self != NULL) {
+    self->capture = capture;
+  }
+  return (PyObject *)self;
+}
+
+// Text Predicates
+
+static void capture_eq_capture_dealloc(CaptureEqCapture *self) {
+  Py_TYPE(self)->tp_free(self);
+}
+
+static void capture_eq_string_dealloc(CaptureEqString *self) {
+  Py_XDECREF(self->string_value);
+  Py_TYPE(self)->tp_free(self);
+}
+
+static void capture_match_string_dealloc(CaptureMatchString *self) {
+  Py_XDECREF(self->regex);
+  Py_TYPE(self)->tp_free(self);
+}
+
+static PyTypeObject capture_eq_capture_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  .tp_name = "tree_sitter.CaptureEqCapture",
+  .tp_doc = "Text predicate of the form #eq? @capture1 @capture2",
+  .tp_basicsize = sizeof(CaptureEqCapture),
+  .tp_itemsize = 0,
+  .tp_flags = Py_TPFLAGS_DEFAULT,
+  .tp_dealloc = (destructor)capture_eq_capture_dealloc,
+};
+
+static PyTypeObject capture_eq_string_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  .tp_name = "tree_sitter.CaptureEqString",
+  .tp_doc = "Text predicate of the form #eq? @capture string",
+  .tp_basicsize = sizeof(CaptureEqString),
+  .tp_itemsize = 0,
+  .tp_flags = Py_TPFLAGS_DEFAULT,
+  .tp_dealloc = (destructor)capture_eq_string_dealloc,
+};
+
+static PyTypeObject capture_match_string_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  .tp_name = "tree_sitter.CaptureMatchString",
+  .tp_doc = "Text predicate of the form #eq? @capture regex",
+  .tp_basicsize = sizeof(CaptureMatchString),
+  .tp_itemsize = 0,
+  .tp_flags = Py_TPFLAGS_DEFAULT,
+  .tp_dealloc = (destructor)capture_match_string_dealloc,
+};
+
+static PyObject *capture_eq_capture_new_internal(uint32_t capture1_value_id, uint32_t capture2_value_id, int is_positive) {
+  CaptureEqCapture *self = (CaptureEqCapture *)capture_eq_capture_type.tp_alloc(&capture_eq_capture_type, 0);
+  if (self != NULL) {
+    self->capture1_value_id = capture1_value_id;
+    self->capture2_value_id = capture2_value_id;
+    self->is_positive = is_positive;
+  }
+  return (PyObject *)self;
+}
+
+static PyObject *capture_eq_string_new_internal(uint32_t capture_value_id, const char* string_value, int is_positive) {
+  CaptureEqString *self = (CaptureEqString *)capture_eq_string_type.tp_alloc(&capture_eq_string_type, 0);
+  if (self != NULL) {
+    self->capture_value_id = capture_value_id;
+    self->string_value = PyBytes_FromString(string_value);
+    self->is_positive = is_positive;
+  }
+  return (PyObject *)self;
+}
+
+static PyObject *capture_match_string_new_internal(uint32_t capture_value_id, const char *string_value, int is_positive) {
+  CaptureMatchString *self = (CaptureMatchString *)capture_match_string_type.tp_alloc(&capture_match_string_type, 0);
+  if (self == NULL)
+    return NULL;
+  self->capture_value_id = capture_value_id;
+  self->regex = PyObject_CallFunction(re_compile, "s", string_value);
+  self->is_positive = is_positive;
+  return (PyObject *)self;
+}
+
+static bool capture_eq_capture_is_instance(PyObject *self) {
+  return PyObject_IsInstance(self, (PyObject *)&capture_eq_capture_type);
+}
+
+static bool capture_eq_string_is_instance(PyObject *self) {
+  return PyObject_IsInstance(self, (PyObject *)&capture_eq_string_type);
+}
+
+static bool capture_match_string_is_instance(PyObject *self) {
+  return PyObject_IsInstance(self, (PyObject *)&capture_match_string_type);
+}
+
 // Query
 
 static PyObject *query_matches(Query *self, PyObject *args) {
   PyErr_SetString(PyExc_NotImplementedError, "Not Implemented");
   return NULL;
+}
+
+static Node *node_for_capture_index(uint32_t index, TSQueryMatch match, Tree *tree) {
+    for (unsigned i=0; i<match.capture_count; i++) {
+        TSQueryCapture capture = match.captures[i];
+        if (capture.index == index) {
+          Node *capture_node = (Node *)node_new_internal(capture.node, (PyObject *)tree);
+          return capture_node;
+        }
+    }
+    PyErr_SetString(PyExc_ValueError, "An error occurred, capture was not found with given index");
+    return NULL;
+}
+
+static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tree) {
+  PyObject *pattern_text_predicates = PyList_GetItem(query->text_predicates, match.pattern_index);
+  // if there is no source, ignore the text predicates
+  if (tree->source == Py_None || tree->source == NULL) {
+    return true;
+  }
+
+  Node *node1 = NULL;
+  Node *node2 = NULL;
+  PyObject *node1_text = NULL;
+  PyObject *node2_text = NULL;
+  // check if all text_predicates are satisfied
+  for (Py_ssize_t j = 0; j < PyList_Size(pattern_text_predicates); j++) {
+    PyObject *text_predicate = PyList_GetItem(pattern_text_predicates, j);
+    int is_satisfied;
+    if (capture_eq_capture_is_instance(text_predicate)) {
+      uint32_t capture1_value_id = ((CaptureEqCapture *)text_predicate)->capture1_value_id;
+      uint32_t capture2_value_id = ((CaptureEqCapture *)text_predicate)->capture2_value_id;
+      node1 = node_for_capture_index(capture1_value_id, match, tree);
+      node2 = node_for_capture_index(capture2_value_id, match, tree);
+      if (node1 == NULL || node2 == NULL)
+        goto error;
+      node1_text = node_get_text(node1, NULL);
+      node2_text = node_get_text(node2, NULL);
+      if (node1_text == NULL || node2_text == NULL)
+        goto error;
+      Py_XDECREF(node1);
+      Py_XDECREF(node2);
+      is_satisfied = PyObject_RichCompareBool(node1_text, node2_text, Py_EQ)
+                      == ((CaptureEqCapture *)text_predicate)->is_positive;
+      Py_XDECREF(node1_text);
+      Py_XDECREF(node2_text);
+      if (!is_satisfied)
+        return false;
+    } else if (capture_eq_string_is_instance(text_predicate)) {
+      uint32_t capture_value_id = ((CaptureEqString *)text_predicate)->capture_value_id;
+      node1 = node_for_capture_index(capture_value_id, match, tree);
+      if (node1 == NULL)
+        goto error;
+      node1_text = node_get_text(node1, NULL);
+      if (node1_text == NULL)
+        goto error;
+      Py_XDECREF(node1);
+      PyObject *string_value = ((CaptureEqString *)text_predicate)->string_value;
+      is_satisfied = PyObject_RichCompareBool(node1_text, string_value, Py_EQ)
+                      == ((CaptureEqString *)text_predicate)->is_positive;
+      Py_XDECREF(node1_text);
+      if (!is_satisfied)
+        return false;
+    } else if (capture_match_string_is_instance(text_predicate)) {
+      uint32_t capture_value_id = ((CaptureMatchString *)text_predicate)->capture_value_id;
+      node1 = node_for_capture_index(capture_value_id, match, tree);
+      if (node1 == NULL)
+        goto error;
+      node1_text = node_get_text(node1, NULL);
+      if (node1_text == NULL)
+        goto error;
+      Py_XDECREF(node1);
+      PyObject *search_result = PyObject_CallMethod(
+        ((CaptureMatchString *)text_predicate)->regex, "search", "s", PyBytes_AsString(node1_text)
+      );
+      Py_XDECREF(node1_text);
+      is_satisfied = (search_result != Py_None) == ((CaptureMatchString *)text_predicate)->is_positive;
+      Py_DECREF(search_result);
+      if (!is_satisfied)
+        return false;
+    }
+  }
+  return true;
+
+  error:
+    Py_XDECREF(node1);
+    Py_XDECREF(node2);
+    Py_XDECREF(node1_text);
+    Py_XDECREF(node2_text);
+    return NULL;
 }
 
 static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
@@ -778,26 +1008,41 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
   if (!query_cursor) query_cursor = ts_query_cursor_new();
   ts_query_cursor_exec(query_cursor, self->query, node->node);
 
+  QueryCapture *capture = NULL;
   PyObject *result = PyList_New(0);
+  if (result == NULL)
+    goto error;
 
   uint32_t capture_index;
   TSQueryMatch match;
   while (ts_query_cursor_next_capture(query_cursor, &match, &capture_index)) {
-    const TSQueryCapture *capture = &match.captures[capture_index];
-    PyObject *capture_node = node_new_internal(capture->node, node->tree);
-    PyObject *capture_name = PyList_GetItem(self->capture_names, capture->index);
-    PyObject *item = PyTuple_Pack(2, capture_node, capture_name);
-    Py_XDECREF(capture_node);
-    PyList_Append(result, item);
-    Py_XDECREF(item);
+    capture = (QueryCapture *)query_capture_new_internal(match.captures[capture_index]);
+    if (capture == NULL)
+      goto error;
+    if (satisfies_text_predicates(self, match, (Tree *)node->tree)) {
+      PyObject *capture_name = PyList_GetItem(self->capture_names, capture->capture.index);
+      PyObject *capture_node = node_new_internal(capture->capture.node, node->tree);
+      PyObject *item = PyTuple_Pack(2, capture_node, capture_name);
+      if (item == NULL)
+        goto error;
+      Py_XDECREF(capture_node);
+      PyList_Append(result, item);
+      Py_XDECREF(item);
+    }
+    Py_XDECREF(capture);
   }
-
   return result;
+
+  error:
+    Py_XDECREF(result);
+    Py_XDECREF(capture);
+    return NULL;
 }
 
 static void query_dealloc(Query *self) {
   if (self->query) ts_query_delete(self->query);
   Py_XDECREF(self->capture_names);
+  Py_XDECREF(self->text_predicates);
   Py_TYPE(self)->tp_free(self);
 }
 
@@ -838,6 +1083,7 @@ static PyObject *query_new_internal(
   Query *query = (Query *)query_type.tp_alloc(&query_type, 0);
   if (query == NULL) return NULL;
 
+  PyObject *pattern_text_predicates = NULL;
   uint32_t error_offset;
   TSQueryError error_type;
   query->query = ts_query_new(
@@ -866,8 +1112,7 @@ static PyObject *query_new_internal(
         PyErr_Format(PyExc_SyntaxError, "Invalid syntax at offset %u", error_offset);
     }
     *word_end = c;
-    query_dealloc(query);
-    return NULL;
+    goto error;
   }
 
   unsigned n = ts_query_capture_count(query->query);
@@ -878,7 +1123,103 @@ static PyObject *query_new_internal(
     const char *capture_name = ts_query_capture_name_for_id(query->query, i, &length);
     PyList_SetItem(query->capture_names, i, PyUnicode_FromStringAndSize(capture_name, length));
   }
+
+  unsigned pattern_count = ts_query_pattern_count(query->query);
+  query->text_predicates = PyList_New(pattern_count);
+  if (query->text_predicates == NULL)
+    goto error;
+
+  for (unsigned i = 0; i < pattern_count; i++) {
+    unsigned length;
+    const TSQueryPredicateStep* predicate_step = ts_query_predicates_for_pattern(query->query, i, &length);
+    pattern_text_predicates = PyList_New(0);
+    if (pattern_text_predicates == NULL)
+      goto error;
+    for (unsigned j = 0; j < length; j++) {
+      unsigned predicate_len = 0;
+      while ((predicate_step + predicate_len)->type != TSQueryPredicateStepTypeDone)
+        predicate_len++;
+
+      if (predicate_step->type != TSQueryPredicateStepTypeString) {
+        PyErr_SetString(PyExc_RuntimeError, "Capture predicate must start with a string");
+        goto error;
+      }
+
+      // Build a predicate for each of the supported predicate function names
+      unsigned length;
+      const char *operator_name = ts_query_string_value_for_id(query->query, predicate_step->value_id, &length);
+      if (strcmp(operator_name, "eq?") == 0 || strcmp(operator_name, "not-eq?") == 0) {
+        if (predicate_len != 3) {
+          PyErr_SetString(PyExc_RuntimeError, "Wrong number of arguments to #eq? or #not-eq? predicate");
+          goto error;
+        }
+        if (predicate_step[1].type != TSQueryPredicateStepTypeCapture) {
+          PyErr_SetString(PyExc_RuntimeError, "First argument to #eq? or #not-eq? must be a capture name");
+          goto error;
+        }
+        int is_positive = strcmp(operator_name, "eq?") == 0;
+        switch (predicate_step[2].type) {
+          case TSQueryPredicateStepTypeCapture:
+            ;
+            CaptureEqCapture *capture_eq_capture_predicate = (CaptureEqCapture *)capture_eq_capture_new_internal(
+              predicate_step[1].value_id, predicate_step[2].value_id, is_positive
+            );
+            if (capture_eq_capture_predicate == NULL)
+              goto error;
+            PyList_Append(pattern_text_predicates, (PyObject *)capture_eq_capture_predicate);
+            Py_DECREF(capture_eq_capture_predicate);
+            break;
+          case TSQueryPredicateStepTypeString:
+            ;
+            const char *string_value = ts_query_string_value_for_id(
+              query->query, predicate_step[2].value_id, &length
+            );
+            CaptureEqString *capture_eq_string_predicate = (CaptureEqString *)capture_eq_string_new_internal(
+              predicate_step[1].value_id, string_value, is_positive
+            );
+            if (capture_eq_string_predicate == NULL)
+              goto error;
+            PyList_Append(pattern_text_predicates, (PyObject *)capture_eq_string_predicate);
+            Py_DECREF(capture_eq_string_predicate);
+            break;
+          default:
+            PyErr_SetString(PyExc_RuntimeError, "Second argument to #eq? or #not-eq? must be a capture name or a string literal");
+            goto error;
+        }
+      } else if (strcmp(operator_name, "match?") == 0 || strcmp(operator_name, "not-match?") == 0) {
+        if (predicate_len != 3) {
+          PyErr_SetString(PyExc_RuntimeError, "Wrong number of arguments to #match? or #not-match? predicate");
+          goto error;
+        }
+        if (predicate_step[1].type != TSQueryPredicateStepTypeCapture) {
+          PyErr_SetString(PyExc_RuntimeError, "First argument to #match? or #not-match? must be a capture name");
+          goto error;
+        }
+        if (predicate_step[2].type != TSQueryPredicateStepTypeString) {
+          PyErr_SetString(PyExc_RuntimeError, "Second argument to #match? or #not-match? must be a regex string");
+          goto error;
+        }
+        const char *string_value = ts_query_string_value_for_id(query->query, predicate_step[2].value_id, &length);
+        int is_positive = strcmp(operator_name, "match?") == 0;
+        CaptureMatchString *capture_match_string_predicate = (CaptureMatchString *)capture_match_string_new_internal(
+          predicate_step[1].value_id, string_value, is_positive
+        );
+        if (capture_match_string_predicate == NULL)
+          goto error;
+        PyList_Append(pattern_text_predicates, (PyObject *)capture_match_string_predicate);
+        Py_DECREF(capture_match_string_predicate);
+      }
+      predicate_step += predicate_len;
+      j += predicate_len;
+    }
+    PyList_SetItem(query->text_predicates, i, pattern_text_predicates);
+  }
   return (PyObject *)query;
+
+  error:
+    query_dealloc(query);
+    Py_XDECREF(pattern_text_predicates);
+    return NULL;
 }
 
 // Module
@@ -960,9 +1301,31 @@ PyMODINIT_FUNC PyInit_binding(void) {
   Py_INCREF(&tree_cursor_type);
   PyModule_AddObject(module, "TreeCursor", (PyObject *)&tree_cursor_type);
 
+  if (PyType_Ready(&query_capture_type) < 0) return NULL;
+  Py_INCREF(&query_capture_type);
+  PyModule_AddObject(module, "QueryCapture", (PyObject *)&query_capture_type);
+
+  if (PyType_Ready(&capture_eq_capture_type) < 0) return NULL;
+  Py_INCREF(&capture_eq_capture_type);
+  PyModule_AddObject(module, "CaptureEqCapture", (PyObject *)&capture_eq_capture_type);
+
+  if (PyType_Ready(&capture_eq_string_type) < 0) return NULL;
+  Py_INCREF(&capture_eq_string_type);
+  PyModule_AddObject(module, "CaptureEqString", (PyObject *)&capture_eq_string_type);
+
+  if (PyType_Ready(&capture_match_string_type) < 0) return NULL;
+  Py_INCREF(&capture_match_string_type);
+  PyModule_AddObject(module, "CaptureMatchString", (PyObject *)&capture_match_string_type);
+
   if (PyType_Ready(&query_type) < 0) return NULL;
   Py_INCREF(&query_type);
   PyModule_AddObject(module, "Query", (PyObject *)&query_type);
+
+  PyObject *re_module = PyImport_ImportModule("re");
+  if (re_module == NULL) return NULL;
+  re_compile = PyObject_GetAttrString(re_module,(char*)"compile");
+  Py_DECREF(re_module);
+  if (re_compile == NULL) return NULL;
 
   return module;
 }
