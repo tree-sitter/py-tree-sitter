@@ -6,6 +6,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  build_asan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Build Python+ASAN
+        shell: /usr/bin/bash {0}
+        run: |
+          git clone --depth=1 -b 3.10 https://github.com/python/cpython.git
+          cd cpython
+          ./configure --with-assertions --with-address-sanitizer --with-undefined-behavior-sanitizer --with-pydebug --disable-shared "--prefix=$(pwd)/opt"
+          make -j2
+          make install
+          ./python -m ensurepip
+      - name: Fetch fixtures
+        run: ./script/fetch-fixtures
+      - name: Test
+        run: |
+          CFLAGS="-O0 -g" ./cpython/python setup.py test
   build:
     strategy:
       fail-fast: false
