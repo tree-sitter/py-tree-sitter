@@ -15,8 +15,9 @@ jobs:
           - macos-latest
           - windows-latest
         python:
-          - "3.5"
+          - "3.6"
           - "3.8"
+          - "3.10"
           - pypy-3.7
         install_libcxx:
           - false
