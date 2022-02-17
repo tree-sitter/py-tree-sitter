@@ -495,13 +495,8 @@ static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
 }
 
 static PyObject *tree_get_changed_ranges(Tree *self, PyObject *args, PyObject *kwargs) {
-  char *keywords[] = {
-    "new_tree",
-    NULL,
-  };
-
   Tree *new_tree = NULL;
-
+  char *keywords[] = {"new_tree", NULL};
   int ok = PyArg_ParseTupleAndKeywords(
     args,
     kwargs,
@@ -520,13 +515,13 @@ static PyObject *tree_get_changed_ranges(Tree *self, PyObject *args, PyObject *k
   TSRange *ranges = ts_tree_get_changed_ranges(self->tree, new_tree->tree, &length);
 
   PyObject *result = PyList_New(length);
-  for(size_t i=0; i<(size_t)length; i++) {
+  if (!result) return NULL;
+  for (unsigned i=0; i < length; i++) {
     PyObject *range = range_new_internal(ranges[i]);
     PyList_SetItem(result, i, range);
   }
 
   free(ranges);
-
   return result;
 }
 
