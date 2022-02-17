@@ -355,6 +355,11 @@ class TestTree(TestCase):
         for item in cursor.node.children:
             self.assertIsNotNone(item.is_named)
 
+        cursor = cursor.copy()
+        self.assertIs(cursor.node, cursor.node)
+        for item in cursor.node.children:
+            self.assertIsNotNone(item.is_named)
+
     def test_walk(self):
         parser = Parser()
         parser.set_language(PYTHON)
