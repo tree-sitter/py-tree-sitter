@@ -8,6 +8,7 @@ from platform import system
 from tempfile import TemporaryDirectory
 from tree_sitter.binding import _language_field_id_for_name, _language_query
 from tree_sitter.binding import Node, Parser, Tree, TreeCursor  # noqa: F401
+from tree_sitter.visitor import ASTVisitor
 
 
 class Language:
