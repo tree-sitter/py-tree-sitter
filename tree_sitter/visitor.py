@@ -1,4 +1,4 @@
-
+"""This module implements the visitor design pattern for TreeSitter"""
 
 class ASTVisitor:
     """
@@ -7,7 +7,7 @@ class ASTVisitor:
     The class implements the visitor design pattern
     to visit nodes inside an abstract syntax tree.
     The syntax tree is traversed in pre-order by employing
-    a tree cursor. 
+    a tree cursor.
 
     Custom visitors should subclass the ASTVisitor:
 
@@ -17,7 +17,7 @@ class ASTVisitor:
         def visit_module(self, module_node):
             # Called for nodes of type module only
             ...
-        
+
         def visit(self, node):
             # Called for all nodes where a specific handler does not exist
             # e.g. here called for all nodes that are not modules
@@ -29,7 +29,6 @@ class ASTVisitor:
             return False
 
     ```
-    
     """
 
     def visit(self, node):
@@ -56,7 +55,7 @@ class ASTVisitor:
 
         Returning False stops the traversal of the subtree rooted at the given node.
         """
-        visitor_fn = getattr(self, "visit_%s" % node.type, self.visit)
+        visitor_fn = getattr(self, f"visit_{node.type}", self.visit)
         return visitor_fn(node) is not False
 
     def walk(self, tree):
@@ -66,7 +65,7 @@ class ASTVisitor:
         This method walks every node in a given subtree in pre-order traversal.
         During the traversal, the respective visitor method is called.
         """
-        
+
         cursor   = tree.walk()
         has_next = True
 
@@ -78,7 +77,8 @@ class ASTVisitor:
             else:
                 has_next = False
 
-            if not has_next: has_next = cursor.goto_next_sibling()
+            if not has_next:
+                has_next = cursor.goto_next_sibling()
 
             previous_node = current_node
 
@@ -91,11 +91,13 @@ class ASTVisitor:
 
 # Helper --------------------------------
 
-def _node_equal(n1, n2):
-    if n1 == n2: return True
+def _node_equal(node, node_other):
+    if node == node_other:
+        return True
+
     try:
-        return (n1.type == n2.type 
-                    and n1.start_point == n2.start_point
-                    and n1.end_point   == n2.end_point)
+        return (node.type == node_other.type
+                    and node.start_point == node_other.start_point
+                    and node.end_point   == node_other.end_point)
     except AttributeError:
-        return n1 == n2
+        return node == node_other
