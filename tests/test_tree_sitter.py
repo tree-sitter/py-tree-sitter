@@ -752,6 +752,96 @@ class TestQuery(TestCase):
             )
             """)
 
+    def test_multiple_text_predicates(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        source = b"""
+            keypair_object = {
+                key1: value1,
+                equal: equal
+            }
+
+            function fun1(arg) {
+                return 1;
+            }
+
+            function fun1(notarg) {
+                return 1 + 1;
+            }
+
+            function fun2(arg) {
+                return 2;
+            }
+        """
+        tree = parser.parse(source)
+        root_node = tree.root_node
+
+        # function with name equal to 'fun1' -> test for first #eq? @capture string
+        query1 = JAVASCRIPT.query("""
+        (
+            (function_declaration
+                name: (identifier) @function-name
+                parameters: (formal_parameters
+                    (identifier) @argument-name
+                )
+            )
+            (#eq? @function-name fun1)
+        )
+        """)
+        captures1 = query1.captures(root_node)
+        self.assertEqual(4, len(captures1))
+        self.assertEqual(b"fun1", captures1[0][0].text)
+        self.assertEqual("function-name", captures1[0][1])
+        self.assertEqual(b"arg", captures1[1][0].text)
+        self.assertEqual("argument-name", captures1[1][1])
+        self.assertEqual(b"fun1", captures1[2][0].text)
+        self.assertEqual("function-name", captures1[2][1])
+        self.assertEqual(b"notarg", captures1[3][0].text)
+        self.assertEqual("argument-name", captures1[3][1])
+
+        # function with argument equal to 'arg' -> test for second #eq? @capture string
+        query2 = JAVASCRIPT.query("""
+        (
+            (function_declaration
+                name: (identifier) @function-name
+                parameters: (formal_parameters
+                    (identifier) @argument-name
+                )
+            )
+            (#eq? @argument-name arg)
+        )
+        """)
+        captures2 = query2.captures(root_node)
+        self.assertEqual(4, len(captures2))
+        self.assertEqual(b"fun1", captures2[0][0].text)
+        self.assertEqual("function-name", captures2[0][1])
+        self.assertEqual(b"arg", captures2[1][0].text)
+        self.assertEqual("argument-name", captures2[1][1])
+        self.assertEqual(b"fun2", captures2[2][0].text)
+        self.assertEqual("function-name", captures2[2][1])
+        self.assertEqual(b"arg", captures2[3][0].text)
+        self.assertEqual("argument-name", captures2[3][1])
+
+        # function with name equal to 'fun1' and argument 'arg' -> test for both #eq? @capture string
+        query3 = JAVASCRIPT.query("""
+        (
+            (function_declaration
+                name: (identifier) @function-name
+                parameters: (formal_parameters
+                    (identifier) @argument-name
+                )
+            )
+            (#eq? @function-name fun1)
+            (#eq? @argument-name arg)
+        )
+        """)
+        captures3 = query3.captures(root_node)
+        self.assertEqual(2, len(captures3))
+        self.assertEqual(b"fun1", captures3[0][0].text)
+        self.assertEqual("function-name", captures3[0][1])
+        self.assertEqual(b"arg", captures3[0][0].text)
+        self.assertEqual("argument-name", captures3[0][1])
+
 
 def trim(string):
     return re.sub(r"\s+", " ", string).strip()
