@@ -4,6 +4,7 @@ import re
 from unittest import TestCase
 from os import path
 from tree_sitter import Language, Parser
+from tree_sitter import ASTVisitor
 
 LIB_PATH = path.join("build", "languages.so")
 Language.build_library(
@@ -526,6 +527,220 @@ class TestTree(TestCase):
         self.assertEqual(changed_ranges[0].start_point, (0, edit_offset))
         self.assertEqual(changed_ranges[0].end_byte, edit_offset + 2)
         self.assertEqual(changed_ranges[0].end_point, (0, edit_offset + 2))
+
+
+class TestVisitor(TestCase):
+    def test_visit(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()")
+
+        # Visitor records all nodes visit in pre-order
+        class RecordVisitor(ASTVisitor):
+            def __init__(self):
+                self.nodes = []
+
+            def visit(self, node):
+                self.nodes.append(node)
+
+        visitor = RecordVisitor()
+        visitor.walk(tree)
+
+        # Expected order: module, function_definition, def, identifier, parameter, (, ), :
+
+        # module
+        module_node = visitor.nodes[0]
+        self.assertEqual(module_node.type, "module")
+        self.assertEqual(module_node.start_byte, 0)
+        self.assertEqual(module_node.end_byte, 18)
+        self.assertEqual(module_node.start_point, (0, 0))
+        self.assertEqual(module_node.end_point, (1, 7))
+
+        # function_definition
+        func_def = visitor.nodes[1]
+        self.assertEqual(func_def.type, "function_definition")
+        self.assertEqual(func_def.start_byte, 0)
+        self.assertEqual(func_def.end_byte, 18)
+        self.assertEqual(func_def.start_point, (0, 0))
+        self.assertEqual(func_def.end_point, (1, 7))
+
+        # def 
+        def_node = visitor.nodes[2]
+        self.assertEqual(def_node.type, "def")
+        self.assertEqual(def_node.is_named, False)
+
+        # identifier
+        identifier_node = visitor.nodes[3]
+        self.assertEqual(identifier_node.type, "identifier")
+        self.assertEqual(identifier_node.is_named, True)
+
+        # parameters
+        parameter_node = visitor.nodes[4]
+        self.assertEqual(parameter_node.type, "parameters")
+        self.assertEqual(parameter_node.is_named, True)
+    
+    def test_order(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()")
+
+        # Visitor records all nodes visit in pre-order
+        class RecordTypeVisitor(ASTVisitor):
+            def __init__(self):
+                self.types = []
+
+            def visit(self, node):
+                self.types.append(node.type)
+
+        visitor = RecordTypeVisitor()
+        visitor.walk(tree)
+
+        expected_order = [
+            "module", 
+            "function_definition",
+            "def",
+            "identifier",
+            "parameters",
+            "(",
+            ")",
+            ":",
+            "block",
+            "expression_statement",
+            "call",
+            "identifier",
+            "argument_list",
+            "(",
+            ")"
+        ]
+
+        for i, expected_type in enumerate(expected_order):
+            with self.subTest(i = i):
+                self.assertEqual(visitor.types[i], expected_type)
+
+    def test_typed_visit(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()")
+
+        class TypedVisitor(ASTVisitor):
+            def __init__(self):
+                self.type_to_node = {}
+
+            def visit_module(self, node):
+                self.type_to_node["module"] = node
+
+            def visit_function_definition(self, node):
+                self.type_to_node["function_definition"] = node
+
+            def visit_def(self, node):
+                self.type_to_node["def"] = node
+
+            def visit_identifier(self, node):
+                self.type_to_node["identifier"] = node
+
+            def visit_parameters(self, node):
+                self.type_to_node["parameters"] = node
+
+        visitor = TypedVisitor()
+        visitor.walk(tree)
+
+        # module
+        module_node = visitor.type_to_node["module"]
+        self.assertEqual(module_node.type, "module")
+
+        # function_definition
+        func_def = visitor.type_to_node["function_definition"]
+        self.assertEqual(func_def.type, "function_definition")
+
+        # def 
+        def_node = visitor.type_to_node["def"]
+        self.assertEqual(def_node.type, "def")
+        self.assertEqual(def_node.is_named, False)
+
+        # parameters
+        parameter_node = visitor.type_to_node["parameters"]
+        self.assertEqual(parameter_node.type, "parameters")
+        self.assertEqual(parameter_node.is_named, True)
+
+        # It is expected that the later identifier is stored
+        identifier_node = visitor.type_to_node["identifier"]
+        self.assertEqual(identifier_node.type, "identifier")
+        self.assertEqual(identifier_node.is_named, True)
+        self.assertEqual(identifier_node.start_byte, 13)
+        self.assertEqual(identifier_node.end_byte, 16)
+        self.assertEqual(identifier_node.start_point, (1, 2))
+        self.assertEqual(identifier_node.end_point, (1, 5))
+
+    def test_skip_subtree(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()")
+
+        class SkipVisitor(ASTVisitor):
+            def __init__(self):
+                self.identifier_node = None
+
+            def visit_identifier(self, node):
+                self.identifier_node = node
+
+            def visit_block(self, node):
+                return False
+
+        visitor = SkipVisitor()
+        visitor.walk(tree)
+
+        # Since we skip the block subtree, the first identifier should be stored
+        identifier_node = visitor.identifier_node
+        self.assertEqual(identifier_node.type, "identifier")
+        self.assertEqual(identifier_node.is_named, True)
+        self.assertEqual(identifier_node.start_byte, 4)
+        self.assertEqual(identifier_node.end_byte, 7)
+        self.assertEqual(identifier_node.start_point, (0, 4))
+        self.assertEqual(identifier_node.end_point, (0, 7))
+
+    def test_bounded_walk(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        tree = parser.parse(b"def foo():\n  bar()\n  barz()")
+
+        class ExpressionVisitor(ASTVisitor):
+            def __init__(self):
+                self.exprs = []
+            
+            def visit_expression_statement(self, node):
+                self.exprs.append(node)
+
+        class IdentifierVisitor(ASTVisitor):
+            def __init__(self):
+                self.identifier_node = None
+            
+            def visit_identifier(self, node):
+                self.identifier_node = node
+        
+        expr_visitor = ExpressionVisitor()
+        id_visitor   = IdentifierVisitor()
+
+        expr_visitor.walk(tree)
+        expr1, expr2 = expr_visitor.exprs
+
+        # If the visit is not bounded, this test should fail
+        id_visitor.walk(expr1)
+        identifier1 = id_visitor.identifier_node
+        self.assertEqual(identifier1.type, "identifier")
+        self.assertEqual(identifier1.is_named, True)
+        self.assertEqual(identifier1.start_byte, 13)
+        self.assertEqual(identifier1.end_byte, 16)
+        self.assertEqual(identifier1.start_point, (1, 2))
+        self.assertEqual(identifier1.end_point, (1, 5))
+
+        id_visitor.walk(expr2)
+        identifier2 = id_visitor.identifier_node
+        self.assertEqual(identifier2.type, "identifier")
+        self.assertEqual(identifier2.is_named, True)
+        self.assertEqual(identifier2.start_byte, 21)
+        self.assertEqual(identifier2.end_byte, 25)
+        self.assertEqual(identifier2.start_point, (2, 2))
+        self.assertEqual(identifier2.end_point, (2, 6))
 
 
 class TestQuery(TestCase):
