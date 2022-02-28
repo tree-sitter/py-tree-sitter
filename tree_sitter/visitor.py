@@ -1,4 +1,4 @@
-"""This module implements the visitor design pattern for TreeSitter"""
+"""This module implements the visitor design pattern for Tree-sitter"""
 
 class ASTVisitor:
     """
@@ -80,24 +80,5 @@ class ASTVisitor:
             if not has_next:
                 has_next = cursor.goto_next_sibling()
 
-            previous_node = current_node
-
             while not has_next and cursor.goto_parent():
                 has_next = cursor.goto_next_sibling()
-
-                # Nodes marked as missing sometimes create loops in AST
-                has_next = has_next and not _node_equal(previous_node, cursor.node)
-
-
-# Helper --------------------------------
-
-def _node_equal(node, node_other):
-    if node == node_other:
-        return True
-
-    try:
-        return (node.type == node_other.type
-                    and node.start_point == node_other.start_point
-                    and node.end_point   == node_other.end_point)
-    except AttributeError:
-        return node == node_other
