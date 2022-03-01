@@ -839,8 +839,8 @@ class TestQuery(TestCase):
         self.assertEqual(2, len(captures3))
         self.assertEqual(b"fun1", captures3[0][0].text)
         self.assertEqual("function-name", captures3[0][1])
-        self.assertEqual(b"arg", captures3[0][0].text)
-        self.assertEqual("argument-name", captures3[0][1])
+        self.assertEqual(b"arg", captures3[1][0].text)
+        self.assertEqual("argument-name", captures3[1][1])
 
 
 def trim(string):
