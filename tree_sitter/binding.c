@@ -1447,7 +1447,7 @@ static PyObject *query_new_internal(
         PyList_Append(pattern_text_predicates, (PyObject *)capture_match_string_predicate);
         Py_DECREF(capture_match_string_predicate);
       }
-      predicate_step += predicate_len;
+      predicate_step += predicate_len + 1;
       j += predicate_len;
     }
     PyList_SetItem(query->text_predicates, i, pattern_text_predicates);
