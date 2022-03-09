@@ -822,7 +822,7 @@ class TestQuery(TestCase):
         self.assertEqual(b"arg", captures2[3][0].text)
         self.assertEqual("argument-name", captures2[3][1])
 
-        # function with name equal to 'fun1' and argument 'arg' -> test for both #eq? @capture string
+        # function with name equal to 'fun1' & argument 'arg' -> test for both together
         query3 = JAVASCRIPT.query("""
         (
             (function_declaration
