@@ -1379,7 +1379,7 @@ static PyObject *query_new_internal(
         predicate_len++;
 
       if (predicate_step->type != TSQueryPredicateStepTypeString) {
-        PyErr_SetString(PyExc_RuntimeError, "Capture predicate must start with a string");
+        PyErr_Format(PyExc_RuntimeError, "Capture predicate must start with a string i=%d/pattern_count=%d j=%d/length=%d predicate_step->type=%d TSQueryPredicateStepTypeDone=%d TSQueryPredicateStepTypeCapture=%d TSQueryPredicateStepTypeString=%d", i, pattern_count, j, length, predicate_step->type, TSQueryPredicateStepTypeDone, TSQueryPredicateStepTypeCapture, TSQueryPredicateStepTypeString);
         goto error;
       }
 
@@ -1447,7 +1447,7 @@ static PyObject *query_new_internal(
         PyList_Append(pattern_text_predicates, (PyObject *)capture_match_string_predicate);
         Py_DECREF(capture_match_string_predicate);
       }
-      predicate_step += predicate_len;
+      predicate_step += predicate_len + 1;
       j += predicate_len;
     }
     PyList_SetItem(query->text_predicates, i, pattern_text_predicates);
