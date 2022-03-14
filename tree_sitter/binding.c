@@ -105,8 +105,8 @@ static PyObject *node_repr(Node *self) {
   TSPoint start_point = ts_node_start_point(self->node);
   TSPoint end_point = ts_node_end_point(self->node);
   const char *format_string = ts_node_is_named(self->node)
-    ? "<Node kind=%s, start_point=(%u, %u), end_point=(%u, %u)>"
-    : "<Node kind=\"%s\", start_point=(%u, %u), end_point=(%u, %u)>";
+    ? "<Node type=%s, start_point=(%u, %u), end_point=(%u, %u)>"
+    : "<Node type=\"%s\", start_point=(%u, %u), end_point=(%u, %u)>";
   return PyUnicode_FromFormat(
     format_string,
     type,
