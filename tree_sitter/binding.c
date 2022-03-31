@@ -406,7 +406,9 @@ static PyObject *node_get_text(Node *self, void *payload) {
                     "PyObject_GetItem failed");
     return NULL;
   }
-  return PyBytes_FromObject(node_slice);
+  PyObject *result = PyBytes_FromObject(node_slice);
+  Py_DECREF(node_slice);
+  return result;
 }
 
 static PyMethodDef node_methods[] = {
