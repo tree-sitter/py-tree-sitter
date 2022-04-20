@@ -1227,19 +1227,20 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
   };
 
   Node *node = NULL;
-  Py_ssize_t start_row = -1, start_column = -1, end_row = -1, end_column = -1;
-  Py_ssize_t start_byte = -1, end_byte = -1;
+  TSPoint start_point = {.row=0, .column=0};
+  TSPoint end_point   = {.row=UINT32_MAX, .column=UINT32_MAX};
+  unsigned start_byte = 0, end_byte = UINT32_MAX;
 
   int ok = PyArg_ParseTupleAndKeywords(
     args,
     kwargs,
-    "O|(nn)(nn)nn",
+    "O|(II)(II)II",
     keywords,
     (PyObject **)&node,
-    &start_row,
-    &start_column,
-    &end_row,
-    &end_column,
+    &start_point.row,
+    &start_point.column,
+    &end_point.row,
+    &end_point.column,
     &start_byte,
     &end_byte
   );
@@ -1251,28 +1252,8 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
   }
 
   if (!query_cursor) query_cursor = ts_query_cursor_new();
-
-  if((start_row < 0) && (end_row < 0) && (start_column < 0) && (end_column < 0) &&
-      (start_byte < 0) && (end_byte < 0)) {
-    // We default to the node start and end bytes if a specific value has not been
-    // passed to the function. We have to set this since we re-use the query
-    // cursor between calls.
-    ts_query_cursor_set_byte_range(
-      query_cursor, ts_node_start_byte(node->node), ts_node_end_byte(node->node)
-    );
-  } else if((start_row >= 0) && (end_row >= 0) && (start_column >= 0) && (end_column >= 0)) {
-    // Use the start and end points if specified
-    TSPoint start_point = { .row = start_row, .column = start_column };
-    TSPoint end_point = { .row = end_row, .column = end_column };
-    ts_query_cursor_set_point_range(query_cursor, start_point, end_point);
-  } else if((start_byte >= 0) && (end_byte >= 0)) {
-    // Use the start and end bytes if specified.
-    ts_query_cursor_set_byte_range(query_cursor, start_byte, end_byte);
-  } else {
-    PyErr_SetString(PyExc_TypeError, "Both start and end point must be specified if one is.");
-    return NULL;
-  }
-
+  ts_query_cursor_set_byte_range(query_cursor, start_byte, end_byte);
+  ts_query_cursor_set_point_range(query_cursor, start_point, end_point);
   ts_query_cursor_exec(query_cursor, self->query, node->node);
 
   QueryCapture *capture = NULL;
