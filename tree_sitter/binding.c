@@ -143,6 +143,57 @@ static PyObject *node_walk(Node *self, PyObject *args) {
   return tree_cursor_new_internal(self->node, self->tree);
 }
 
+static PyObject *node_edit(Node *self, PyObject *args, PyObject *kwargs) {
+  unsigned start_byte, start_row, start_column;
+  unsigned old_end_byte, old_end_row, old_end_column;
+  unsigned new_end_byte, new_end_row, new_end_column;
+
+  char *keywords[] = {
+    "start_byte",
+    "old_end_byte",
+    "new_end_byte",
+    "start_point",
+    "old_end_point",
+    "new_end_point",
+    NULL,
+  };
+
+  int ok = PyArg_ParseTupleAndKeywords(
+    args,
+    kwargs,
+    "III(II)(II)(II)",
+    keywords,
+    &start_byte,
+    &old_end_byte,
+    &new_end_byte,
+    &start_row,
+    &start_column,
+    &old_end_row,
+    &old_end_column,
+    &new_end_row,
+    &new_end_column
+  );
+
+  if (ok) {
+    TSInputEdit edit = {
+      .start_byte = start_byte,
+      .old_end_byte = old_end_byte,
+      .new_end_byte = new_end_byte,
+      .start_point = {start_row, start_column},
+      .old_end_point = {old_end_row, old_end_column},
+      .new_end_point = {new_end_row, new_end_column},
+    };
+    ts_node_edit(&self->node, &edit);
+    Py_XDECREF(self->children);
+    Py_XDECREF(self->tree);
+    self->children = Py_None;
+    self->tree = Py_None;
+    Py_INCREF(self->children);
+    Py_INCREF(self->tree);
+  }
+  Py_RETURN_NONE;
+}
+
 static PyObject *node_child_by_field_id(Node *self, PyObject *args) {
   TSFieldId field_id;
   if (!PyArg_ParseTuple(args, "H", &field_id)) {
@@ -418,6 +469,14 @@ static PyMethodDef node_methods[] = {
     .ml_flags = METH_NOARGS,
     .ml_doc = "walk()\n--\n\n\
                Get a tree cursor for walking the tree starting at this node.",
+  },
+  {
+    .ml_name = "edit",
+    .ml_meth = (PyCFunction)node_edit,
+    .ml_flags = METH_KEYWORDS|METH_VARARGS,
+    .ml_doc = "edit(start_byte, old_end_byte, new_end_byte,\
+               start_point, old_end_point, new_end_point)\n--\n\n\
+               Edit the node syntax tree.",
   },
   {
     .ml_name = "sexp",
