@@ -169,6 +169,15 @@ class TestNode(TestCase):
         attributes = jsx_node.children_by_field_name("attribute")
         self.assertEqual([a.type for a in attributes], ["jsx_attribute", "jsx_attribute"])
 
+    def test_field_name_for_child(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        tree = parser.parse(b"<div a={1} b={2} />")
+        jsx_node = tree.root_node.children[0].children[0]
+
+        self.assertEqual(jsx_node.field_name_for_child(0), None)
+        self.assertEqual(jsx_node.field_name_for_child(1), "name")
+
     def test_children(self):
         parser = Parser()
         parser.set_language(PYTHON)

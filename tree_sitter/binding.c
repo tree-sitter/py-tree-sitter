@@ -212,6 +212,20 @@ static PyObject *node_children_by_field_name(Node *self, PyObject *args) {
   return node_children_by_field_id_internal(self, field_id);
 }
 
+static PyObject *node_field_name_for_child(Node *self, PyObject *args) {
+  uint32_t index;
+  if (!PyArg_ParseTuple(args, "I", &index)) {
+    return NULL;
+  }
+
+  const char *field_name = ts_node_field_name_for_child(self->node, index);
+  if(field_name == NULL) {
+    Py_RETURN_NONE;
+  }
+
+  return PyUnicode_FromString(field_name);
+}
+
 static PyObject *node_get_type(Node *self, void *payload) {
   return PyUnicode_FromString(ts_node_type(self->node));
 }
@@ -453,6 +467,13 @@ static PyMethodDef node_methods[] = {
     .ml_flags = METH_VARARGS,
     .ml_doc = "children_by_field_name(name)\n--\n\n\
                Get list of child nodes by the field name.",
+  },
+  {
+    .ml_name = "field_name_for_child",
+    .ml_meth = (PyCFunction)node_field_name_for_child,
+    .ml_flags = METH_VARARGS,
+    .ml_doc = "field_name_for_child(index)\n-\n\n\
+               Get the field name of a child node by the index of child."
   },
   {NULL},
 };
