@@ -214,13 +214,13 @@ static PyObject *node_children_by_field_name(Node *self, PyObject *args) {
 
 static PyObject *node_field_name_for_child(Node *self, PyObject *args) {
   uint32_t index;
-  if (!PyArg_ParseTuple(args, "H", &index)) {
+  if (!PyArg_ParseTuple(args, "I", &index)) {
     return NULL;
   }
 
   const char *field_name = ts_node_field_name_for_child(self->node, index);
   if(field_name == NULL) {
-    return Py_None;
+    Py_RETURN_NONE;
   }
 
   return PyUnicode_FromString(field_name);
