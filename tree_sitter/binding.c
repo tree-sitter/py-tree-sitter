@@ -191,6 +191,78 @@ static PyObject *node_child_by_field_name(Node *self, PyObject *args) {
     return node_new_internal(state, child, self->tree);
 }
 
+static PyObject *node_descendant_for_point_range(Node *self, PyObject *args) {
+    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+
+    TSPoint start_point = {.row = 0, .column = 0};
+    TSPoint end_point = {.row = UINT32_MAX, .column = UINT32_MAX};
+
+    if (!PyArg_ParseTuple(args, "(II)(II)",
+                          &start_point.row, &start_point.column,
+                          &end_point.row, &end_point.column)) {
+        return NULL;
+    }
+
+    TSNode child = ts_node_descendant_for_point_range(self->node, start_point, end_point);
+    if (ts_node_is_null(child)) {
+        Py_RETURN_NONE;
+    }
+    return node_new_internal(state, child, self->tree);
+}
+
+static PyObject *node_descendant_for_byte_range(Node *self, PyObject *args) {
+    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+
+    uint32_t start_bytes = 0, end_bytes = UINT32_MAX;
+
+    if (!PyArg_ParseTuple(args, "II",
+                          &start_bytes, &end_bytes)) {
+        return NULL;
+    }
+
+    TSNode child = ts_node_descendant_for_byte_range(self->node, start_bytes, end_bytes);
+    if (ts_node_is_null(child)) {
+        Py_RETURN_NONE;
+    }
+    return node_new_internal(state, child, self->tree);
+}
+
+static PyObject *node_named_descendant_for_point_range(Node *self, PyObject *args) {
+    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+
+    TSPoint start_point = {.row = 0, .column = 0};
+    TSPoint end_point = {.row = UINT32_MAX, .column = UINT32_MAX};
+
+    if (!PyArg_ParseTuple(args, "(II)(II)",
+                          &start_point.row, &start_point.column,
+                          &end_point.row, &end_point.column)) {
+        return NULL;
+    }
+
+    TSNode child = ts_node_named_descendant_for_point_range(self->node, start_point, end_point);
+    if (ts_node_is_null(child)) {
+        Py_RETURN_NONE;
+    }
+    return node_new_internal(state, child, self->tree);
+}
+
+static PyObject *node_named_descendant_for_byte_range(Node *self, PyObject *args) {
+    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+
+    uint32_t start_bytes = 0, end_bytes = UINT32_MAX;
+
+    if (!PyArg_ParseTuple(args, "II",
+                          &start_bytes, &end_bytes)) {
+        return NULL;
+    }
+
+    TSNode child = ts_node_named_descendant_for_byte_range(self->node, start_bytes, end_bytes);
+    if (ts_node_is_null(child)) {
+        Py_RETURN_NONE;
+    }
+    return node_new_internal(state, child, self->tree);
+}
+
 static PyObject *node_get_id(Node *self, void *payload) {
     return PyLong_FromVoidPtr((void *)self->node.id);
 }
@@ -495,6 +567,34 @@ static PyMethodDef node_methods[] = {
      .ml_flags = METH_VARARGS,
      .ml_doc = "field_name_for_child(index)\n-\n\n\
                Get the field name of a child node by the index of child."},
+    {
+        .ml_name = "descendant_for_point_range",
+        .ml_meth = (PyCFunction)node_descendant_for_point_range,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "descendant_for_point_range(start, end)\n--\n\n\
+               Get descendant node for start, end point range.",
+    },
+    {
+        .ml_name = "named_descendant_for_point_range",
+        .ml_meth = (PyCFunction)node_named_descendant_for_point_range,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "named_descendant_for_point_range(start, end)\n--\n\n\
+               Get named descendant node for start, end point range.",
+    },
+    {
+        .ml_name = "descendant_for_byte_range",
+        .ml_meth = (PyCFunction)node_descendant_for_byte_range,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "descendant_for_byte_range(start, end)\n--\n\n\
+               Get descendant node for start, end byte.",
+    },
+    {
+        .ml_name = "named_descendant_for_byte_range",
+        .ml_meth = (PyCFunction)node_named_descendant_for_byte_range,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "named_descendant_for_byte_range(start, end)\n--\n\n\
+               Get named descendant node for start, end byte.",
+    },
     {NULL},
 };
 
