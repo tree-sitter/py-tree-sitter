@@ -18,6 +18,7 @@ PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 JSON = Language(LIB_PATH, "json")
 
+
 class TestParser(TestCase):
     def test_set_language(self):
         parser = Parser()
@@ -905,7 +906,8 @@ class TestQuery(TestCase):
 
         colon_index = source.find(b':')
 
-        colon_node = array_node.descendant_for_byte_range(colon_index, colon_index + 1)
+        colon_node = array_node.descendant_for_byte_range(
+            colon_index, colon_index + 1)
         self.assertEqual(colon_node.type, ':')
         self.assertEqual(colon_node.start_byte, colon_index)
         self.assertEqual(colon_node.end_byte, colon_index + 1)
@@ -920,7 +922,8 @@ class TestQuery(TestCase):
         self.assertEqual(colon_node.end_point, (5, 16))
 
         # The given point is between two adjacent leaf nodes - byte query
-        colon_node = array_node.descendant_for_byte_range(colon_index, colon_index)
+        colon_node = array_node.descendant_for_byte_range(
+            colon_index, colon_index)
         self.assertEqual(colon_node.type, ':')
         self.assertEqual(colon_node.start_byte, colon_index)
         self.assertEqual(colon_node.end_byte, colon_index + 1)
@@ -937,7 +940,8 @@ class TestQuery(TestCase):
 
         # Leaf node starts at the lower bound, ends after the upper bound - byte query
         string_index = source.find(b'"x"')
-        string_node = array_node.descendant_for_byte_range(string_index, string_index + 2)
+        string_node = array_node.descendant_for_byte_range(
+            string_index, string_index + 2)
         self.assertEqual(string_node.type, 'string')
         self.assertEqual(string_node.start_byte, string_index)
         self.assertEqual(string_node.end_byte, string_index + 3)
@@ -946,7 +950,8 @@ class TestQuery(TestCase):
 
         # Leaf node starts before the lower bound, ends at the upper bound - byte query
         null_index = source.find(b'null')
-        null_node = array_node.descendant_for_byte_range(null_index, null_index + 2)
+        null_node = array_node.descendant_for_byte_range(
+            null_index, null_index + 2)
         self.assertEqual(null_node.type, 'null')
         self.assertEqual(null_node.start_byte, null_index)
         self.assertEqual(null_node.end_byte, null_index + 4)
@@ -954,30 +959,34 @@ class TestQuery(TestCase):
         self.assertEqual(null_node.end_point, (5, 21))
 
         # Leaf node starts before the lower bound, ends at the upper bound - point query
-        null_node = array_node.descendant_for_point_range((5, 19), (5,21))
+        null_node = array_node.descendant_for_point_range((5, 19), (5, 21))
         self.assertEqual(null_node.type, 'null')
         self.assertEqual(null_node.start_byte, null_index)
         self.assertEqual(null_node.end_byte, null_index + 4)
         self.assertEqual(null_node.start_point, (5, 17))
         self.assertEqual(null_node.end_point, (5, 21))
 
-        # The bounds span multiple leaf nodes - return the smallest node that does span it.
-        pair_node = array_node.descendant_for_byte_range(string_index + 2, string_index + 4)
-        self.assertEqual(pair_node.type, "pair");
-        self.assertEqual(pair_node.start_byte, string_index);
-        self.assertEqual(pair_node.end_byte, string_index + 9);
-        self.assertEqual(pair_node.start_point, (5, 12));
-        self.assertEqual(pair_node.end_point, (5, 21));
+        # The bounds span multiple leaf nodes
+        # return the smallest node that does span it.
+        pair_node = array_node.descendant_for_byte_range(
+            string_index + 2, string_index + 4)
+        self.assertEqual(pair_node.type, "pair")
+        self.assertEqual(pair_node.start_byte, string_index)
+        self.assertEqual(pair_node.end_byte, string_index + 9)
+        self.assertEqual(pair_node.start_point, (5, 12))
+        self.assertEqual(pair_node.end_point, (5, 21))
 
         self.assertEqual(colon_node.parent, pair_node)
 
         # no leaf spans the given range - return the smallest node that does span it.
-        pair_node = array_node.named_descendant_for_point_range((5, 14), (5, 16))
-        self.assertEqual(pair_node.type, "pair");
-        self.assertEqual(pair_node.start_byte, string_index);
-        self.assertEqual(pair_node.end_byte, string_index + 9);
-        self.assertEqual(pair_node.start_point, (5, 12));
-        self.assertEqual(pair_node.end_point, (5, 21));
+        pair_node = array_node.named_descendant_for_point_range((5, 14),
+                                                                (5, 16))
+        self.assertEqual(pair_node.type, "pair")
+        self.assertEqual(pair_node.start_byte, string_index)
+        self.assertEqual(pair_node.end_byte, string_index + 9)
+        self.assertEqual(pair_node.start_point, (5, 12))
+        self.assertEqual(pair_node.end_point, (5, 21))
+
 
 def trim(string):
     return re.sub(r"\s+", " ", string).strip()
