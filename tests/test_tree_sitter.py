@@ -886,6 +886,22 @@ class TestQuery(TestCase):
         self.assertEqual(captures[1][0].end_point, (1, 5))
         self.assertEqual(captures[1][1], "func-call")
 
+    def test_match_assert(self,):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        source = b"""def f():
+    self.assertTrue(True)
+    assert True"""
+        tree = parser.parse(source)
+        query = PYTHON.query(
+            """
+            ([(call function: (attribute (identifier) @assert_true (#match? @assert_true "^assertTrue$"))) ((assert_statement) @assert)])
+            """
+        )
+
+        captures = query.captures(tree.root_node)
+        self.assertEqual(len(captures), 2)
+
 
 def trim(string):
     return re.sub(r"\s+", " ", string).strip()
