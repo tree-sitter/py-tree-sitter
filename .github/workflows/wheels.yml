@@ -1,0 +1,51 @@
+on:
+  push:
+    tags:
+      - v*
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-11, windows-2022]
+
+    steps:
+      - uses: actions/checkout@v3
+          submodules: true
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      - if: ${{ startsWith(matrix.os, 'windows') }}
+        run: script\fetch-fixtures.cmd
+      - if: ${{ !startsWith(matrix.os, 'windows') }}
+        run: script/fetch-fixtures
+      - run: pip install cibuildwheel==2.5.0
+      - run: python -m cibuildwheel --output-dir wheelhouse
+        env:
+          # Rebuild the languages binary for each wheel. Using Makefile-style modified
+          # time check isn't great when multiple Python versions are involved.
+          CIBW_BEFORE_TEST_WINDOWS: if exist {project}\build\languages.so del {project}\build\languages.so
+          CIBW_BEFORE_TEST_LINUX: rm -vf {project}/build/languages.so
+          CIBW_BEFORE_TEST_MACOS: rm -vf {project}/build/languages.so
+          CIBW_TEST_COMMAND: python -m unittest discover -s {project}/tests
+      - uses: actions/upload-artifact@v2
+        with:
+          name: wheelhouse
+          path: ./wheelhouse/*.whl
+
+  release:
+    runs-on: ubuntu-latest
+    # Skip pypi release on pull request. Running this on pull request is still useful,
+    # because that way we notice if it breaks.
+    #
+    # https://stackoverflow.com/a/58478262
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: wheelhouse
+      # TODO: The step above downloads all wheels to current working directory.
+      #       At this point we should make a release on pypi with all *.whl files.

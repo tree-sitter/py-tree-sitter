@@ -5,12 +5,17 @@ from unittest import TestCase
 from os import path
 from tree_sitter import Language, Parser
 
-LIB_PATH = path.join("build", "languages.so")
+# cibuildwheel uses a funny working directory when running tests.
+# This is by design, this way tests import whatever is installed and not from the project.
+# This means that we can't load anything relative to the current working directory.
+project_root = path.dirname(path.dirname(path.abspath(__file__)))
+
+LIB_PATH = path.join(project_root, "build", "languages.so")
 Language.build_library(
     LIB_PATH,
     [
-        path.join("tests", "fixtures", "tree-sitter-python"),
-        path.join("tests", "fixtures", "tree-sitter-javascript"),
+        path.join(project_root, "tests", "fixtures", "tree-sitter-python"),
+        path.join(project_root, "tests", "fixtures", "tree-sitter-javascript"),
     ],
 )
 PYTHON = Language(LIB_PATH, "python")
