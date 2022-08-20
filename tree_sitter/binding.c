@@ -1671,7 +1671,17 @@ static PyObject *language_query(PyObject *self, PyObject *args) {
 static void module_free(void *self) {
     ModuleState *state = PyModule_GetState((PyObject *)self);
     ts_query_cursor_delete(state->query_cursor);
-    Py_DECREF(state->re_compile);
+    Py_XDECREF(state->tree_type);
+    Py_XDECREF(state->tree_cursor_type);
+    Py_XDECREF(state->parser_type);
+    Py_XDECREF(state->node_type);
+    Py_XDECREF(state->query_type);
+    Py_XDECREF(state->range_type);
+    Py_XDECREF(state->query_capture_type);
+    Py_XDECREF(state->capture_eq_capture_type);
+    Py_XDECREF(state->capture_eq_string_type);
+    Py_XDECREF(state->capture_match_string_type);
+    Py_XDECREF(state->re_compile);
 }
 
 static PyMethodDef module_methods[] = {
@@ -1699,10 +1709,24 @@ static struct PyModuleDef module_definition = {
     .m_methods = module_methods,
 };
 
+// simulate PyModule_AddObjectRef for pre-Python 3.10
+static int AddObjectRef(PyObject *module, const char *name, PyObject *value) {
+    if (value == NULL) {
+        PyErr_Format(PyExc_SystemError, "PyModule_AddObjectRef() %s == NULL", name);
+        return -1;
+    }
+    int ret = PyModule_AddObject(module, name, value);
+    if (ret == 0) {
+        Py_INCREF(value);
+    }
+    return ret;
+}
+
 PyMODINIT_FUNC PyInit_binding(void) {
     PyObject *module = PyModule_Create(&module_definition);
-    if (module == NULL)
+    if (module == NULL) {
         return NULL;
+    }
 
     ModuleState *state = PyModule_GetState(module);
 
@@ -1721,56 +1745,39 @@ PyMODINIT_FUNC PyInit_binding(void) {
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &capture_eq_string_type_spec, NULL);
     state->capture_match_string_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &capture_match_string_type_spec, NULL);
-    if (!(state->tree_type && state->tree_cursor_type && state->parser_type && state->node_type &&
-          state->query_type && state->range_type && state->query_capture_type &&
-          state->capture_eq_capture_type && state->capture_eq_string_type &&
-          state->capture_match_string_type)) {
-        PyErr_SetString(PyExc_ImportError, "Failed to create internal types");
-        return NULL;
-    }
+
     state->query_cursor = ts_query_cursor_new();
-    if (PyModule_AddObject(module, "Tree", (PyObject *)state->tree_type) < 0) {
-        Py_DECREF(state->tree_type);
-    }
-    if (PyModule_AddObject(module, "TreeCursor", (PyObject *)state->tree_cursor_type) < 0) {
-        Py_DECREF(state->tree_cursor_type);
-    }
-    if (PyModule_AddObject(module, "Parser", (PyObject *)state->parser_type) < 0) {
-        Py_DECREF(state->parser_type);
-    }
-    if (PyModule_AddObject(module, "Node", (PyObject *)state->node_type) < 0) {
-        Py_DECREF(state->node_type);
-    }
-    if (PyModule_AddObject(module, "Query", (PyObject *)state->query_type) < 0) {
-        Py_DECREF(state->query_type);
-    }
-    if (PyModule_AddObject(module, "Range", (PyObject *)state->range_type) < 0) {
-        Py_DECREF(state->range_type);
-    }
-    if (PyModule_AddObject(module, "QueryCapture", (PyObject *)state->query_capture_type) < 0) {
-        Py_DECREF(state->query_capture_type);
-    }
-    if (PyModule_AddObject(module, "CaptureEqCapture", (PyObject *)state->capture_eq_capture_type) < 0) {
-        Py_DECREF(state->capture_eq_capture_type);
-    }
-    if (PyModule_AddObject(module, "CaptureEqString", (PyObject *)state->capture_eq_string_type) < 0) {
-        Py_DECREF(state->capture_eq_string_type);
-    }
-    if (PyModule_AddObject(module, "CaptureMatchString", (PyObject *)state->capture_match_string_type) < 0) {
-        Py_DECREF(state->capture_match_string_type);
+    if ((AddObjectRef(module, "Tree", (PyObject *)state->tree_type) < 0) ||
+        (AddObjectRef(module, "TreeCursor", (PyObject *)state->tree_cursor_type) < 0) ||
+        (AddObjectRef(module, "Parser", (PyObject *)state->parser_type) < 0) ||
+        (AddObjectRef(module, "Node", (PyObject *)state->node_type) < 0) ||
+        (AddObjectRef(module, "Query", (PyObject *)state->query_type) < 0) ||
+        (AddObjectRef(module, "Range", (PyObject *)state->range_type) < 0) ||
+        (AddObjectRef(module, "QueryCapture", (PyObject *)state->query_capture_type) < 0) ||
+        (AddObjectRef(module, "CaptureEqCapture", (PyObject *)state->capture_eq_capture_type) <
+         0) ||
+        (AddObjectRef(module, "CaptureEqString", (PyObject *)state->capture_eq_string_type) < 0) ||
+        (AddObjectRef(module, "CaptureMatchString", (PyObject *)state->capture_match_string_type) <
+         0)) {
+        goto cleanup;
     }
 
     PyObject *re_module = PyImport_ImportModule("re");
-    if (re_module == NULL)
-        return NULL;
+    if (re_module == NULL) {
+        goto cleanup;
+    }
     state->re_compile = PyObject_GetAttrString(re_module, (char *)"compile");
     Py_DECREF(re_module);
-    if (state->re_compile == NULL)
-        return NULL;
+    if (state->re_compile == NULL) {
+        goto cleanup;
+    }
 
 #if PY_VERSION_HEX < 0x030900f0
     global_state = state;
 #endif
-
     return module;
+
+cleanup:
+    Py_XDECREF(module);
+    return NULL;
 }
