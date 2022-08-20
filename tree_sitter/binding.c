@@ -1671,16 +1671,6 @@ static PyObject *language_query(PyObject *self, PyObject *args) {
 static void module_free(void *self) {
     ModuleState *state = PyModule_GetState((PyObject *)self);
     ts_query_cursor_delete(state->query_cursor);
-    Py_DECREF(state->tree_type);
-    Py_DECREF(state->tree_cursor_type);
-    Py_DECREF(state->parser_type);
-    Py_DECREF(state->node_type);
-    Py_DECREF(state->query_type);
-    Py_DECREF(state->range_type);
-    Py_DECREF(state->query_capture_type);
-    Py_DECREF(state->capture_eq_capture_type);
-    Py_DECREF(state->capture_eq_string_type);
-    Py_DECREF(state->capture_match_string_type);
     Py_DECREF(state->re_compile);
 }
 
@@ -1739,16 +1729,36 @@ PyMODINIT_FUNC PyInit_binding(void) {
         return NULL;
     }
     state->query_cursor = ts_query_cursor_new();
-    PyModule_AddObject(module, "Tree", (PyObject *)state->tree_type);
-    PyModule_AddObject(module, "TreeCursor", (PyObject *)state->tree_cursor_type);
-    PyModule_AddObject(module, "Parser", (PyObject *)state->parser_type);
-    PyModule_AddObject(module, "Node", (PyObject *)state->node_type);
-    PyModule_AddObject(module, "Query", (PyObject *)state->query_type);
-    PyModule_AddObject(module, "Range", (PyObject *)state->range_type);
-    PyModule_AddObject(module, "QueryCapture", (PyObject *)state->query_capture_type);
-    PyModule_AddObject(module, "CaptureEqCapture", (PyObject *)state->capture_eq_capture_type);
-    PyModule_AddObject(module, "CaptureEqString", (PyObject *)state->capture_eq_string_type);
-    PyModule_AddObject(module, "CaptureMatchString", (PyObject *)state->capture_match_string_type);
+    if (PyModule_AddObject(module, "Tree", (PyObject *)state->tree_type) < 0) {
+        Py_DECREF(state->tree_type);
+    }
+    if (PyModule_AddObject(module, "TreeCursor", (PyObject *)state->tree_cursor_type) < 0) {
+        Py_DECREF(state->tree_cursor_type);
+    }
+    if (PyModule_AddObject(module, "Parser", (PyObject *)state->parser_type) < 0) {
+        Py_DECREF(state->parser_type);
+    }
+    if (PyModule_AddObject(module, "Node", (PyObject *)state->node_type) < 0) {
+        Py_DECREF(state->node_type);
+    }
+    if (PyModule_AddObject(module, "Query", (PyObject *)state->query_type) < 0) {
+        Py_DECREF(state->query_type);
+    }
+    if (PyModule_AddObject(module, "Range", (PyObject *)state->range_type) < 0) {
+        Py_DECREF(state->range_type);
+    }
+    if (PyModule_AddObject(module, "QueryCapture", (PyObject *)state->query_capture_type) < 0) {
+        Py_DECREF(state->query_capture_type);
+    }
+    if (PyModule_AddObject(module, "CaptureEqCapture", (PyObject *)state->capture_eq_capture_type) < 0) {
+        Py_DECREF(state->capture_eq_capture_type);
+    }
+    if (PyModule_AddObject(module, "CaptureEqString", (PyObject *)state->capture_eq_string_type) < 0) {
+        Py_DECREF(state->capture_eq_string_type);
+    }
+    if (PyModule_AddObject(module, "CaptureMatchString", (PyObject *)state->capture_match_string_type) < 0) {
+        Py_DECREF(state->capture_match_string_type);
+    }
 
     PyObject *re_module = PyImport_ImportModule("re");
     if (re_module == NULL)
