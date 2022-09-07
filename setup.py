@@ -11,7 +11,7 @@ with open(path.join(path.dirname(__file__), "README.md")) as f:
     LONG_DESCRIPTION = f.read()
 
 setup(
-    name="tree_sitter_test",
+    name="tree_sitter",
     version="0.20.1",
     maintainer="Max Brunsfeld",
     maintainer_email="maxbrunsfeld@gmail.com",
