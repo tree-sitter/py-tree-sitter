@@ -10,8 +10,8 @@ from tree_sitter import Language, Parser
 # This is by design, this way tests import whatever is installed and not from the project.
 # This means that we can't load anything relative to the current working directory.
 project_root = path.dirname(path.dirname(path.abspath(__file__)))
-
 LIB_PATH = path.join(project_root, "build", "languages.so")
+
 if os.getenv("PY_TREE_SITTER_TESTS_FORCE_REBUILD_LANGUAGES"):
     try:
         os.remove(LIB_PATH)
@@ -25,6 +25,7 @@ Language.build_library(
         path.join(project_root, "tests", "fixtures", "tree-sitter-javascript"),
     ],
 )
+
 PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 
