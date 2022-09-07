@@ -1,7 +1,9 @@
+name: release
+
 on:
   push:
     tags:
-      - v*
+      - pypi-*
   pull_request:
 
 jobs:
@@ -13,23 +15,60 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          repository: tree-sitter/py-tree-sitter
+          ref: v0.20.0
           submodules: true
-      - uses: actions/setup-python@v2
+          path: py-tree-sitter
+      - uses: actions/checkout@v3
+        with:
+          repository: grantjenks/py-tree-sitter-languages
+          ref: v1.4.0
+          path: py-tree-sitter-languages
+
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      - if: ${{ startsWith(matrix.os, 'windows') }}
-        run: script\fetch-fixtures.cmd
-      - if: ${{ !startsWith(matrix.os, 'windows') }}
-        run: script/fetch-fixtures
-      - run: pip install cibuildwheel==2.5.0
+
+      - run: mv py-tree-sitter/tree_sitter .
+        shell: bash
+      - run: mv py-tree-sitter-languages/{tree_sitter_languages,build.py,repos.txt} .
+        shell: bash
+
+      # Create a tests directory that contains tests from both py-tree-sitter and py-tree-sitter-languages.
+      - run: mkdir tests
+        shell: bash
+      - run: mv {py-tree-sitter,py-tree-sitter-languages}/tests/*.py tests/
+        shell: bash
+
+      # cibuildwheel uses a funny working directory when running tests.
+      # This is by design, this way tests import whatever is installed and not from the project.
+      # If there is __init__.py, it causes pytest to be "helpful" by making sys.path[0] the project directory.
+      - run: rm tests/__init__.py
+        shell: bash
+
+      - run: ls -l . tests
+        shell: bash
+
+      # Change test_tree_sitter.py to use py-tree-sitter-languages
+      - run: git apply py-tree-sitter-tests.patch
+
+      # Always rebuild the languages binary (otherwise reuses them and tests fail)
+      - run: git apply py-tree-sitter-languages-build.patch
+
+      # py-tree-sitter-languages uses pytest to run tests, which is compatible with the
+      # unittest tests that py-tree-sitter has.
+      - name: 'Get CIBW_* environment variables from py-tree-sitter-languages'
+        run: |
+          grep CIBW_ py-tree-sitter-languages/.github/workflows/release.yml | sed s/'^ *'// | sed s/': '/=/ | tee -a $GITHUB_ENV
+        shell: bash
+
+      # Build wheels
+      - run: pip install cibuildwheel==2.9.0
       - run: python -m cibuildwheel --output-dir wheelhouse
-        env:
-          # Rebuild the languages binary for each wheel. Using Makefile-style modified
-          # time check isn't great when multiple Python versions are involved.
-          CIBW_BEFORE_TEST_WINDOWS: if exist {project}\build\languages.so del {project}\build\languages.so
-          CIBW_BEFORE_TEST_LINUX: rm -vf {project}/build/languages.so
-          CIBW_BEFORE_TEST_MACOS: rm -vf {project}/build/languages.so
-          CIBW_TEST_COMMAND: python -m unittest discover -s {project}/tests
+
+      # Make wheels downloadable from GitHub UI and from the pypi step
       - uses: actions/upload-artifact@v2
         with:
           name: wheelhouse
@@ -37,15 +76,24 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    # Skip pypi release on pull request. Running this on pull request is still useful,
-    # because that way we notice if it breaks.
-    #
     # https://stackoverflow.com/a/58478262
     needs: [build]
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: wheelhouse
-      # TODO: The step above downloads all wheels to current working directory.
-      #       At this point we should make a release on pypi with all *.whl files.
+          path: dist
+      - run: ls -la
+      - run: ls -la dist
+
+      # To trigger a release:
+      #
+      #   $ git tag pypi-$(date +%Y.%m.%d)
+      #   $ git push --tags origin main
+      #
+      # To get consistent timestamps, avoid doing this just before midnight UTC.
+      - if: startsWith(github.ref, 'refs/tags/pypi-')
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
