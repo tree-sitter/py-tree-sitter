@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 
+import os
 import re
 from unittest import TestCase
 from os import path
@@ -11,6 +12,12 @@ from tree_sitter import Language, Parser
 project_root = path.dirname(path.dirname(path.abspath(__file__)))
 
 LIB_PATH = path.join(project_root, "build", "languages.so")
+if os.getenv("PY_TREE_SITTER_TESTS_FORCE_REBUILD_LANGUAGES"):
+    try:
+        os.remove(LIB_PATH)
+    except FileNotFoundError:
+        pass
+
 Language.build_library(
     LIB_PATH,
     [
