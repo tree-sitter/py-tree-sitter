@@ -69,6 +69,7 @@ jobs:
       - run: ls -la dist
 
       - if: ${{ startsWith(github.ref, 'refs/tags/test-v') }}
+        name: 'Upload to test.pypi.org'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
@@ -76,6 +77,7 @@ jobs:
           repository_url: https://test.pypi.org/legacy/
 
       - if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        name: 'Upload to pypi.org'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
