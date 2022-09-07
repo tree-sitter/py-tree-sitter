@@ -1,26 +1,18 @@
 # pylint: disable=missing-docstring
 
-import platform
 import re
-import sys
 from unittest import TestCase
 from os import path
 from tree_sitter import Language, Parser
 
+LIB_PATH = path.join("build", "languages.so")
+
 # cibuildwheel uses a funny working directory when running tests.
 # This is by design, this way tests import whatever is installed and not from the project.
-# This means that we can't load anything relative to the current working directory.
+#
+# The languages binary is still relative to current working directory to prevent reusing
+# a 32-bit languages binary in a 64-bit build. The working directory is clean every time.
 project_root = path.dirname(path.dirname(path.abspath(__file__)))
-
-# cibuildwheel uses the same environment for many python versions, and both 32-bit and 64-bit.
-# To avoid conflicts, nam the languages binary e.g. 'languages-x86_64-cpython-39.so'
-python_version_name = f"{sys.version_info.major}{sys.version_info.minor}"
-LIB_PATH = path.join(
-    project_root,
-    "build",
-    f"languages-{platform.machine()}-{sys.implementation.name}-{python_version_name}.so",
-)
-
 Language.build_library(
     LIB_PATH,
     [
