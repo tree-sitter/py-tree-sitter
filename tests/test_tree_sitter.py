@@ -1,7 +1,8 @@
 # pylint: disable=missing-docstring
 
-import os
+import platform
 import re
+import sys
 from unittest import TestCase
 from os import path
 from tree_sitter import Language, Parser
@@ -10,13 +11,15 @@ from tree_sitter import Language, Parser
 # This is by design, this way tests import whatever is installed and not from the project.
 # This means that we can't load anything relative to the current working directory.
 project_root = path.dirname(path.dirname(path.abspath(__file__)))
-LIB_PATH = path.join(project_root, "build", "languages.so")
 
-if os.getenv("PY_TREE_SITTER_TESTS_FORCE_REBUILD_LANGUAGES"):
-    try:
-        os.remove(LIB_PATH)
-    except FileNotFoundError:
-        pass
+# cibuildwheel uses the same environment for many python versions, and both 32-bit and 64-bit.
+# To avoid conflicts, nam the languages binary e.g. 'languages-x86_64-cpython-39.so'
+python_version_name = f"{sys.version_info.major}{sys.version_info.minor}"
+LIB_PATH = path.join(
+    project_root,
+    "build",
+    f"languages-{platform.machine()}-{sys.implementation.name}-{python_version_name}.so",
+)
 
 Language.build_library(
     LIB_PATH,
