@@ -6,65 +6,74 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-sdist:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - run: python setup.py sdist
-      - uses: actions/upload-artifact@v2
-        with:
-          name: dist
-          path: ./dist/*  # TODO: specify file extension to be explicit?
-
-  build-wheels:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, macos-11, windows-2022]
-
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - if: ${{ startsWith(matrix.os, 'windows') }}
-        run: script\fetch-fixtures.cmd
-      - if: ${{ !startsWith(matrix.os, 'windows') }}
-        run: script/fetch-fixtures
-
-      # Build wheels
-      - run: pip install cibuildwheel==2.9.0
-      - run: python -m cibuildwheel --output-dir dist
-        env:
-          CIBW_TEST_COMMAND: python -m unittest discover -s {package}/tests
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          # 32-bit and 64-bit language binaries are incompatible
-          PY_TREE_SITTER_TESTS_FORCE_REBUILD_LANGUAGES: 1
-
-      # Make wheels downloadable from GitHub UI and from the pypi step
-      - uses: actions/upload-artifact@v2
-        with:
-          name: dist
-          path: ./dist/*.whl
+#  build-sdist:
+#    runs-on: ubuntu-20.04
+#    steps:
+#      - uses: actions/checkout@v3
+#        with:
+#          submodules: true
+#      - uses: actions/setup-python@v4
+#        with:
+#          python-version: '3.10'
+#      - run: python setup.py sdist
+#      - uses: actions/upload-artifact@v2
+#        with:
+#          name: dist
+#          path: ./dist/*  # TODO: specify file extension to be explicit?
+#
+#  build-wheels:
+#    runs-on: ${{ matrix.os }}
+#    strategy:
+#      matrix:
+#        os: [ubuntu-20.04, macos-11, windows-2022]
+#
+#    steps:
+#      - uses: actions/checkout@v3
+#        with:
+#          submodules: true
+#
+#      - uses: actions/setup-python@v4
+#        with:
+#          python-version: '3.10'
+#
+#      - if: ${{ startsWith(matrix.os, 'windows') }}
+#        run: script\fetch-fixtures.cmd
+#      - if: ${{ !startsWith(matrix.os, 'windows') }}
+#        run: script/fetch-fixtures
+#
+#      # Build wheels
+#      - run: pip install cibuildwheel==2.9.0
+#      - run: python -m cibuildwheel --output-dir dist
+#        env:
+#          CIBW_TEST_COMMAND: python -m unittest discover -s {package}/tests
+#          CIBW_ARCHS_MACOS: x86_64 arm64
+#          # 32-bit and 64-bit language binaries are incompatible
+#          PY_TREE_SITTER_TESTS_FORCE_REBUILD_LANGUAGES: 1
+#
+#      # Make wheels downloadable from GitHub UI and from the pypi step
+#      - uses: actions/upload-artifact@v2
+#        with:
+#          name: dist
+#          path: ./dist/*.whl
 
   release:
     runs-on: ubuntu-latest
     # https://stackoverflow.com/a/58478262
-    needs: [build-sdist, build-wheels]
+#    needs: [build-sdist, build-wheels]
     steps:
-      - uses: actions/download-artifact@v3
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: dist
+#          path: dist
+      - uses: actions/checkout@v3
         with:
-          name: dist
-          path: dist
+          submodules: true
+          path: asd
+      - run: mkdir dist
+      - run: mv asd/temp.zip dist
+      - run: cd dist && unzip temp.zip
+      - run: rm -rf dist/temp.zip asd
+
       - run: ls -la
       - run: ls -la dist
 
