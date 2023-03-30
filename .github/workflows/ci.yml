@@ -26,6 +26,7 @@ jobs:
       - name: Test
         run: |
           CFLAGS="-O0 -g" ./cpython/python setup.py test
+          ./cpython/python -c 'import tree_sitter'
   build:
     strategy:
       fail-fast: false
