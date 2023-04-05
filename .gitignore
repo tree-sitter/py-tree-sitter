@@ -6,3 +6,4 @@ dist
 *.so
 __pycache__
 tests/fixtures
+venv
