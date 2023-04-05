@@ -120,6 +120,58 @@ class TestParser(TestCase):
             "'🐍'",
         )
 
+    def test_encoding(self):
+        for encoding in ["utf8", "utf16"]:
+            parser = Parser()
+            parser.set_language(JAVASCRIPT)
+            source_code = bytes("'😎' && '🐍'", encoding)
+            tree = parser.parse(source_code, encoding=encoding)
+            root_node = tree.root_node
+            statement_node = root_node.children[0]
+            binary_node = statement_node.children[0]
+            snake_node = binary_node.children[2]
+
+            self.assertEqual(binary_node.type, "binary_expression")
+            self.assertEqual(snake_node.type, "string")
+            self.assertEqual(
+                source_code[snake_node.start_byte:snake_node.end_byte].decode(encoding),
+                "'🐍'",
+            )
+
+    def test_encoding_via_read_callback(self):
+        for encoding in ["utf8", "utf16"]:
+            parser = Parser()
+            parser.set_language(JAVASCRIPT)
+            source_code = bytes("'😎' && '🐍'", encoding)
+
+            def read(byte_position, point):
+                if encoding == "utf8":
+                    return source_code[byte_position:byte_position+1]
+                return source_code[byte_position:byte_position+2]
+
+            tree = parser.parse(read, encoding=encoding)
+            root_node = tree.root_node
+            statement_node = root_node.children[0]
+            binary_node = statement_node.children[0]
+            snake_node = binary_node.children[2]
+
+            self.assertEqual(binary_node.type, "binary_expression")
+            self.assertEqual(snake_node.type, "string")
+            self.assertEqual(
+                source_code[snake_node.start_byte:snake_node.end_byte].decode(encoding),
+                "'🐍'",
+            )
+
+    def test_encoding_errors(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        source_code = bytes("'😎' && '🐍'", "utf32")
+        try:
+            tree = parser.parse(source_code, encoding="utf32")
+            assert False, "Should have raised an exception"
+        except ValueError:
+            pass
+
 
 class TestNode(TestCase):
     def test_child_by_field_id(self):

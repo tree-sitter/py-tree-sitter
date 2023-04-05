@@ -934,9 +934,10 @@ static PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     PyObject *source_or_callback = NULL;
     PyObject *old_tree_arg = NULL;
     int keep_text = 1;
-    static char *keywords[] = {"", "old_tree", "keep_text", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|Op:parse", keywords, &source_or_callback,
-                                     &old_tree_arg, &keep_text)) {
+    const char *encoding_arg = NULL;
+    static char *keywords[] = {"", "old_tree", "keep_text", "encoding", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|Ops:parse", keywords, &source_or_callback,
+                                     &old_tree_arg, &keep_text, &encoding_arg)) {
         return NULL;
     }
 
@@ -949,13 +950,26 @@ static PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         old_tree = ((Tree *)old_tree_arg)->tree;
     }
 
+    TSInputEncoding encoding = TSInputEncodingUTF8;
+    if (encoding_arg) {
+        if (!strcmp(encoding_arg, "utf8")) {
+            encoding = TSInputEncodingUTF8;
+        } else if (!strcmp(encoding_arg, "utf16")) {
+            encoding = TSInputEncodingUTF16;
+        } else {
+            PyErr_SetString(PyExc_ValueError, "Encoding must be 'utf8' or 'utf16'");
+            return NULL;
+        }
+    }
+
     TSTree *new_tree = NULL;
     Py_buffer source_view;
     if (!PyObject_GetBuffer(source_or_callback, &source_view, PyBUF_SIMPLE)) {
         // parse a buffer
         const char *source_bytes = (const char *)source_view.buf;
         size_t length = source_view.len;
-        new_tree = ts_parser_parse_string(self->parser, old_tree, source_bytes, length);
+        new_tree = ts_parser_parse_string_encoding(self->parser, old_tree, source_bytes,
+            length, encoding);
         PyBuffer_Release(&source_view);
     } else if (PyCallable_Check(source_or_callback)) {
         PyErr_Clear(); // clear the GetBuffer error
@@ -967,7 +981,7 @@ static PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         TSInput input = {
             .payload = &payload,
             .read = parser_read_wrapper,
-            .encoding = TSInputEncodingUTF8,
+            .encoding = encoding,
         };
         new_tree = ts_parser_parse(self->parser, old_tree, input);
         Py_XDECREF(payload.previous_return_value);
