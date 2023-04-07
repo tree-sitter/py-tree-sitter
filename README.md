@@ -76,7 +76,7 @@ you can pass a "read" callable to the parse function.
 
 The read callable can use either the byte offset or point tuple to read from
 buffer and return source code as bytes object. An empty bytes object or None
-terminates parsing for that line. The bytes must encode the source as UTF-8.
+terminates parsing for that line. The default encoding is utf8.
 
 For example, to use the byte offset:
 
@@ -105,6 +105,42 @@ def read_callable(byte_offset, point):
     return src_lines[row][column:].encode('utf8')
 
 tree = parser.parse(read_callable)
+```
+
+Or with utf16 encoding:
+
+```python
+tree = parser.parse(bytes("""
+def foo():
+    if bar:
+        baz()
+""", "utf16"), encoding="utf16")
+```
+
+```python
+src = bytes("""
+def foo():
+    if bar:
+        baz()
+""", "utf16")
+
+def read_callable(byte_offset, point):
+    return src[byte_offset:byte_offset+2]
+
+tree = parser.parse(read_callable, encoding="utf16")
+```
+
+```python
+src_lines = ["def foo():\n", "    if bar:\n", "        baz()"]
+
+def read_callable(byte_offset, point):
+    row, column = point
+    if row >= len(src_lines) or column >= len(src_lines[row].encode("utf-16-le")):
+        return None
+    ret = src_lines[row].encode("utf-16-le")[column:]
+    return ret
+
+tree = parser.parse(read_callable, encoding="utf16")
 ```
 
 Inspect the resulting `Tree`:
