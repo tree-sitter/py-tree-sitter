@@ -29,15 +29,10 @@ jobs:
     name: Make SDist
     runs-on: ubuntu-latest
     steps:
-      - name: Get latest release tag
-        id: latestrelease
-        run: |
-          echo "tag=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
-
       - name: Checkout latest release
         uses: actions/checkout@v3
         with:
-          ref: ${{ steps.latestrelease.outputs.tag }}
+          ref: ${{ github.ref }}
           submodules: true
 
       - name: Build SDist
