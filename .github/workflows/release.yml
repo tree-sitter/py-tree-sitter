@@ -1,0 +1,71 @@
+name: Deploy on release
+on:
+  release:
+    types: [published]
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Get latest release tag
+        id: latestrelease
+        run: |
+          echo "tag=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
+
+      - name: Checkout latest release
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.latestrelease.outputs.tag }}
+          submodules: true
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.12.1
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl
+
+  make_sdist:
+    name: Make SDist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get latest release tag
+        id: latestrelease
+        run: |
+          echo "tag=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
+
+      - name: Checkout latest release
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.latestrelease.outputs.tag }}
+          submodules: true
+
+      - name: Build SDist
+        run: pipx run build --sdist
+
+      - name: Upload SDist
+        uses: actions/upload-artifact@v3
+        with:
+          path: ./dist/*.tar.gz
+
+  upload_all:
+    name: Upload all to PyPi
+    needs: [build_wheels, make_sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: artifact
+          path: dist
+
+      - name: Publish to PyPi
+        uses: pypa/gh-action-pypi-publish@v1.5.0
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
