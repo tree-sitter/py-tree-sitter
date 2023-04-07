@@ -12,7 +12,7 @@ with open(path.join(path.dirname(__file__), "README.md")) as f:
 
 setup(
     name="abch_tree_sitter",
-    version="0.20.1",
+    version="1.0.0",
     author="Ackee Blockchain",
     url="https://github.com/Ackee-Blockchain/py-tree-sitter",
     license="MIT",
