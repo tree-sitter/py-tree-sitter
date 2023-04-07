@@ -167,7 +167,7 @@ class TestParser(TestCase):
         parser.set_language(JAVASCRIPT)
         source_code = bytes("'😎' && '🐍'", "utf32")
         try:
-            tree = parser.parse(source_code, encoding="utf32")
+            parser.parse(source_code, encoding="utf32")
             assert False, "Should have raised an exception"
         except ValueError:
             pass
