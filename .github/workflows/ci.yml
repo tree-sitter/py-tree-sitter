@@ -9,7 +9,7 @@ jobs:
   build_asan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
       - name: Build Python+ASAN
@@ -36,10 +36,11 @@ jobs:
           - macos-latest
           - windows-latest
         python:
-          - "3.6"
+          - "3.7"
           - "3.8"
+          - "3.9"
           - "3.10"
-          - pypy-3.7
+          - "3.11"
         install_libcxx:
           - false
           - true
@@ -48,11 +49,9 @@ jobs:
             install_libcxx: true
           - os: macos-latest
             install_libcxx: true
-          - os: macos-latest
-            python: pypy-3.7
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
       - uses: actions/setup-python@v2
