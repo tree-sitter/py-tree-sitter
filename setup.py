@@ -11,16 +11,13 @@ with open(path.join(path.dirname(__file__), "README.md")) as f:
     LONG_DESCRIPTION = f.read()
 
 setup(
-    name="tree_sitter",
+    name="abch_tree_sitter",
     version="0.20.1",
-    maintainer="Max Brunsfeld",
-    maintainer_email="maxbrunsfeld@gmail.com",
-    author="Max Brunsfeld",
-    author_email="maxbrunsfeld@gmail.com",
-    url="https://github.com/tree-sitter/py-tree-sitter",
+    author="Ackee Blockchain",
+    url="https://github.com/Ackee-Blockchain/py-tree-sitter",
     license="MIT",
     platforms=["any"],
-    python_requires=">=3.3",
+    python_requires=">=3.7",
     description="Python bindings to the Tree-sitter parsing library",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
@@ -40,5 +37,5 @@ setup(
             ),
         )
     ],
-    project_urls={"Source": "https://github.com/tree-sitter/py-tree-sitter"},
+    project_urls={"Source": "https://github.com/Ackee-Blockchain/py-tree-sitter"},
 )

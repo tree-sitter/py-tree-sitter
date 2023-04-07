@@ -1,9 +1,6 @@
 py-tree-sitter
 ==================
 
-[![Build Status](https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml/badge.svg)](https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml)
-[![Build status](https://ci.appveyor.com/api/projects/status/mde790v0v9gux85w/branch/master?svg=true)](https://ci.appveyor.com/project/maxbrunsfeld/py-tree-sitter/branch/master)
-
 This module provides Python bindings to the [tree-sitter](https://github.com/tree-sitter/tree-sitter) parsing library.
 
 ## Installation
@@ -13,6 +10,10 @@ This package currently only works with Python 3. There are no library dependenci
 ```sh
 pip3 install tree_sitter
 ```
+
+## Acknowledgments
+
+This is a fork of [py-tree-sitter](https://github.com/tree-sitter/py-tree-sitter) by Max Brunsfeld with UTF-16 support added and distributed as CPython-compiled wheels.
 
 ## Usage
 
