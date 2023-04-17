@@ -5,7 +5,7 @@ This module provides Python bindings to the [tree-sitter](https://github.com/tre
 
 ## Installation
 
-This package currently only works with Python 3. There are no library dependencies, but you do need to have a C compiler installed.
+This package currently only works with Python 3. There are no library dependencies, the package is distributed as a CPython-compiled wheel.
 
 ```sh
 pip3 install abch-tree-sitter
