@@ -1038,7 +1038,7 @@ static PyMethodDef parser_methods[] = {
         .ml_name = "parse",
         .ml_meth = (PyCFunction)parser_parse,
         .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc = "parse(bytes, old_tree=None, keep_text=True)\n--\n\n\
+        .ml_doc = "parse(bytes, old_tree=None, keep_text=True, encoding=\"utf8\")\n--\n\n\
                Parse source code, creating a syntax tree.",
     },
     {
