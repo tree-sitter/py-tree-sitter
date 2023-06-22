@@ -1274,8 +1274,9 @@ static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tr
                                     PyBytes_AsString(node1_text));
             Py_XDECREF(node1_text);
             is_satisfied =
-                (search_result != Py_None) == ((CaptureMatchString *)text_predicate)->is_positive;
-            Py_DECREF(search_result);
+                (search_result != NULL && search_result != Py_None) == ((CaptureMatchString *)text_predicate)->is_positive;
+            if (search_result != NULL)
+              Py_DECREF(search_result);
             if (!is_satisfied)
                 return false;
         }
