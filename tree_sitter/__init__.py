@@ -6,6 +6,9 @@ from distutils.unixccompiler import UnixCCompiler
 from os import path
 from platform import system
 from tempfile import TemporaryDirectory
+from glob import glob
+import re
+import json
 from tree_sitter.binding import _language_field_id_for_name, _language_query
 from tree_sitter.binding import Node, Parser, Tree, TreeCursor  # noqa: F401
 
@@ -14,7 +17,7 @@ class Language:
     """A tree-sitter language"""
 
     @staticmethod
-    def build_library(output_path, repo_paths):
+    def build_library(output_path, repo_paths, index=dict()):
         """
         Build a dynamic library at the given path, based on the parser
         repositories at the given paths.
@@ -41,6 +44,56 @@ class Language:
         source_mtimes = [path.getmtime(__file__)] + [
             path.getmtime(path_) for path_ in source_paths
         ]
+
+        if index is not None:
+            for repo_path in repo_paths:
+                # find the symbol name of the parser to use for dlopen later.
+                # doesn't always match the scope, repo name, or file types.
+                parser = None
+                with open(path.join(repo_path, "src", "parser.c"), 'r') as file:
+                    for line in file:
+                        if line.startswith("extern const TSLanguage *tree_sitter_"):
+                            parser = re.search(r"tree_sitter_(.+?)\(", line).group(1)
+                            break
+                if parser is None:
+                    print("ERROR: failed to find parser name in", repo_path)
+                    continue
+
+                # package.json is required, but may be missing.
+                # find the json file, and parse out the tree-sitter section.
+                package_json_path = path.join(repo_path, 'package.json')
+                if not path.isfile(package_json_path):
+                    print("NOTE: missing package.json in", repo_path)
+                    index[parser] = {}
+                    continue
+                with open(package_json_path, 'r') as file:
+                    package_json = json.load(file)
+
+                # we may also be nested in a repo with multiple parsers (typescript, ocaml).
+                nested = False
+                if 'main' in package_json and package_json['main'].startswith('../'):
+                    nested = True
+                    package_json_path = path.join(repo_path, '..', 'package.json')
+                    with open(package_json_path, 'r') as file:
+                        package_json = json.load(file)
+
+                if 'tree-sitter' not in package_json:
+                    print("NOTE: missing tree-sitter section in package.json from", repo_path)
+                    index[parser] = {}
+                    continue
+
+                # tree-sitter section can contain multiple entries.
+                # if nested, attempt to find the one that matches this parser.
+                entries = package_json['tree-sitter']
+                if not nested:
+                    index[parser] = entries
+                    continue
+                for entry in entries:
+                    if entry['scope'].endswith(parser) or ('path' in entry and entry['path'] == parser):
+                        index[parser] = [entry]
+                        break
+                if parser not in index:
+                    index[parser] = entries
 
         compiler = new_compiler()
         if isinstance(compiler, UnixCCompiler):

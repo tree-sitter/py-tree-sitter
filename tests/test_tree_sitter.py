@@ -1,21 +1,28 @@
 # pylint: disable=missing-docstring
 
 import re
+import os
 from unittest import TestCase
 from os import path
 from tree_sitter import Language, Parser
 
 LIB_PATH = path.join("build", "languages.so")
+LIB_LANGS = [
+    path.join("tests", "fixtures", "tree-sitter-python"),
+    path.join("tests", "fixtures", "tree-sitter-javascript"),
+]
 Language.build_library(
     LIB_PATH,
-    [
-        path.join("tests", "fixtures", "tree-sitter-python"),
-        path.join("tests", "fixtures", "tree-sitter-javascript"),
-    ],
+    LIB_LANGS,
 )
 PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 
+class TestLanguage(TestCase):
+    def test_build_library_index(self):
+        index = dict()
+        Language.build_library(LIB_PATH, LIB_LANGS, index=index)
+        self.assertEqual(index["python"][0]["scope"], "source.python")
 
 class TestParser(TestCase):
     def test_set_language(self):
