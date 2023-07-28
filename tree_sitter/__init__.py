@@ -126,6 +126,34 @@ class Language:
             )
         return True
 
+    @staticmethod
+    def lookup_language_name_for_file(index, file_name, file_contents=None):
+        matching_keys = []
+        for key, entries in index.items():
+            for entry in entries:
+                if 'file-types' not in entry:
+                    continue
+                for ft in entry['file-types']:
+                    if file_name == ft or file_name.endswith(ft):
+                        matching_keys.append(key)
+
+        if file_contents is None or len(matching_keys) <= 1:
+            return matching_keys[0] if matching_keys else None
+
+        best_score = -1
+        best_key = None
+        for key in matching_keys:
+            for entry in index[key]:
+                if 'content-regex' in entry and file_contents is not None:
+                    match = re.search(entry['content-regex'], file_contents)
+                    if match:
+                        score = match.end() - match.start()
+                        if score > best_score:
+                            best_score = score
+                            best_key = key
+
+        return best_key if best_key else matching_keys[0]
+
     def __init__(self, library_path, name):
         """
         Load the language with the given name from the dynamic library

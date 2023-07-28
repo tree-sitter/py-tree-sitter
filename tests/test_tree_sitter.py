@@ -24,6 +24,11 @@ class TestLanguage(TestCase):
         Language.build_library(LIB_PATH, LIB_LANGS, index=index)
         self.assertEqual(index["python"][0]["scope"], "source.python")
 
+    def test_lookup_language(self):
+        index = dict()
+        Language.build_library(LIB_PATH, LIB_LANGS, index=index)
+        self.assertEqual(Language.lookup_language_name_for_file(index, "foo.py"), "python")
+
 class TestParser(TestCase):
     def test_set_language(self):
         parser = Parser()
