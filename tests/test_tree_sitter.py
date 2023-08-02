@@ -6,13 +6,21 @@ from os import path
 from tree_sitter import Language, Parser
 
 LIB_PATH = path.join("build", "languages.so")
+
+# cibuildwheel uses a funny working directory when running tests.
+# This is by design, this way tests import whatever is installed and not from the project.
+#
+# The languages binary is still relative to current working directory to prevent reusing
+# a 32-bit languages binary in a 64-bit build. The working directory is clean every time.
+project_root = path.dirname(path.dirname(path.abspath(__file__)))
 Language.build_library(
     LIB_PATH,
     [
-        path.join("tests", "fixtures", "tree-sitter-python"),
-        path.join("tests", "fixtures", "tree-sitter-javascript"),
+        path.join(project_root, "tests", "fixtures", "tree-sitter-python"),
+        path.join(project_root, "tests", "fixtures", "tree-sitter-javascript"),
     ],
 )
+
 PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 
