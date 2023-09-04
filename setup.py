@@ -4,8 +4,8 @@ Py-Tree-sitter
 
 from os import path
 from platform import system
-from setuptools import Extension, setup
 
+from setuptools import Extension, setup
 
 with open(path.join(path.dirname(__file__), "README.md")) as f:
     LONG_DESCRIPTION = f.read()
@@ -21,7 +21,7 @@ setup(
     license="MIT",
     platforms=["any"],
     python_requires=">=3.3",
-    description="Python bindings to the Tree-sitter parsing library",
+    description="Python bindings for the Tree-Sitter parsing library",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     classifiers=[
