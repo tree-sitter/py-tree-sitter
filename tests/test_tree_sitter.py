@@ -1,9 +1,7 @@
 import re
 from os import path
-from typing import Optional
+from typing import Optional, Tuple
 from unittest import TestCase
-
-from typing_extensions import Tuple
 
 from tree_sitter import Language, Parser
 
@@ -20,11 +18,24 @@ Language.build_library(
     [
         path.join(project_root, "tests", "fixtures", "tree-sitter-python"),
         path.join(project_root, "tests", "fixtures", "tree-sitter-javascript"),
+        path.join(project_root, "tests", "fixtures", "tree-sitter-json"),
     ],
 )
 
 PYTHON = Language(LIB_PATH, "python")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
+JSON = Language(LIB_PATH, "json")
+
+JSON_EXAMPLE: bytes = b"""
+
+[
+  123,
+  false,
+  {
+    "x": null
+  }
+]
+"""
 
 
 class TestParser(TestCase):
@@ -192,6 +203,175 @@ class TestNode(TestCase):
         self.assertEqual(jsx_node.field_name_for_child(0), None)
         self.assertEqual(jsx_node.field_name_for_child(1), "name")
 
+    def test_descendant_for_byte_range(self):
+        parser = Parser()
+        parser.set_language(JSON)
+        tree = parser.parse(JSON_EXAMPLE)
+        array_node = tree.root_node
+
+        colon_index = JSON_EXAMPLE.index(b":")
+
+        # Leaf node exactly matches the given bounds - byte query
+        colon_node = array_node.descendant_for_byte_range(
+            colon_index, colon_index + 1
+        )
+        if colon_node is None:
+            self.fail("colon_node is None")
+        self.assertEqual(colon_node.type, ":")
+        self.assertEqual(colon_node.start_byte, colon_index)
+        self.assertEqual(colon_node.end_byte, colon_index + 1)
+        self.assertEqual(colon_node.start_point, (6, 7))
+        self.assertEqual(colon_node.end_point, (6, 8))
+
+        # Leaf node exactly matches the given bounds - point query
+        colon_node = array_node.descendant_for_point_range((6, 7), (6, 8))
+        if colon_node is None:
+            self.fail("colon_node is None")
+        self.assertEqual(colon_node.type, ":")
+        self.assertEqual(colon_node.start_byte, colon_index)
+        self.assertEqual(colon_node.end_byte, colon_index + 1)
+        self.assertEqual(colon_node.start_point, (6, 7))
+        self.assertEqual(colon_node.end_point, (6, 8))
+
+        # The given point is between two adjacent leaf nodes - byte query
+        colon_node = array_node.descendant_for_byte_range(
+            colon_index, colon_index
+        )
+        if colon_node is None:
+            self.fail("colon_node is None")
+        self.assertEqual(colon_node.type, ":")
+        self.assertEqual(colon_node.start_byte, colon_index)
+        self.assertEqual(colon_node.end_byte, colon_index + 1)
+        self.assertEqual(colon_node.start_point, (6, 7))
+        self.assertEqual(colon_node.end_point, (6, 8))
+
+        # The given point is between two adjacent leaf nodes - point query
+        colon_node = array_node.descendant_for_point_range((6, 7), (6, 7))
+        if colon_node is None:
+            self.fail("colon_node is None")
+        self.assertEqual(colon_node.type, ":")
+        self.assertEqual(colon_node.start_byte, colon_index)
+        self.assertEqual(colon_node.end_byte, colon_index + 1)
+        self.assertEqual(colon_node.start_point, (6, 7))
+        self.assertEqual(colon_node.end_point, (6, 8))
+
+        # Leaf node starts at the lower bound, ends after the upper bound - byte query
+        string_index = JSON_EXAMPLE.index(b'"x"')
+        string_node = array_node.descendant_for_byte_range(
+            string_index, string_index + 2
+        )
+        if string_node is None:
+            self.fail("string_node is None")
+        self.assertEqual(string_node.type, "string")
+        self.assertEqual(string_node.start_byte, string_index)
+        self.assertEqual(string_node.end_byte, string_index + 3)
+        self.assertEqual(string_node.start_point, (6, 4))
+        self.assertEqual(string_node.end_point, (6, 7))
+
+        # Leaf node starts at the lower bound, ends after the upper bound - point query
+        string_node = array_node.descendant_for_point_range((6, 4), (6, 6))
+        if string_node is None:
+            self.fail("string_node is None")
+        self.assertEqual(string_node.type, "string")
+        self.assertEqual(string_node.start_byte, string_index)
+        self.assertEqual(string_node.end_byte, string_index + 3)
+        self.assertEqual(string_node.start_point, (6, 4))
+        self.assertEqual(string_node.end_point, (6, 7))
+
+        # Leaf node starts before the lower bound, ends at the upper bound - byte query
+        null_index = JSON_EXAMPLE.index(b"null")
+        null_node = array_node.descendant_for_byte_range(
+            null_index + 1, null_index + 4
+        )
+        if null_node is None:
+            self.fail("null_node is None")
+        self.assertEqual(null_node.type, "null")
+        self.assertEqual(null_node.start_byte, null_index)
+        self.assertEqual(null_node.end_byte, null_index + 4)
+        self.assertEqual(null_node.start_point, (6, 9))
+        self.assertEqual(null_node.end_point, (6, 13))
+
+        # Leaf node starts before the lower bound, ends at the upper bound - point query
+        null_node = array_node.descendant_for_point_range((6, 11), (6, 13))
+        if null_node is None:
+            self.fail("null_node is None")
+        self.assertEqual(null_node.type, "null")
+        self.assertEqual(null_node.start_byte, null_index)
+        self.assertEqual(null_node.end_byte, null_index + 4)
+        self.assertEqual(null_node.start_point, (6, 9))
+        self.assertEqual(null_node.end_point, (6, 13))
+
+        # The bounds span multiple leaf nodes - return the smallest node that does span it.
+        pair_node = array_node.descendant_for_byte_range(
+            string_index + 2, string_index + 4
+        )
+        if pair_node is None:
+            self.fail("pair_node is None")
+        self.assertEqual(pair_node.type, "pair")
+        self.assertEqual(pair_node.start_byte, string_index)
+        self.assertEqual(pair_node.end_byte, string_index + 9)
+        self.assertEqual(pair_node.start_point, (6, 4))
+        self.assertEqual(pair_node.end_point, (6, 13))
+
+        self.assertEqual(colon_node.parent, pair_node)
+
+        # No leaf spans the given range - return the smallest node that does span it.
+        pair_node = array_node.descendant_for_point_range((6, 6), (6, 8))
+        if pair_node is None:
+            self.fail("pair_node is None")
+        self.assertEqual(pair_node.type, "pair")
+        self.assertEqual(pair_node.start_byte, string_index)
+        self.assertEqual(pair_node.end_byte, string_index + 9)
+        self.assertEqual(pair_node.start_point, (6, 4))
+        self.assertEqual(pair_node.end_point, (6, 13))
+
+    def test_root_node_with_offset(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        tree = parser.parse(b"  if (a) b")
+
+        node = tree.root_node_with_offset(6, (2, 2))
+        if node is None:
+            self.fail("node is None")
+        self.assertEqual(node.byte_range, (8, 16))
+        self.assertEqual(node.start_point, (2, 4))
+        self.assertEqual(node.end_point, (2, 12))
+
+        child = node.child(0).child(2)
+        if child is None:
+            self.fail("child is None")
+        self.assertEqual(child.type, "expression_statement")
+        self.assertEqual(child.byte_range, (15, 16))
+        self.assertEqual(child.start_point, (2, 11))
+        self.assertEqual(child.end_point, (2, 12))
+
+        cursor = node.walk()
+        cursor.goto_first_child()
+        cursor.goto_first_child()
+        cursor.goto_next_sibling()
+        child = cursor.node
+        if child is None:
+            self.fail("child is None")
+        self.assertEqual(child.type, "parenthesized_expression")
+        self.assertEqual(child.byte_range, (11, 14))
+        self.assertEqual(child.start_point, (2, 7))
+        self.assertEqual(child.end_point, (2, 10))
+
+    def test_node_is_extra(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        tree = parser.parse(b"foo(/* hi */);")
+
+        root_node = tree.root_node
+        comment_node = root_node.descendant_for_byte_range(7, 7)
+        if comment_node is None:
+            self.fail("comment_node is None")
+
+        self.assertEqual(root_node.type, "program")
+        self.assertEqual(comment_node.type, "comment")
+        self.assertEqual(root_node.is_extra, False)
+        self.assertEqual(comment_node.is_extra, True)
+
     def test_children(self):
         parser = Parser()
         parser.set_language(PYTHON)
@@ -208,6 +388,7 @@ class TestNode(TestCase):
         self.assertIs(root_node.children, root_node.children)
 
         fn_node = root_node.children[0]
+        self.assertEqual(fn_node, root_node.child(0))
         self.assertEqual(fn_node.type, "function_definition")
         self.assertEqual(fn_node.start_byte, 0)
         self.assertEqual(fn_node.end_byte, 18)
@@ -215,23 +396,28 @@ class TestNode(TestCase):
         self.assertEqual(fn_node.end_point, (1, 7))
 
         def_node = fn_node.children[0]
+        self.assertEqual(def_node, fn_node.child(0))
         self.assertEqual(def_node.type, "def")
         self.assertEqual(def_node.is_named, False)
 
         id_node = fn_node.children[1]
+        self.assertEqual(id_node, fn_node.child(1))
         self.assertEqual(id_node.type, "identifier")
         self.assertEqual(id_node.is_named, True)
         self.assertEqual(len(id_node.children), 0)
 
         params_node = fn_node.children[2]
+        self.assertEqual(params_node, fn_node.child(2))
         self.assertEqual(params_node.type, "parameters")
         self.assertEqual(params_node.is_named, True)
 
         colon_node = fn_node.children[3]
+        self.assertEqual(colon_node, fn_node.child(3))
         self.assertEqual(colon_node.type, ":")
         self.assertEqual(colon_node.is_named, False)
 
         statement_node = fn_node.children[4]
+        self.assertEqual(statement_node, fn_node.child(4))
         self.assertEqual(statement_node.type, "block")
         self.assertEqual(statement_node.is_named, True)
 
@@ -248,6 +434,7 @@ class TestNode(TestCase):
         self.assertEqual(root_node.end_point, (0, 9))
 
         exp_stmt_node = root_node.children[0]
+        self.assertEqual(exp_stmt_node, root_node.child(0))
         self.assertEqual(exp_stmt_node.type, "expression_statement")
         self.assertEqual(exp_stmt_node.start_byte, 0)
         self.assertEqual(exp_stmt_node.end_byte, 9)
@@ -256,6 +443,7 @@ class TestNode(TestCase):
         self.assertEqual(exp_stmt_node.parent, root_node)
 
         list_node = exp_stmt_node.children[0]
+        self.assertEqual(list_node, exp_stmt_node.child(0))
         self.assertEqual(list_node.type, "list")
         self.assertEqual(list_node.start_byte, 0)
         self.assertEqual(list_node.end_byte, 9)
@@ -266,6 +454,7 @@ class TestNode(TestCase):
         named_children = list_node.named_children
 
         open_delim_node = list_node.children[0]
+        self.assertEqual(open_delim_node, list_node.child(0))
         self.assertEqual(open_delim_node.type, "[")
         self.assertEqual(open_delim_node.start_byte, 0)
         self.assertEqual(open_delim_node.end_byte, 1)
@@ -274,35 +463,44 @@ class TestNode(TestCase):
         self.assertEqual(open_delim_node.parent, list_node)
 
         first_num_node = list_node.children[1]
+        self.assertEqual(first_num_node, list_node.child(1))
         self.assertEqual(first_num_node, open_delim_node.next_named_sibling)
         self.assertEqual(first_num_node.parent, list_node)
         self.assertEqual(named_children[0], first_num_node)
+        self.assertEqual(first_num_node, list_node.named_child(0))
 
         first_comma_node = list_node.children[2]
+        self.assertEqual(first_comma_node, list_node.child(2))
         self.assertEqual(first_comma_node, first_num_node.next_sibling)
         self.assertEqual(first_num_node, first_comma_node.prev_sibling)
         self.assertEqual(first_comma_node.parent, list_node)
 
         second_num_node = list_node.children[3]
+        self.assertEqual(second_num_node, list_node.child(3))
         self.assertEqual(second_num_node, first_comma_node.next_sibling)
         self.assertEqual(second_num_node, first_num_node.next_named_sibling)
         self.assertEqual(first_num_node, second_num_node.prev_named_sibling)
         self.assertEqual(second_num_node.parent, list_node)
         self.assertEqual(named_children[1], second_num_node)
+        self.assertEqual(second_num_node, list_node.named_child(1))
 
         second_comma_node = list_node.children[4]
+        self.assertEqual(second_comma_node, list_node.child(4))
         self.assertEqual(second_comma_node, second_num_node.next_sibling)
         self.assertEqual(second_num_node, second_comma_node.prev_sibling)
         self.assertEqual(second_comma_node.parent, list_node)
 
         third_num_node = list_node.children[5]
+        self.assertEqual(third_num_node, list_node.child(5))
         self.assertEqual(third_num_node, second_comma_node.next_sibling)
         self.assertEqual(third_num_node, second_num_node.next_named_sibling)
         self.assertEqual(second_num_node, third_num_node.prev_named_sibling)
         self.assertEqual(third_num_node.parent, list_node)
         self.assertEqual(named_children[2], third_num_node)
+        self.assertEqual(third_num_node, list_node.named_child(2))
 
         close_delim_node = list_node.children[6]
+        self.assertEqual(close_delim_node, list_node.child(6))
         self.assertEqual(close_delim_node.type, "]")
         self.assertEqual(close_delim_node.start_byte, 8)
         self.assertEqual(close_delim_node.end_byte, 9)
