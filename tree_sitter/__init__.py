@@ -1,13 +1,15 @@
 """Python bindings for tree-sitter."""
 
-from ctypes import cdll, c_void_p
+from ctypes import c_void_p, cdll
 from distutils.ccompiler import new_compiler
 from distutils.unixccompiler import UnixCCompiler
 from os import path
 from platform import system
 from tempfile import TemporaryDirectory
-from tree_sitter.binding import _language_field_id_for_name, _language_query
-from tree_sitter.binding import Node, Parser, Tree, TreeCursor  # noqa: F401
+from typing import Optional
+
+from tree_sitter.binding import (Node, Parser, Tree, TreeCursor,  # noqa: F401
+                                 _language_field_id_for_name, _language_query)
 
 
 class Language:
@@ -44,7 +46,7 @@ class Language:
 
         compiler = new_compiler()
         if isinstance(compiler, UnixCCompiler):
-            compiler.compiler_cxx[0] = "c++"
+            compiler.set_executables(compiler_cxx="c++")
 
         if max(source_mtimes) <= output_mtime:
             return False
@@ -84,7 +86,7 @@ class Language:
         language_function.restype = c_void_p
         self.language_id = language_function()
 
-    def field_id_for_name(self, name):
+    def field_id_for_name(self, name) -> Optional[int]:
         """Return the field id for a field name."""
         return _language_field_id_for_name(self.language_id, name)
 
