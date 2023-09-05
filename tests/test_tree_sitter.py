@@ -1,8 +1,10 @@
-# pylint: disable=missing-docstring
-
 import re
-from unittest import TestCase
 from os import path
+from typing import Optional
+from unittest import TestCase
+
+from typing_extensions import Tuple
+
 from tree_sitter import Language, Parser
 
 LIB_PATH = path.join("build", "languages.so")
@@ -62,7 +64,7 @@ class TestParser(TestCase):
         parser.set_language(PYTHON)
         source_lines = ["def foo():\n", "  bar()"]
 
-        def read_callback(byte_offset, point):
+        def read_callback(_byte_offset: int, point: Tuple[int, int]) -> Optional[bytes]:
             row, column = point
             if row >= len(source_lines):
                 return None
@@ -103,9 +105,9 @@ class TestParser(TestCase):
     def test_buffer_protocol(self):
         parser = Parser()
         parser.set_language(JAVASCRIPT)
-        parser.parse(b'test')
-        parser.parse(memoryview(b'test'))
-        parser.parse(bytearray(b'test'))
+        parser.parse(b"test")
+        parser.parse(memoryview(b"test"))
+        parser.parse(bytearray(b"test"))
 
     def test_multibyte_characters_via_read_callback(self):
         parser = Parser()
@@ -113,7 +115,7 @@ class TestParser(TestCase):
         source_code = bytes("'😎' && '🐍'", "utf8")
 
         def read(byte_position, point):
-            return source_code[byte_position:byte_position+1]
+            return source_code[byte_position:byte_position + 1]
 
         tree = parser.parse(read)
         root_node = tree.root_node
@@ -166,7 +168,9 @@ class TestNode(TestCase):
         attribute_field = PYTHON.field_id_for_name("attribute")
 
         attributes = jsx_node.children_by_field_id(attribute_field)
-        self.assertEqual([a.type for a in attributes], ["jsx_attribute", "jsx_attribute"])
+        self.assertEqual(
+            [a.type for a in attributes], ["jsx_attribute", "jsx_attribute"]
+        )
 
     def test_children_by_field_name(self):
         parser = Parser()
@@ -175,7 +179,9 @@ class TestNode(TestCase):
         jsx_node = tree.root_node.children[0].children[0]
 
         attributes = jsx_node.children_by_field_name("attribute")
-        self.assertEqual([a.type for a in attributes], ["jsx_attribute", "jsx_attribute"])
+        self.assertEqual(
+            [a.type for a in attributes], ["jsx_attribute", "jsx_attribute"]
+        )
 
     def test_field_name_for_child(self):
         parser = Parser()
@@ -247,8 +253,7 @@ class TestNode(TestCase):
         self.assertEqual(exp_stmt_node.end_byte, 9)
         self.assertEqual(exp_stmt_node.start_point, (0, 0))
         self.assertEqual(exp_stmt_node.end_point, (0, 9))
-        self.assertEqual(exp_stmt_node.parent,
-                         root_node)
+        self.assertEqual(exp_stmt_node.parent, root_node)
 
         list_node = exp_stmt_node.children[0]
         self.assertEqual(list_node.type, "list")
@@ -256,8 +261,7 @@ class TestNode(TestCase):
         self.assertEqual(list_node.end_byte, 9)
         self.assertEqual(list_node.start_point, (0, 0))
         self.assertEqual(list_node.end_point, (0, 9))
-        self.assertEqual(list_node.parent,
-                         exp_stmt_node)
+        self.assertEqual(list_node.parent, exp_stmt_node)
 
         named_children = list_node.named_children
 
@@ -267,56 +271,36 @@ class TestNode(TestCase):
         self.assertEqual(open_delim_node.end_byte, 1)
         self.assertEqual(open_delim_node.start_point, (0, 0))
         self.assertEqual(open_delim_node.end_point, (0, 1))
-        self.assertEqual(open_delim_node.parent,
-                         list_node)
+        self.assertEqual(open_delim_node.parent, list_node)
 
         first_num_node = list_node.children[1]
-        self.assertEqual(first_num_node,
-                         open_delim_node.next_named_sibling)
-        self.assertEqual(first_num_node.parent,
-                         list_node)
-        self.assertEqual(named_children[0],
-                         first_num_node)
+        self.assertEqual(first_num_node, open_delim_node.next_named_sibling)
+        self.assertEqual(first_num_node.parent, list_node)
+        self.assertEqual(named_children[0], first_num_node)
 
         first_comma_node = list_node.children[2]
-        self.assertEqual(first_comma_node,
-                         first_num_node.next_sibling)
-        self.assertEqual(first_num_node,
-                         first_comma_node.prev_sibling)
-        self.assertEqual(first_comma_node.parent,
-                         list_node)
+        self.assertEqual(first_comma_node, first_num_node.next_sibling)
+        self.assertEqual(first_num_node, first_comma_node.prev_sibling)
+        self.assertEqual(first_comma_node.parent, list_node)
 
         second_num_node = list_node.children[3]
-        self.assertEqual(second_num_node,
-                         first_comma_node.next_sibling)
-        self.assertEqual(second_num_node,
-                         first_num_node.next_named_sibling)
-        self.assertEqual(first_num_node,
-                         second_num_node.prev_named_sibling)
-        self.assertEqual(second_num_node.parent,
-                         list_node)
-        self.assertEqual(named_children[1],
-                         second_num_node)
+        self.assertEqual(second_num_node, first_comma_node.next_sibling)
+        self.assertEqual(second_num_node, first_num_node.next_named_sibling)
+        self.assertEqual(first_num_node, second_num_node.prev_named_sibling)
+        self.assertEqual(second_num_node.parent, list_node)
+        self.assertEqual(named_children[1], second_num_node)
 
         second_comma_node = list_node.children[4]
-        self.assertEqual(second_comma_node,
-                         second_num_node.next_sibling)
-        self.assertEqual(second_num_node,
-                         second_comma_node.prev_sibling)
-        self.assertEqual(second_comma_node.parent,
-                         list_node)
+        self.assertEqual(second_comma_node, second_num_node.next_sibling)
+        self.assertEqual(second_num_node, second_comma_node.prev_sibling)
+        self.assertEqual(second_comma_node.parent, list_node)
 
         third_num_node = list_node.children[5]
-        self.assertEqual(third_num_node,
-                         second_comma_node.next_sibling)
-        self.assertEqual(third_num_node,
-                         second_num_node.next_named_sibling)
-        self.assertEqual(second_num_node,
-                         third_num_node.prev_named_sibling)
-        self.assertEqual(third_num_node.parent,
-                         list_node)
-        self.assertEqual(named_children[2],
-                         third_num_node)
+        self.assertEqual(third_num_node, second_comma_node.next_sibling)
+        self.assertEqual(third_num_node, second_num_node.next_named_sibling)
+        self.assertEqual(second_num_node, third_num_node.prev_named_sibling)
+        self.assertEqual(third_num_node.parent, list_node)
+        self.assertEqual(named_children[2], third_num_node)
 
         close_delim_node = list_node.children[6]
         self.assertEqual(close_delim_node.type, "]")
@@ -324,14 +308,10 @@ class TestNode(TestCase):
         self.assertEqual(close_delim_node.end_byte, 9)
         self.assertEqual(close_delim_node.start_point, (0, 8))
         self.assertEqual(close_delim_node.end_point, (0, 9))
-        self.assertEqual(close_delim_node,
-                         third_num_node.next_sibling)
-        self.assertEqual(third_num_node,
-                         close_delim_node.prev_sibling)
-        self.assertEqual(third_num_node,
-                         close_delim_node.prev_named_sibling)
-        self.assertEqual(close_delim_node.parent,
-                         list_node)
+        self.assertEqual(close_delim_node, third_num_node.next_sibling)
+        self.assertEqual(third_num_node, close_delim_node.prev_sibling)
+        self.assertEqual(third_num_node, close_delim_node.prev_named_sibling)
+        self.assertEqual(close_delim_node.parent, list_node)
 
         self.assertEqual(list_node.child_count, 7)
         self.assertEqual(list_node.named_child_count, 3)
@@ -344,28 +324,28 @@ class TestNode(TestCase):
         self.assertEqual(tree.text, b"[0, [1, 2, 3]]")
 
         root_node = tree.root_node
-        self.assertEqual(root_node.text, b'[0, [1, 2, 3]]')
+        self.assertEqual(root_node.text, b"[0, [1, 2, 3]]")
 
         exp_stmt_node = root_node.children[0]
-        self.assertEqual(exp_stmt_node.text, b'[0, [1, 2, 3]]')
+        self.assertEqual(exp_stmt_node.text, b"[0, [1, 2, 3]]")
 
         list_node = exp_stmt_node.children[0]
-        self.assertEqual(list_node.text, b'[0, [1, 2, 3]]')
+        self.assertEqual(list_node.text, b"[0, [1, 2, 3]]")
 
         open_delim_node = list_node.children[0]
-        self.assertEqual(open_delim_node.text, b'[')
+        self.assertEqual(open_delim_node.text, b"[")
 
         first_num_node = list_node.children[1]
-        self.assertEqual(first_num_node.text, b'0')
+        self.assertEqual(first_num_node.text, b"0")
 
         first_comma_node = list_node.children[2]
-        self.assertEqual(first_comma_node.text, b',')
+        self.assertEqual(first_comma_node.text, b",")
 
         child_list_node = list_node.children[3]
-        self.assertEqual(child_list_node.text, b'[1, 2, 3]')
+        self.assertEqual(child_list_node.text, b"[1, 2, 3]")
 
         close_delim_node = list_node.children[4]
-        self.assertEqual(close_delim_node.text, b']')
+        self.assertEqual(close_delim_node.text, b"]")
 
         edit_offset = len(b"[0, [")
         tree.edit(
@@ -608,42 +588,48 @@ class TestQuery(TestCase):
         root_node = tree.root_node
 
         # function with name equal to 'fun1' -> test for #eq? @capture string
-        query1 = JAVASCRIPT.query("""
+        query1 = JAVASCRIPT.query(
+            """
         (
             (function_declaration
                 name: (identifier) @function-name
             )
             (#eq? @function-name fun1)
         )
-        """)
+        """
+        )
         captures1 = query1.captures(root_node)
         self.assertEqual(1, len(captures1))
         self.assertEqual(b"fun1", captures1[0][0].text)
         self.assertEqual("function-name", captures1[0][1])
 
         # functions with name not equal to 'fun1' -> test for #not-eq? @capture string
-        query2 = JAVASCRIPT.query("""
+        query2 = JAVASCRIPT.query(
+            """
         (
             (function_declaration
                 name: (identifier) @function-name
             )
             (#not-eq? @function-name fun1)
         )
-        """)
+        """
+        )
         captures2 = query2.captures(root_node)
         self.assertEqual(1, len(captures2))
         self.assertEqual(b"fun2", captures2[0][0].text)
         self.assertEqual("function-name", captures2[0][1])
 
         # key pairs whose key is equal to its value -> test for #eq? @capture1 @capture2
-        query3 = JAVASCRIPT.query("""
+        query3 = JAVASCRIPT.query(
+            """
                     (
                       (pair
                         key: (property_identifier) @key-name
                         value: (identifier) @value-name)
                       (#eq? @key-name @value-name)
                     )
-                    """)
+                    """
+        )
         captures3 = query3.captures(root_node)
         self.assertEqual(2, len(captures3))
         self.assertSetEqual({b"equal"}, set([c[0].text for c in captures3]))
@@ -651,21 +637,24 @@ class TestQuery(TestCase):
 
         # key pairs whose key is not equal to its value
         # -> test for #not-eq? @capture1 @capture2
-        query4 = JAVASCRIPT.query("""
+        query4 = JAVASCRIPT.query(
+            """
                     (
                       (pair
                         key: (property_identifier) @key-name
                         value: (identifier) @value-name)
                       (#not-eq? @key-name @value-name)
                     )
-                    """)
+                    """
+        )
         captures4 = query4.captures(root_node)
         self.assertEqual(2, len(captures4))
         self.assertSetEqual({b"key1", b"value1"}, set([c[0].text for c in captures4]))
         self.assertSetEqual({"key-name", "value-name"}, set([c[1] for c in captures4]))
 
         # equality that is satisfied by *another* capture
-        query5 = JAVASCRIPT.query("""
+        query5 = JAVASCRIPT.query(
+            """
         (
             (function_declaration
                 name: (identifier) @function-name
@@ -673,32 +662,37 @@ class TestQuery(TestCase):
             )
             (#eq? @function-name arg)
         )
-        """)
+        """
+        )
         captures5 = query5.captures(root_node)
         self.assertEqual(0, len(captures5))
 
         # functions that match the regex .*1 -> test for #match @capture regex
-        query6 = JAVASCRIPT.query("""
+        query6 = JAVASCRIPT.query(
+            """
                 (
                     (function_declaration
                         name: (identifier) @function-name
                     )
                     (#match? @function-name ".*1")
                 )
-                """)
+                """
+        )
         captures6 = query6.captures(root_node)
         self.assertEqual(1, len(captures6))
         self.assertEqual(b"fun1", captures6[0][0].text)
 
         # functions that do not match the regex .*1 -> test for #not-match @capture regex
-        query6 = JAVASCRIPT.query("""
+        query6 = JAVASCRIPT.query(
+            """
                         (
                             (function_declaration
                                 name: (identifier) @function-name
                             )
                             (#not-match? @function-name ".*1")
                         )
-                        """)
+                        """
+        )
         captures6 = query6.captures(root_node)
         self.assertEqual(1, len(captures6))
         self.assertEqual(b"fun2", captures6[0][0].text)
@@ -720,54 +714,64 @@ class TestQuery(TestCase):
         parser = Parser()
         parser.set_language(JAVASCRIPT)
         with self.assertRaises(RuntimeError):
-            JAVASCRIPT.query("""
+            JAVASCRIPT.query(
+                """
             (
                 (function_declaration
                     name: (identifier) @function-name
                 )
                 (#eq? @function-name @function-name fun1)
             )
-            """)
+            """
+            )
 
         with self.assertRaises(RuntimeError):
-            JAVASCRIPT.query("""
+            JAVASCRIPT.query(
+                """
             (
                 (function_declaration
                     name: (identifier) @function-name
                 )
                 (#eq? fun1 @function-name)
             )
-            """)
+            """
+            )
 
         with self.assertRaises(RuntimeError):
-            JAVASCRIPT.query("""
+            JAVASCRIPT.query(
+                """
             (
                 (function_declaration
                     name: (identifier) @function-name
                 )
                 (#match? @function-name @function-name fun1)
             )
-            """)
+            """
+            )
 
         with self.assertRaises(RuntimeError):
-            JAVASCRIPT.query("""
+            JAVASCRIPT.query(
+                """
             (
                 (function_declaration
                     name: (identifier) @function-name
                 )
                 (#match? fun1 @function-name)
             )
-            """)
+            """
+            )
 
         with self.assertRaises(RuntimeError):
-            JAVASCRIPT.query("""
+            JAVASCRIPT.query(
+                """
             (
                 (function_declaration
                     name: (identifier) @function-name
                 )
                 (#match? @function-name @function-name)
             )
-            """)
+            """
+            )
 
     def test_multiple_text_predicates(self):
         parser = Parser()
@@ -794,7 +798,8 @@ class TestQuery(TestCase):
         root_node = tree.root_node
 
         # function with name equal to 'fun1' -> test for first #eq? @capture string
-        query1 = JAVASCRIPT.query("""
+        query1 = JAVASCRIPT.query(
+            """
         (
             (function_declaration
                 name: (identifier) @function-name
@@ -804,7 +809,8 @@ class TestQuery(TestCase):
             )
             (#eq? @function-name fun1)
         )
-        """)
+        """
+        )
         captures1 = query1.captures(root_node)
         self.assertEqual(4, len(captures1))
         self.assertEqual(b"fun1", captures1[0][0].text)
@@ -817,7 +823,8 @@ class TestQuery(TestCase):
         self.assertEqual("argument-name", captures1[3][1])
 
         # function with argument equal to 'arg' -> test for second #eq? @capture string
-        query2 = JAVASCRIPT.query("""
+        query2 = JAVASCRIPT.query(
+            """
         (
             (function_declaration
                 name: (identifier) @function-name
@@ -827,7 +834,8 @@ class TestQuery(TestCase):
             )
             (#eq? @argument-name arg)
         )
-        """)
+        """
+        )
         captures2 = query2.captures(root_node)
         self.assertEqual(4, len(captures2))
         self.assertEqual(b"fun1", captures2[0][0].text)
@@ -840,7 +848,8 @@ class TestQuery(TestCase):
         self.assertEqual("argument-name", captures2[3][1])
 
         # function with name equal to 'fun1' & argument 'arg' -> test for both together
-        query3 = JAVASCRIPT.query("""
+        query3 = JAVASCRIPT.query(
+            """
         (
             (function_declaration
                 name: (identifier) @function-name
@@ -851,7 +860,8 @@ class TestQuery(TestCase):
             (#eq? @function-name fun1)
             (#eq? @argument-name arg)
         )
-        """)
+        """
+        )
         captures3 = query3.captures(root_node)
         self.assertEqual(2, len(captures3))
         self.assertEqual(b"fun1", captures3[0][0].text)
