@@ -1,23 +1,26 @@
 #!/bin/bash
 
+set -eux
+
 language_names=(
-  tree-sitter-python
-  tree-sitter-javascript
+	tree-sitter-python
+	tree-sitter-javascript
+	tree-sitter-json
 )
 
 mkdir -p tests/fixtures
 
-for language in ${language_names[@]}; do
-  language_dir=tests/fixtures/$language
-  language_url=https://github.com/tree-sitter/$language
+for language in "${language_names[@]}"; do
+	language_dir=tests/fixtures/$language
+	language_url=https://github.com/tree-sitter/$language
 
-  if [ ! -d $language_dir ]; then
-    git clone $language_url $language_dir --depth=1
-  fi
+	if [ ! -d "$language_dir" ]; then
+		git clone "$language_url" "$language_dir" --depth=1
+	fi
 
-  (
-    cd $language_dir
-    git fetch origin master --depth 1
-    git reset --hard FETCH_HEAD
-  )
+	(
+		cd "$language_dir"
+		git fetch origin master --depth 1
+		git reset --hard FETCH_HEAD
+	)
 done
