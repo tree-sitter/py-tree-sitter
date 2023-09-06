@@ -1,22 +1,43 @@
 """Python bindings for tree-sitter."""
 
+import enum
 from ctypes import c_void_p, cdll
 from distutils.ccompiler import new_compiler
 from distutils.unixccompiler import UnixCCompiler
 from os import path
 from platform import system
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import Callable, List, Optional
 
-from tree_sitter.binding import (Node, Parser, Tree, TreeCursor,  # noqa: F401
-                                 _language_field_id_for_name, _language_query)
+from tree_sitter.binding import (LookaheadIterator, Node, Parser,  # noqa: F401
+                                 Tree, TreeCursor, _language_field_count,
+                                 _language_field_id_for_name,
+                                 _language_field_name_for_id, _language_query,
+                                 _language_state_count, _language_symbol_count,
+                                 _language_symbol_for_name,
+                                 _language_symbol_name, _language_symbol_type,
+                                 _language_version, _lookahead_iterator,
+                                 _next_state)
+
+
+class SymbolType(enum.IntEnum):
+    """An enumeration of the different types of symbols."""
+
+    REGULAR = 0
+    """A regular symbol."""
+
+    ANONYMOUS = 1
+    """An anonymous symbol."""
+
+    AUXILIARY = 2
+    """An auxiliary symbol."""
 
 
 class Language:
     """A tree-sitter language"""
 
     @staticmethod
-    def build_library(output_path, repo_paths):
+    def build_library(output_path: str, repo_paths: List[str]):
         """
         Build a dynamic library at the given path, based on the parser
         repositories at the given paths.
@@ -75,21 +96,96 @@ class Language:
             )
         return True
 
-    def __init__(self, library_path, name):
+    def __init__(self, library_path: str, name: str):
         """
         Load the language with the given name from the dynamic library
         at the given path.
         """
         self.name = name
         self.lib = cdll.LoadLibrary(library_path)
-        language_function = getattr(self.lib, "tree_sitter_%s" % name)
+        language_function: Callable[[], c_void_p] = getattr(self.lib, "tree_sitter_%s" % name)
         language_function.restype = c_void_p
-        self.language_id = language_function()
+        self.language_id: c_void_p = language_function()
 
-    def field_id_for_name(self, name) -> Optional[int]:
+    @property
+    def version(self) -> int:
+        """
+        Get the ABI version number that indicates which version of the Tree-sitter CLI
+        that was used to generate this [`Language`].
+        """
+        return _language_version(self.language_id)
+
+    @property
+    def node_kind_count(self) -> int:
+        """Get the number of distinct node types in this language."""
+        return _language_symbol_count(self.language_id)
+
+    @property
+    def parse_state_count(self) -> int:
+        """Get the number of valid states in this language."""
+        return _language_state_count(self.language_id)
+
+    def node_kind_for_id(self, id: int) -> Optional[str]:
+        """Get the name of the node kind for the given numerical id."""
+        return _language_symbol_name(self.language_id, id)
+
+    def id_for_node_kind(self, kind: str, named: bool) -> Optional[int]:
+        """Get the numerical id for the given node kind."""
+        return _language_symbol_for_name(self.language_id, kind, named)
+
+    def node_kind_is_named(self, id: int) -> bool:
+        """
+        Check if the node type for the given numerical id is named
+        (as opposed to an anonymous node type).
+        """
+        return _language_symbol_type(self.language_id, id) == SymbolType.REGULAR
+
+    def node_kind_is_visible(self, id: int) -> bool:
+        """
+        Check if the node type for the given numerical id is visible
+        (as opposed to an auxiliary node type).
+        """
+        return _language_symbol_type(self.language_id, id) <= SymbolType.ANONYMOUS
+
+    @property
+    def field_count(self) -> int:
+        """Get the number of fields in this language."""
+        return _language_field_count(self.language_id)
+
+    def field_name_for_id(self, field_id: int) -> Optional[str]:
+        """Get the name of the field for the given numerical id."""
+        return _language_field_name_for_id(self.language_id, field_id)
+
+    def field_id_for_name(self, name: str) -> Optional[int]:
         """Return the field id for a field name."""
         return _language_field_id_for_name(self.language_id, name)
 
-    def query(self, source):
+    def next_state(self, state: int, id: int) -> int:
+        """
+        Get the next parse state. Combine this with
+        [`lookahead_iterator`](Language.lookahead_iterator) to
+        generate completion suggestions or valid symbols in error nodes.
+        """
+        return _next_state(self.language_id, state, id)
+
+    def lookahead_iterator(self, state: int) -> Optional[LookaheadIterator]:
+        """
+        Create a new lookahead iterator for this language and parse state.
+
+        This returns `None` if state is invalid for this language.
+
+        Iterating `LookaheadIterator` will yield valid symbols in the given
+        parse state. Newly created lookahead iterators will return the `ERROR`
+        symbol from `LookaheadIterator.current_symbol`.
+
+        Lookahead iterators can be useful to generate suggestions and improve
+        syntax error diagnostics. To get symbols valid in an ERROR node, use the
+        lookahead iterator on its first leaf node state. For `MISSING` nodes, a
+        lookahead iterator created on the previous non-extra leaf node may be
+        appropriate.
+        """
+        return _lookahead_iterator(self.language_id, state)
+
+    def query(self, source: str):
         """Create a Query with the given source code."""
         return _language_query(self.language_id, source)
