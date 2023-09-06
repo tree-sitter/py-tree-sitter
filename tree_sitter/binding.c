@@ -69,6 +69,13 @@ typedef struct {
 } Range;
 
 typedef struct {
+    PyObject_HEAD
+    TSLookaheadIterator *lookahead_iterator;
+} LookaheadIterator;
+
+typedef LookaheadIterator LookaheadNamesIterator;
+
+typedef struct {
     TSTreeCursor default_cursor;
     TSQueryCursor *query_cursor;
     PyObject *re_compile;
@@ -83,6 +90,8 @@ typedef struct {
     PyTypeObject *capture_eq_capture_type;
     PyTypeObject *capture_eq_string_type;
     PyTypeObject *capture_match_string_type;
+    PyTypeObject *lookahead_iterator_type;
+    PyTypeObject *lookahead_names_iterator_type;
 } ModuleState;
 
 #if PY_VERSION_HEX < 0x030900f0
@@ -115,6 +124,10 @@ static PyObject *point_new(TSPoint point) {
 static PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree);
 static PyObject *tree_cursor_new_internal(ModuleState *state, TSNode node, PyObject *tree);
 static PyObject *range_new_internal(ModuleState *state, TSRange range);
+static PyObject *lookahead_iterator_new_internal(ModuleState *state,
+                                                 TSLookaheadIterator *lookahead_iterator);
+static PyObject *lookahead_names_iterator_new_internal(ModuleState *state,
+                                                       TSLookaheadIterator *lookahead_iterator);
 
 static void node_dealloc(Node *self) {
     Py_XDECREF(self->children);
@@ -932,8 +945,9 @@ static PyObject *tree_get_changed_ranges(Tree *self, PyObject *args, PyObject *k
     Tree *new_tree = NULL;
     char *keywords[] = {"new_tree", NULL};
     int ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O", keywords, (PyObject **)&new_tree);
-    if (!ok)
+    if (!ok) {
         return NULL;
+    }
 
     if (!PyObject_IsInstance((PyObject *)new_tree, (PyObject *)state->tree_type)) {
         PyErr_SetString(PyExc_TypeError, "First argument to get_changed_ranges must be a Tree");
@@ -944,8 +958,9 @@ static PyObject *tree_get_changed_ranges(Tree *self, PyObject *args, PyObject *k
     TSRange *ranges = ts_tree_get_changed_ranges(self->tree, new_tree->tree, &length);
 
     PyObject *result = PyList_New(length);
-    if (!result)
+    if (!result) {
         return NULL;
+    }
     for (unsigned i = 0; i < length; i++) {
         PyObject *range = range_new_internal(state, ranges[i]);
         PyList_SetItem(result, i, range);
@@ -1013,8 +1028,9 @@ static PyType_Spec tree_type_spec = {
 static PyObject *tree_new_internal(ModuleState *state, TSTree *tree, PyObject *source,
                                    int keep_text) {
     Tree *self = (Tree *)state->tree_type->tp_alloc(state->tree_type, 0);
-    if (self != NULL)
+    if (self != NULL) {
         self->tree = tree;
+    }
 
     if (keep_text) {
         self->source = source;
@@ -1192,30 +1208,7 @@ static PyObject *tree_cursor_copy(PyObject *self);
 
 static PyMethodDef tree_cursor_methods[] = {
     {
-        .ml_name = "current_field_id",
-        .ml_meth = (PyCFunction)tree_cursor_current_field_id,
-        .ml_flags = METH_NOARGS,
-        .ml_doc = "current_field_id()\n--\n\n\
-			   Get the field id of the tree cursor's current node.\n\n\
-			   If the current node has the field id, return int. Otherwise, return None.",
-    },
-    {
-        .ml_name = "current_field_name",
-        .ml_meth = (PyCFunction)tree_cursor_current_field_name,
-        .ml_flags = METH_NOARGS,
-        .ml_doc = "current_field_name()\n--\n\n\
-               Get the field name of the tree cursor's current node.\n\n\
-               If the current node has the field name, return str. Otherwise, return None.",
-    },
-    {
-        .ml_name = "current_depth",
-        .ml_meth = (PyCFunction)tree_cursor_current_depth,
-        .ml_flags = METH_NOARGS,
-        .ml_doc = "current_depth()\n--\n\n\
-			   Get the depth of the cursor's current node relative to the original node.",
-    },
-    {
-        .ml_name = "current_descendant_index",
+        .ml_name = "descendant_index",
         .ml_meth = (PyCFunction)tree_cursor_current_descendant_index,
         .ml_flags = METH_NOARGS,
         .ml_doc = "current_descendant_index()\n--\n\n\
@@ -1320,6 +1313,32 @@ static PyMethodDef tree_cursor_methods[] = {
 
 static PyGetSetDef tree_cursor_accessors[] = {
     {"node", (getter)tree_cursor_get_node, NULL, "The current node.", NULL},
+    {
+        "field_id",
+        (getter)tree_cursor_current_field_id,
+        NULL,
+        "current_field_id()\n--\n\n\
+			   Get the field id of the tree cursor's current node.\n\n\
+			   If the current node has the field id, return int. Otherwise, return None.",
+        NULL,
+    },
+    {
+        "field_name",
+        (getter)tree_cursor_current_field_name,
+        NULL,
+        "current_field_name()\n--\n\n\
+               Get the field name of the tree cursor's current node.\n\n\
+               If the current node has the field name, return str. Otherwise, return None.",
+        NULL,
+    },
+    {
+        "depth",
+        (getter)tree_cursor_current_depth,
+        NULL,
+        "current_depth()\n--\n\n\
+			   Get the depth of the cursor's current node relative to the original node.",
+        NULL,
+    },
     {NULL},
 };
 
@@ -1367,8 +1386,9 @@ static PyObject *tree_cursor_copy(PyObject *self) {
 
 static PyObject *parser_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     Parser *self = (Parser *)type->tp_alloc(type, 0);
-    if (self != NULL)
+    if (self != NULL) {
         self->parser = ts_parser_new();
+    }
     return (PyObject *)self;
 }
 
@@ -1757,8 +1777,9 @@ static PyObject *capture_match_string_new_internal(ModuleState *state, uint32_t 
                                                    const char *string_value, int is_positive) {
     CaptureMatchString *self = (CaptureMatchString *)state->capture_match_string_type->tp_alloc(
         state->capture_match_string_type, 0);
-    if (self == NULL)
+    if (self == NULL) {
         return NULL;
+    }
     self->capture_value_id = capture_value_id;
     self->regex = PyObject_CallFunction(state->re_compile, "s", string_value);
     self->is_positive = is_positive;
@@ -1821,43 +1842,51 @@ static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tr
             uint32_t capture2_value_id = ((CaptureEqCapture *)text_predicate)->capture2_value_id;
             node1 = node_for_capture_index(state, capture1_value_id, match, tree);
             node2 = node_for_capture_index(state, capture2_value_id, match, tree);
-            if (node1 == NULL || node2 == NULL)
+            if (node1 == NULL || node2 == NULL) {
                 goto error;
+            }
             node1_text = node_get_text(node1, NULL);
             node2_text = node_get_text(node2, NULL);
-            if (node1_text == NULL || node2_text == NULL)
+            if (node1_text == NULL || node2_text == NULL) {
                 goto error;
+            }
             Py_XDECREF(node1);
             Py_XDECREF(node2);
             is_satisfied = PyObject_RichCompareBool(node1_text, node2_text, Py_EQ) ==
                            ((CaptureEqCapture *)text_predicate)->is_positive;
             Py_XDECREF(node1_text);
             Py_XDECREF(node2_text);
-            if (!is_satisfied)
+            if (!is_satisfied) {
                 return false;
+            }
         } else if (capture_eq_string_is_instance(text_predicate)) {
             uint32_t capture_value_id = ((CaptureEqString *)text_predicate)->capture_value_id;
             node1 = node_for_capture_index(state, capture_value_id, match, tree);
-            if (node1 == NULL)
+            if (node1 == NULL) {
                 goto error;
+            }
             node1_text = node_get_text(node1, NULL);
-            if (node1_text == NULL)
+            if (node1_text == NULL) {
                 goto error;
+            }
             Py_XDECREF(node1);
             PyObject *string_value = ((CaptureEqString *)text_predicate)->string_value;
             is_satisfied = PyObject_RichCompareBool(node1_text, string_value, Py_EQ) ==
                            ((CaptureEqString *)text_predicate)->is_positive;
             Py_XDECREF(node1_text);
-            if (!is_satisfied)
+            if (!is_satisfied) {
                 return false;
+            }
         } else if (capture_match_string_is_instance(text_predicate)) {
             uint32_t capture_value_id = ((CaptureMatchString *)text_predicate)->capture_value_id;
             node1 = node_for_capture_index(state, capture_value_id, match, tree);
-            if (node1 == NULL)
+            if (node1 == NULL) {
                 goto error;
+            }
             node1_text = node_get_text(node1, NULL);
-            if (node1_text == NULL)
+            if (node1_text == NULL) {
                 goto error;
+            }
             Py_XDECREF(node1);
             PyObject *search_result =
                 PyObject_CallMethod(((CaptureMatchString *)text_predicate)->regex, "search", "s",
@@ -1865,10 +1894,12 @@ static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tr
             Py_XDECREF(node1_text);
             is_satisfied = (search_result != NULL && search_result != Py_None) ==
                            ((CaptureMatchString *)text_predicate)->is_positive;
-            if (search_result != NULL)
+            if (search_result != NULL) {
                 Py_DECREF(search_result);
-            if (!is_satisfied)
+            }
+            if (!is_satisfied) {
                 return false;
+            }
         }
     }
     return true;
@@ -1895,8 +1926,9 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
     int ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O|(II)(II)II", keywords, (PyObject **)&node,
                                          &start_point.row, &start_point.column, &end_point.row,
                                          &end_point.column, &start_byte, &end_byte);
-    if (!ok)
+    if (!ok) {
         return NULL;
+    }
 
     if (!PyObject_IsInstance((PyObject *)node, (PyObject *)state->node_type)) {
         PyErr_SetString(PyExc_TypeError, "First argument to captures must be a Node");
@@ -1909,21 +1941,24 @@ static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
 
     QueryCapture *capture = NULL;
     PyObject *result = PyList_New(0);
-    if (result == NULL)
+    if (result == NULL) {
         goto error;
+    }
 
     uint32_t capture_index;
     TSQueryMatch match;
     while (ts_query_cursor_next_capture(state->query_cursor, &match, &capture_index)) {
         capture = (QueryCapture *)query_capture_new_internal(state, match.captures[capture_index]);
-        if (capture == NULL)
+        if (capture == NULL) {
             goto error;
+        }
         if (satisfies_text_predicates(self, match, (Tree *)node->tree)) {
             PyObject *capture_name = PyList_GetItem(self->capture_names, capture->capture.index);
             PyObject *capture_node = node_new_internal(state, capture->capture.node, node->tree);
             PyObject *item = PyTuple_Pack(2, capture_node, capture_name);
-            if (item == NULL)
+            if (item == NULL) {
                 goto error;
+            }
             Py_XDECREF(capture_node);
             PyList_Append(result, item);
             Py_XDECREF(item);
@@ -1939,8 +1974,9 @@ error:
 }
 
 static void query_dealloc(Query *self) {
-    if (self->query)
+    if (self->query) {
         ts_query_delete(self->query);
+    }
     Py_XDECREF(self->capture_names);
     Py_XDECREF(self->text_predicates);
     Py_TYPE(self)->tp_free(self);
@@ -1980,8 +2016,9 @@ static PyType_Spec query_type_spec = {
 static PyObject *query_new_internal(ModuleState *state, TSLanguage *language, char *source,
                                     int length) {
     Query *query = (Query *)state->query_type->tp_alloc(state->query_type, 0);
-    if (query == NULL)
+    if (query == NULL) {
         return NULL;
+    }
 
     PyObject *pattern_text_predicates = NULL;
     uint32_t error_offset;
@@ -1992,8 +2029,9 @@ static PyObject *query_new_internal(ModuleState *state, TSLanguage *language, ch
         char *word_end = word_start;
         while (word_end < &source[length] &&
                (iswalnum(*word_end) || *word_end == '-' || *word_end == '_' || *word_end == '?' ||
-                *word_end == '.'))
+                *word_end == '.')) {
             word_end++;
+        }
         char c = *word_end;
         *word_end = 0;
         switch (error_type) {
@@ -2024,20 +2062,23 @@ static PyObject *query_new_internal(ModuleState *state, TSLanguage *language, ch
 
     unsigned pattern_count = ts_query_pattern_count(query->query);
     query->text_predicates = PyList_New(pattern_count);
-    if (query->text_predicates == NULL)
+    if (query->text_predicates == NULL) {
         goto error;
+    }
 
     for (unsigned i = 0; i < pattern_count; i++) {
         unsigned length;
         const TSQueryPredicateStep *predicate_step =
             ts_query_predicates_for_pattern(query->query, i, &length);
         pattern_text_predicates = PyList_New(0);
-        if (pattern_text_predicates == NULL)
+        if (pattern_text_predicates == NULL) {
             goto error;
+        }
         for (unsigned j = 0; j < length; j++) {
             unsigned predicate_len = 0;
-            while ((predicate_step + predicate_len)->type != TSQueryPredicateStepTypeDone)
+            while ((predicate_step + predicate_len)->type != TSQueryPredicateStepTypeDone) {
                 predicate_len++;
+            }
 
             if (predicate_step->type != TSQueryPredicateStepTypeString) {
                 PyErr_Format(
@@ -2072,8 +2113,9 @@ static PyObject *query_new_internal(ModuleState *state, TSLanguage *language, ch
                         (CaptureEqCapture *)capture_eq_capture_new_internal(
                             state, predicate_step[1].value_id, predicate_step[2].value_id,
                             is_positive);
-                    if (capture_eq_capture_predicate == NULL)
+                    if (capture_eq_capture_predicate == NULL) {
                         goto error;
+                    }
                     PyList_Append(pattern_text_predicates,
                                   (PyObject *)capture_eq_capture_predicate);
                     Py_DECREF(capture_eq_capture_predicate);
@@ -2084,8 +2126,9 @@ static PyObject *query_new_internal(ModuleState *state, TSLanguage *language, ch
                     CaptureEqString *capture_eq_string_predicate =
                         (CaptureEqString *)capture_eq_string_new_internal(
                             state, predicate_step[1].value_id, string_value, is_positive);
-                    if (capture_eq_string_predicate == NULL)
+                    if (capture_eq_string_predicate == NULL) {
                         goto error;
+                    }
                     PyList_Append(pattern_text_predicates, (PyObject *)capture_eq_string_predicate);
                     Py_DECREF(capture_eq_string_predicate);
                     break;
@@ -2120,8 +2163,9 @@ static PyObject *query_new_internal(ModuleState *state, TSLanguage *language, ch
                 CaptureMatchString *capture_match_string_predicate =
                     (CaptureMatchString *)capture_match_string_new_internal(
                         state, predicate_step[1].value_id, string_value, is_positive);
-                if (capture_match_string_predicate == NULL)
+                if (capture_match_string_predicate == NULL) {
                     goto error;
+                }
                 PyList_Append(pattern_text_predicates, (PyObject *)capture_match_string_predicate);
                 Py_DECREF(capture_match_string_predicate);
             }
@@ -2220,12 +2264,318 @@ static PyType_Spec range_type_spec = {
 
 static PyObject *range_new_internal(ModuleState *state, TSRange range) {
     Range *self = (Range *)state->range_type->tp_alloc(state->range_type, 0);
-    if (self != NULL)
+    if (self != NULL) {
         self->range = range;
+    }
     return (PyObject *)self;
 }
 
+// LookaheadIterator
+
+static void lookahead_iterator_dealloc(LookaheadIterator *self) {
+    if (self->lookahead_iterator) {
+        ts_lookahead_iterator_delete(self->lookahead_iterator);
+    }
+    Py_TYPE(self)->tp_free(self);
+}
+
+static PyObject *lookahead_iterator_repr(LookaheadIterator *self) {
+    const char *format_string = "<LookaheadIterator %x>";
+    return PyUnicode_FromFormat(format_string, self->lookahead_iterator);
+}
+
+static PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *payload) {
+    return PyLong_FromVoidPtr((void *)ts_lookahead_iterator_language(self->lookahead_iterator));
+}
+
+static PyObject *lookahead_iterator_get_current_symbol(LookaheadIterator *self, void *payload) {
+    return PyLong_FromSize_t(
+        (size_t)ts_lookahead_iterator_current_symbol(self->lookahead_iterator));
+}
+
+static PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self,
+                                                            void *payload) {
+    const char *name = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
+    return PyUnicode_FromString(name);
+}
+
+static PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    uint16_t state_id;
+    if (!PyArg_ParseTuple(args, "OH", &language_id, &state_id)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    return PyBool_FromLong(
+        ts_lookahead_iterator_reset(self->lookahead_iterator, language, state_id));
+}
+
+static PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args) {
+    uint16_t state_id;
+    if (!PyArg_ParseTuple(args, "H", &state_id)) {
+        return NULL;
+    }
+    return PyBool_FromLong(ts_lookahead_iterator_reset_state(self->lookahead_iterator, state_id));
+}
+
+static PyObject *lookahead_iterator_iter(LookaheadIterator *self) {
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject *lookahead_iterator_next(LookaheadIterator *self) {
+    bool res = ts_lookahead_iterator_next(self->lookahead_iterator);
+    if (res) {
+        return PyLong_FromSize_t(
+            (size_t)ts_lookahead_iterator_current_symbol(self->lookahead_iterator));
+    }
+    PyErr_SetNone(PyExc_StopIteration);
+    return NULL;
+}
+
+static PyObject *lookahead_iterator_names_iterator(LookaheadIterator *self) {
+    return lookahead_names_iterator_new_internal(PyType_GetModuleState(Py_TYPE(self)),
+                                                 self->lookahead_iterator);
+}
+
+static PyObject *lookahead_iterator(PyObject *self, PyObject *args) {
+    ModuleState *state = PyModule_GetState(self);
+
+    TSLanguage *language;
+    PyObject *language_id;
+    uint16_t state_id;
+    if (!PyArg_ParseTuple(args, "OH", &language_id, &state_id)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+
+    TSLookaheadIterator *lookahead_iterator = ts_lookahead_iterator_new(language, state_id);
+
+    if (lookahead_iterator == NULL) {
+        Py_RETURN_NONE;
+    }
+
+    return lookahead_iterator_new_internal(state, lookahead_iterator);
+}
+
+static PyObject *lookahead_iterator_new_internal(ModuleState *state,
+                                                 TSLookaheadIterator *lookahead_iterator) {
+    LookaheadIterator *self = (LookaheadIterator *)state->lookahead_iterator_type->tp_alloc(
+        state->lookahead_iterator_type, 0);
+    if (self != NULL) {
+        self->lookahead_iterator = lookahead_iterator;
+    }
+    return (PyObject *)self;
+}
+
+static PyGetSetDef lookahead_iterator_accessors[] = {
+    {"language", (getter)lookahead_iterator_get_language, NULL, "Get the language.", NULL},
+    {"current_symbol", (getter)lookahead_iterator_get_current_symbol, NULL,
+     "Get the current symbol.", NULL},
+    {"current_symbol_name", (getter)lookahead_iterator_get_current_symbol_name, NULL,
+     "Get the current symbol name.", NULL},
+    {NULL},
+};
+
+static PyMethodDef lookahead_iterator_methods[] = {
+    {.ml_name = "reset",
+     .ml_meth = (PyCFunction)lookahead_iterator_reset,
+     .ml_flags = METH_VARARGS,
+     .ml_doc = "reset(language, state)\n--\n\n\
+			  Reset the lookahead iterator to a new language and parse state.\n\
+        	  This returns `True` if the language was set successfully, and `False` otherwise."},
+    {.ml_name = "reset_state",
+     .ml_meth = (PyCFunction)lookahead_iterator_reset_state,
+     .ml_flags = METH_VARARGS,
+     .ml_doc = "reset_state(state)\n--\n\n\
+			  Reset the lookahead iterator to a new parse state.\n\
+			  This returns `True` if the state was set successfully, and `False` otherwise."},
+    {
+        .ml_name = "iter_names",
+        .ml_meth = (PyCFunction)lookahead_iterator_names_iterator,
+        .ml_flags = METH_NOARGS,
+        .ml_doc = "iter_names()\n--\n\n\
+			  Get an iterator of the names of possible syntax nodes that could come next.",
+    },
+    {NULL},
+};
+
+static PyType_Slot lookahead_iterator_type_slots[] = {
+    {Py_tp_doc, "An iterator over the possible syntax nodes that could come next."},
+    {Py_tp_dealloc, lookahead_iterator_dealloc},
+    {Py_tp_repr, lookahead_iterator_repr},
+    {Py_tp_getset, lookahead_iterator_accessors},
+    {Py_tp_methods, lookahead_iterator_methods},
+    {Py_tp_iter, lookahead_iterator_iter},
+    {Py_tp_iternext, lookahead_iterator_next},
+    {0, NULL},
+};
+
+static PyType_Spec lookahead_iterator_type_spec = {
+    .name = "tree_sitter.LookaheadIterator",
+    .basicsize = sizeof(LookaheadIterator),
+    .itemsize = 0,
+    .flags = Py_TPFLAGS_DEFAULT,
+    .slots = lookahead_iterator_type_slots,
+};
+
+// LookaheadNamesIterator
+
+static PyObject *lookahead_names_iterator_new_internal(ModuleState *state,
+                                                       TSLookaheadIterator *lookahead_iterator) {
+    LookaheadNamesIterator *self =
+        (LookaheadNamesIterator *)state->lookahead_names_iterator_type->tp_alloc(
+            state->lookahead_names_iterator_type, 0);
+    if (self == NULL) {
+        return NULL;
+    }
+    self->lookahead_iterator = lookahead_iterator;
+    return (PyObject *)self;
+}
+
+static PyObject *lookahead_names_iterator_repr(LookaheadNamesIterator *self) {
+    const char *format_string = "<LookaheadNamesIterator %x>";
+    return PyUnicode_FromFormat(format_string, self->lookahead_iterator);
+}
+
+static void lookahead_names_iterator_dealloc(LookaheadNamesIterator *self) {
+    Py_TYPE(self)->tp_free(self);
+}
+
+static PyObject *lookahead_names_iterator_iter(LookaheadNamesIterator *self) {
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject *lookahead_names_iterator_next(LookaheadNamesIterator *self) {
+    bool res = ts_lookahead_iterator_next(self->lookahead_iterator);
+    if (res) {
+        return PyUnicode_FromString(
+            ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator));
+    }
+    PyErr_SetNone(PyExc_StopIteration);
+    return NULL;
+}
+
+static PyType_Slot lookahead_names_iterator_type_slots[] = {
+    {Py_tp_doc, "An iterator over the possible syntax nodes that could come next."},
+    {Py_tp_dealloc, lookahead_names_iterator_dealloc},
+    {Py_tp_repr, lookahead_names_iterator_repr},
+    {Py_tp_iter, lookahead_names_iterator_iter},
+    {Py_tp_iternext, lookahead_names_iterator_next},
+    {0, NULL},
+};
+
+static PyType_Spec lookahead_names_iterator_type_spec = {
+    .name = "tree_sitter.LookaheadNamesIterator",
+    .basicsize = sizeof(LookaheadNamesIterator),
+    .itemsize = 0,
+    .flags = Py_TPFLAGS_DEFAULT,
+    .slots = lookahead_names_iterator_type_slots,
+};
+
 // Module
+
+static PyObject *language_version(PyObject *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    if (!PyArg_ParseTuple(args, "O", &language_id)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    return PyLong_FromSize_t((size_t)ts_language_version(language));
+}
+
+static PyObject *language_symbol_count(PyObject *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    if (!PyArg_ParseTuple(args, "O", &language_id)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    return PyLong_FromSize_t((size_t)ts_language_symbol_count(language));
+}
+
+static PyObject *language_state_count(PyObject *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    if (!PyArg_ParseTuple(args, "O", &language_id)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    return PyLong_FromSize_t((size_t)ts_language_state_count(language));
+}
+
+static PyObject *language_symbol_name(PyObject *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    TSSymbol symbol;
+    if (!PyArg_ParseTuple(args, "OH", &language_id, &symbol)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    const char *name = ts_language_symbol_name(language, symbol);
+    if (name == NULL) {
+        Py_RETURN_NONE;
+    }
+    return PyUnicode_FromString(name);
+}
+
+static PyObject *language_symbol_for_name(PyObject *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    char *kind;
+    Py_ssize_t length;
+    bool named;
+    if (!PyArg_ParseTuple(args, "Os#p", &language_id, &kind, &length, &named)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    TSSymbol symbol = ts_language_symbol_for_name(language, kind, length, named);
+    if (symbol == 0) {
+        Py_RETURN_NONE;
+    }
+    return PyLong_FromSize_t((size_t)symbol);
+}
+
+static PyObject *language_symbol_type(PyObject *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    TSSymbol symbol;
+    if (!PyArg_ParseTuple(args, "OH", &language_id, &symbol)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    return PyLong_FromSize_t(ts_language_symbol_type(language, symbol));
+}
+
+static PyObject *language_field_count(PyObject *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    if (!PyArg_ParseTuple(args, "O", &language_id)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    return PyLong_FromSize_t(ts_language_field_count(language));
+}
+
+static PyObject *language_field_name_for_id(PyObject *self, PyObject *args) {
+    TSLanguage *language;
+    PyObject *language_id;
+    uint16_t field_id;
+    if (!PyArg_ParseTuple(args, "OH", &language_id, &field_id)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    const char *field_name = ts_language_field_name_for_id(language, field_id);
+
+    if (field_name == NULL) {
+        Py_RETURN_NONE;
+    }
+
+    return PyUnicode_FromString(field_name);
+}
 
 static PyObject *language_field_id_for_name(PyObject *self, PyObject *args) {
     TSLanguage *language;
@@ -2237,8 +2587,8 @@ static PyObject *language_field_id_for_name(PyObject *self, PyObject *args) {
     }
 
     language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
-
     TSFieldId field_id = ts_language_field_id_for_name(language, field_name, length);
+
     if (field_id == 0) {
         Py_RETURN_NONE;
     }
@@ -2259,6 +2609,19 @@ static PyObject *language_query(PyObject *self, PyObject *args) {
     return query_new_internal(state, language, source, length);
 }
 
+static PyObject *next_state(PyObject *self, PyObject *args) {
+    ModuleState *state = PyModule_GetState(self);
+    TSLanguage *language;
+    PyObject *language_id;
+    uint16_t state_id;
+    uint16_t symbol;
+    if (!PyArg_ParseTuple(args, "OHH", &language_id, &state_id, &symbol)) {
+        return NULL;
+    }
+    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
+    return PyLong_FromSize_t((size_t)ts_language_next_state(language, state_id, symbol));
+}
+
 static void module_free(void *self) {
     ModuleState *state = PyModule_GetState((PyObject *)self);
     ts_query_cursor_delete(state->query_cursor);
@@ -2272,13 +2635,74 @@ static void module_free(void *self) {
     Py_XDECREF(state->capture_eq_capture_type);
     Py_XDECREF(state->capture_eq_string_type);
     Py_XDECREF(state->capture_match_string_type);
+    Py_XDECREF(state->lookahead_iterator_type);
     Py_XDECREF(state->re_compile);
 }
 
 static PyMethodDef module_methods[] = {
     {
+        .ml_name = "_language_version",
+        .ml_meth = (PyCFunction)language_version,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_language_symbol_count",
+        .ml_meth = (PyCFunction)language_symbol_count,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_language_state_count",
+        .ml_meth = (PyCFunction)language_state_count,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_language_symbol_name",
+        .ml_meth = (PyCFunction)language_symbol_name,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_language_symbol_for_name",
+        .ml_meth = (PyCFunction)language_symbol_for_name,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_language_symbol_type",
+        .ml_meth = (PyCFunction)language_symbol_type,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_language_field_count",
+        .ml_meth = (PyCFunction)language_field_count,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_language_field_name_for_id",
+        .ml_meth = (PyCFunction)language_field_name_for_id,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
         .ml_name = "_language_field_id_for_name",
         .ml_meth = (PyCFunction)language_field_id_for_name,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_next_state",
+        .ml_meth = (PyCFunction)next_state,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "(internal)",
+    },
+    {
+        .ml_name = "_lookahead_iterator",
+        .ml_meth = (PyCFunction)lookahead_iterator,
         .ml_flags = METH_VARARGS,
         .ml_doc = "(internal)",
     },
@@ -2336,6 +2760,10 @@ PyMODINIT_FUNC PyInit_binding(void) {
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &capture_eq_string_type_spec, NULL);
     state->capture_match_string_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &capture_match_string_type_spec, NULL);
+    state->lookahead_iterator_type =
+        (PyTypeObject *)PyType_FromModuleAndSpec(module, &lookahead_iterator_type_spec, NULL);
+    state->lookahead_names_iterator_type =
+        (PyTypeObject *)PyType_FromModuleAndSpec(module, &lookahead_names_iterator_type_spec, NULL);
 
     state->query_cursor = ts_query_cursor_new();
     if ((AddObjectRef(module, "Tree", (PyObject *)state->tree_type) < 0) ||
@@ -2349,7 +2777,11 @@ PyMODINIT_FUNC PyInit_binding(void) {
          0) ||
         (AddObjectRef(module, "CaptureEqString", (PyObject *)state->capture_eq_string_type) < 0) ||
         (AddObjectRef(module, "CaptureMatchString", (PyObject *)state->capture_match_string_type) <
-         0)) {
+         0) ||
+        (AddObjectRef(module, "LookaheadIterator", (PyObject *)state->lookahead_iterator_type) <
+         0) ||
+        (AddObjectRef(module, "LookaheadNamesIterator",
+                      (PyObject *)state->lookahead_names_iterator_type) < 0)) {
         goto cleanup;
     }
 

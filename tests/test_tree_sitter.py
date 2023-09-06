@@ -1,9 +1,10 @@
 import re
 from os import path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from unittest import TestCase
 
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Parser, Tree
+from tree_sitter.binding import LookaheadIterator, Node
 
 LIB_PATH = path.join("build", "languages.so")
 
@@ -16,15 +17,19 @@ project_root = path.dirname(path.dirname(path.abspath(__file__)))
 Language.build_library(
     LIB_PATH,
     [
-        path.join(project_root, "tests", "fixtures", "tree-sitter-python"),
+        path.join(project_root, "tests", "fixtures", "tree-sitter-embedded-template"),
         path.join(project_root, "tests", "fixtures", "tree-sitter-javascript"),
         path.join(project_root, "tests", "fixtures", "tree-sitter-json"),
+        path.join(project_root, "tests", "fixtures", "tree-sitter-python"),
+        path.join(project_root, "tests", "fixtures", "tree-sitter-rust"),
     ],
 )
 
-PYTHON = Language(LIB_PATH, "python")
+EMBEDDED_TEMPLATE = Language(LIB_PATH, "embedded_template")
 JAVASCRIPT = Language(LIB_PATH, "javascript")
 JSON = Language(LIB_PATH, "json")
+PYTHON = Language(LIB_PATH, "python")
+RUST = Language(LIB_PATH, "rust")
 
 JSON_EXAMPLE: bytes = b"""
 
@@ -193,6 +198,53 @@ class TestNode(TestCase):
         self.assertEqual(
             [a.type for a in attributes], ["jsx_attribute", "jsx_attribute"]
         )
+
+    def test_node_child_by_field_name_with_extra_hidden_children(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+
+        tree = parser.parse(b"while a:\n  pass")
+        while_node = tree.root_node.child(0)
+        if while_node is None:
+            self.fail("while_node is None")
+        self.assertEqual(while_node.type, "while_statement")
+        self.assertEqual(while_node.child_by_field_name('body'), while_node.child(3))
+
+    def test_node_descendant_count(self):
+        parser = Parser()
+        parser.set_language(JSON)
+        tree = parser.parse(JSON_EXAMPLE)
+        value_node = tree.root_node
+        all_nodes = get_all_nodes(tree)
+
+        self.assertEqual(value_node.descendant_count, len(all_nodes))
+
+        cursor = value_node.walk()
+        for i, node in enumerate(all_nodes):
+            cursor.goto_descendant(i)
+            self.assertEqual(cursor.node, node, f"index {i}")
+
+        for i, node in reversed(list(enumerate(all_nodes))):
+            cursor.goto_descendant(i)
+            self.assertEqual(cursor.node, node, f"rev index {i}")
+
+    def test_descendant_count_single_node_tree(self):
+        parser = Parser()
+        parser.set_language(EMBEDDED_TEMPLATE)
+        tree = parser.parse(b"hello")
+
+        nodes = get_all_nodes(tree)
+        self.assertEqual(len(nodes), 2)
+        self.assertEqual(tree.root_node.descendant_count, 2)
+
+        cursor = tree.walk()
+
+        cursor.goto_descendant(0)
+        self.assertEqual(cursor.depth, 0)
+        self.assertEqual(cursor.node, nodes[0])
+        cursor.goto_descendant(1)
+        self.assertEqual(cursor.depth, 1)
+        self.assertEqual(cursor.node, nodes[1])
 
     def test_field_name_for_child(self):
         parser = Parser()
@@ -624,7 +676,7 @@ class TestTree(TestCase):
         self.assertEqual(cursor.node.end_byte, 18)
         self.assertEqual(cursor.node.start_point, (0, 0))
         self.assertEqual(cursor.node.end_point, (1, 7))
-        self.assertEqual(cursor.current_field_name(), None)
+        self.assertEqual(cursor.field_name, None)
 
         self.assertTrue(cursor.goto_first_child())
         self.assertEqual(cursor.node.type, "function_definition")
@@ -632,13 +684,13 @@ class TestTree(TestCase):
         self.assertEqual(cursor.node.end_byte, 18)
         self.assertEqual(cursor.node.start_point, (0, 0))
         self.assertEqual(cursor.node.end_point, (1, 7))
-        self.assertEqual(cursor.current_field_name(), None)
+        self.assertEqual(cursor.field_name, None)
 
         self.assertTrue(cursor.goto_first_child())
         self.assertEqual(cursor.node.type, "def")
         self.assertEqual(cursor.node.is_named, False)
         self.assertEqual(cursor.node.sexp(), '("def")')
-        self.assertEqual(cursor.current_field_name(), None)
+        self.assertEqual(cursor.field_name, None)
         def_node = cursor.node
 
         # Node remains cached after a failure to move
@@ -648,13 +700,13 @@ class TestTree(TestCase):
         self.assertTrue(cursor.goto_next_sibling())
         self.assertEqual(cursor.node.type, "identifier")
         self.assertEqual(cursor.node.is_named, True)
-        self.assertEqual(cursor.current_field_name(), "name")
+        self.assertEqual(cursor.field_name, "name")
         self.assertFalse(cursor.goto_first_child())
 
         self.assertTrue(cursor.goto_next_sibling())
         self.assertEqual(cursor.node.type, "parameters")
         self.assertEqual(cursor.node.is_named, True)
-        self.assertEqual(cursor.current_field_name(), "parameters")
+        self.assertEqual(cursor.field_name, "parameters")
 
     def test_edit(self):
         parser = Parser()
@@ -1103,5 +1155,57 @@ class TestQuery(TestCase):
         self.assertEqual(captures[1][1], "func-call")
 
 
+class TestLookaheadIterator(TestCase):
+    def test_lookahead_iterator(self):
+        parser = Parser()
+        parser.set_language(RUST)
+        tree = parser.parse(b"struct Stuff{}")
+
+        cursor = tree.walk()
+
+        self.assertEqual(cursor.goto_first_child(), True)  # struct
+        self.assertEqual(cursor.goto_first_child(), True)  # struct keyword
+
+        next_state = cursor.node.next_parse_state
+
+        self.assertNotEqual(next_state, 0)
+        self.assertEqual(
+            next_state,
+            RUST.next_state(cursor.node.parse_state, cursor.node.grammar_id)
+        )
+        self.assertLess(next_state, RUST.parse_state_count)
+        self.assertEqual(cursor.goto_next_sibling(), True)  # type_identifier
+        self.assertEqual(next_state, cursor.node.parse_state)
+        self.assertEqual(cursor.node.grammar_name, "identifier")
+        self.assertNotEqual(cursor.node.grammar_id, cursor.node.kind_id)
+
+        expected_symbols = ["identifier", "block_comment", "line_comment"]
+        lookahead: LookaheadIterator = RUST.lookahead_iterator(next_state)
+        self.assertEqual(lookahead.language, RUST.language_id)
+        self.assertEqual(list(lookahead.iter_names()), expected_symbols)
+
+        lookahead.reset_state(next_state)
+        self.assertEqual(list(lookahead.iter_names()), expected_symbols)
+
+        lookahead.reset(RUST.language_id, next_state)
+        self.assertEqual(list(map(RUST.node_kind_for_id, list(iter(lookahead)))), expected_symbols)
+
+
 def trim(string):
     return re.sub(r"\s+", " ", string).strip()
+
+
+def get_all_nodes(tree: Tree) -> List[Node]:
+    result = []
+    visited_children = False
+    cursor = tree.walk()
+    while True:
+        if not visited_children:
+            result.append(cursor.node)
+            if not cursor.goto_first_child():
+                visited_children = True
+        elif cursor.goto_next_sibling():
+            visited_children = False
+        elif not cursor.goto_parent():
+            break
+    return result
