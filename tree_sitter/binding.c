@@ -940,7 +940,7 @@ static PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
     Py_RETURN_NONE;
 }
 
-static PyObject *tree_get_changed_ranges(Tree *self, PyObject *args, PyObject *kwargs) {
+static PyObject *tree_changed_ranges(Tree *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     Tree *new_tree = NULL;
     char *keywords[] = {"new_tree", NULL};
@@ -956,6 +956,24 @@ static PyObject *tree_get_changed_ranges(Tree *self, PyObject *args, PyObject *k
 
     uint32_t length = 0;
     TSRange *ranges = ts_tree_get_changed_ranges(self->tree, new_tree->tree, &length);
+
+    PyObject *result = PyList_New(length);
+    if (!result) {
+        return NULL;
+    }
+    for (unsigned i = 0; i < length; i++) {
+        PyObject *range = range_new_internal(state, ranges[i]);
+        PyList_SetItem(result, i, range);
+    }
+
+    free(ranges);
+    return result;
+}
+
+static PyObject *tree_get_included_ranges(Tree *self, PyObject *args) {
+    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    uint32_t length = 0;
+    TSRange *ranges = ts_tree_included_ranges(self->tree, &length);
 
     PyObject *result = PyList_New(length);
     if (!result) {
@@ -994,10 +1012,10 @@ static PyMethodDef tree_methods[] = {
                Edit the syntax tree.",
     },
     {
-        .ml_name = "get_changed_ranges",
-        .ml_meth = (PyCFunction)tree_get_changed_ranges,
+        .ml_name = "changed_ranges",
+        .ml_meth = (PyCFunction)tree_changed_ranges,
         .ml_flags = METH_KEYWORDS | METH_VARARGS,
-        .ml_doc = "get_changed_ranges(new_tree)\n--\n\n\
+        .ml_doc = "changed_ranges(new_tree)\n--\n\n\
                Compare old edited tree to new tree and return changed ranges.",
     },
     {NULL},
@@ -1006,6 +1024,8 @@ static PyMethodDef tree_methods[] = {
 static PyGetSetDef tree_accessors[] = {
     {"root_node", (getter)tree_get_root_node, NULL, "The root node of this tree.", NULL},
     {"text", (getter)tree_get_text, NULL, "The source text for this tree, if unedited.", NULL},
+    {"included_ranges", (getter)tree_get_included_ranges, NULL,
+     "Get the included ranges that were used to parse the syntax tree.", NULL},
     {NULL},
 };
 
@@ -1565,7 +1585,14 @@ static PyObject *parser_set_included_ranges(Parser *self, PyObject *arg) {
         c_ranges[i] = ((Range *)range)->range;
     }
 
-    ts_parser_set_included_ranges(self->parser, c_ranges, length);
+    bool res = ts_parser_set_included_ranges(self->parser, c_ranges, length);
+    if (!res) {
+        PyErr_SetString(PyExc_ValueError,
+                        "Included ranges must not overlap or end before it starts");
+        free(c_ranges);
+        return NULL;
+    }
+
     free(c_ranges);
     Py_RETURN_NONE;
 }
@@ -2184,6 +2211,42 @@ error:
 
 // Range
 
+PyMODINIT_FUNC range_init(Range *self, PyObject *args, PyObject *kwargs) {
+    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    char *keywords[] = {
+        "start_point", "end_point", "start_byte", "end_byte", NULL,
+    };
+
+    PyObject *start_point_obj;
+    PyObject *end_point_obj;
+    unsigned start_byte;
+    unsigned end_byte;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!O!II", keywords, &PyTuple_Type,
+                                     &start_point_obj, &PyTuple_Type, &end_point_obj, &start_byte,
+                                     &end_byte)) {
+        PyErr_SetString(PyExc_TypeError, "Invalid arguments to Range()");
+        return NULL;
+    }
+
+    if (start_point_obj && !PyArg_ParseTuple(start_point_obj, "II", &self->range.start_point.row,
+                                             &self->range.start_point.column)) {
+        PyErr_SetString(PyExc_TypeError, "Invalid start_point to Range()");
+        return NULL;
+    }
+
+    if (end_point_obj && !PyArg_ParseTuple(end_point_obj, "II", &self->range.end_point.row,
+                                           &self->range.end_point.column)) {
+        PyErr_SetString(PyExc_TypeError, "Invalid end_point to Range()");
+        return NULL;
+    }
+
+    self->range.start_byte = start_byte;
+    self->range.end_byte = end_byte;
+
+    return 0;
+}
+
 static void range_dealloc(Range *self) { Py_TYPE(self)->tp_free(self); }
 
 static PyObject *range_repr(Range *self) {
@@ -2247,6 +2310,7 @@ static PyGetSetDef range_accessors[] = {
 
 static PyType_Slot range_type_slots[] = {
     {Py_tp_doc, "A range within a document."},
+    {Py_tp_init, range_init},
     {Py_tp_dealloc, range_dealloc},
     {Py_tp_repr, range_repr},
     {Py_tp_richcompare, range_compare},

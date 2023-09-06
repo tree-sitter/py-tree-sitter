@@ -206,8 +206,12 @@ class Tree:
     ) -> None:
         """Edit the syntax tree."""
         ...
-    def get_changed_ranges(self, old_tree: Tree) -> List[Range]:
+    def changed_ranges(self, old_tree: Tree) -> List[Range]:
         """Get a list of ranges that were edited."""
+        ...
+    @property
+    def included_ranges(self) -> List[Range]:
+        """Get the included ranges that were used to parse the syntax tree."""
         ...
     @property
     def root_node(self) -> Node:
@@ -429,6 +433,16 @@ class Range:
 
     end_byte: int
     """The end byte of this range"""
+
+    def __init__(
+        self,
+        start_point: Tuple[int, int],
+        end_point: Tuple[int, int],
+        start_byte: int,
+        end_byte: int,
+    ) -> None:
+        """Create a new range."""
+        ...
 
     def __repr__(self) -> str:
         """Get a string representation of the range."""
