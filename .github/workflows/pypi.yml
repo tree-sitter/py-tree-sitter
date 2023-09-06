@@ -1,8 +1,10 @@
+name: Upload to PyPI
+
 on:
   push:
     tags:
-      - 'v[0-9]+'
-      - 'test-v[0-9]*'  # Uploads to https://test.pypi.org/project/tree-sitter/
+      - 'v[0-9]+.*'
+      - 'test-v[0-9]+.*'  # Uploads to https://test.pypi.org/project/tree-sitter/
 
 jobs:
   build-sdist:
@@ -15,7 +17,7 @@ jobs:
         with:
           python-version: '3.10'
       - run: python setup.py sdist
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: dist
           path: ./dist/*
@@ -48,7 +50,7 @@ jobs:
           CIBW_ARCHS_MACOS: x86_64 arm64
 
       # Make wheels downloadable from GitHub UI and from the pypi step
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: dist
           path: ./dist/*.whl
