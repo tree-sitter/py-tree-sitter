@@ -30,6 +30,7 @@ setup(
         "Topic :: Text Processing :: Linguistic",
     ],
     packages=["tree_sitter"],
+    package_data={"tree_sitter": ["py.typed", "*.pyi"]},
     ext_modules=[
         Extension(
             "tree_sitter.binding",
