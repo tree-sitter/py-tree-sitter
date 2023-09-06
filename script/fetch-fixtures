@@ -4,6 +4,7 @@ set -eux
 
 language_names=(
 	tree-sitter-embedded-template
+	tree-sitter-html
 	tree-sitter-javascript
 	tree-sitter-json
 	tree-sitter-python
