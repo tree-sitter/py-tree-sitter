@@ -3,6 +3,7 @@
 if not exist tests\fixtures mkdir test\fixtures
 
 call:fetch_grammar embedded-template master
+call:fetch_grammar html              master
 call:fetch_grammar javascript        master
 call:fetch_grammar json              master
 call:fetch_grammar python            master
