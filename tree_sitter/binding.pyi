@@ -1,4 +1,3 @@
-from ctypes import c_void_p
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, List, Optional, Tuple
 
@@ -258,7 +257,7 @@ class TreeCursor:
         and return True. Otherwise, return False.
         """
         ...
-    def goto_descendant(self, index: int) -> bool:
+    def goto_descendant(self, index: int) -> None:
         """Go to the descendant at the given index.
 
         If the current node has a descendant at the given index, move to the
@@ -366,7 +365,7 @@ class QueryCapture:
     pass
 
 class LookaheadIterator(Iterable):
-    def reset(self, language: c_void_p, state: int) -> None:
+    def reset(self, language: int, state: int) -> None:
         """Reset the lookahead iterator to a new language and parse state.
 
         This returns `True` if the language was set successfully, and `False` otherwise.
@@ -381,7 +380,7 @@ class LookaheadIterator(Iterable):
         ...
 
     @property
-    def language(self) -> c_void_p:
+    def language(self) -> int:
         """Get the language."""
         ...
 
@@ -452,50 +451,50 @@ class Range:
         """Check if two ranges are not equal."""
         ...
 
-def _language_version(language_id: c_void_p) -> int:
+def _language_version(language_id: int) -> int:
     """(internal)"""
     ...
 
-def _language_symbol_count(language_id: c_void_p) -> int:
+def _language_symbol_count(language_id: int) -> int:
     """(internal)"""
     ...
 
-def _language_state_count(language_id: c_void_p) -> int:
+def _language_state_count(language_id: int) -> int:
     """(internal)"""
     ...
 
-def _language_symbol_name(language_id: c_void_p, id: int) -> Optional[str]:
+def _language_symbol_name(language_id: int, id: int) -> Optional[str]:
     """(internal)"""
     ...
 
-def _language_symbol_for_name(language_id: c_void_p, name: str, named: bool) -> Optional[int]:
+def _language_symbol_for_name(language_id: int, name: str, named: bool) -> Optional[int]:
     """(internal)"""
     ...
 
-def _language_symbol_type(language_id: c_void_p, id: int) -> int:
+def _language_symbol_type(language_id: int, id: int) -> int:
     """(internal)"""
     ...
 
-def _language_field_count(language_id: c_void_p) -> int:
+def _language_field_count(language_id: int) -> int:
     """(internal)"""
     ...
 
-def _language_field_name_for_id(language_id: c_void_p, field_id: int) -> Optional[str]:
+def _language_field_name_for_id(language_id: int, field_id: int) -> Optional[str]:
     """(internal)"""
     ...
 
-def _language_field_id_for_name(language_id: c_void_p, name: str) -> Optional[int]:
+def _language_field_id_for_name(language_id: int, name: str) -> Optional[int]:
     """(internal)"""
     ...
 
-def _language_query(language_id: c_void_p, source: str) -> Query:
+def _language_query(language_id: int, source: str) -> Query:
     """(internal)"""
     ...
 
-def _lookahead_iterator(language_id: c_void_p, state: int) -> Optional[LookaheadIterator]:
+def _lookahead_iterator(language_id: int, state: int) -> Optional[LookaheadIterator]:
     """(internal)"""
     ...
 
-def _next_state(language_id: c_void_p, state: int, symbol: int) -> int:
+def _next_state(language_id: int, state: int, symbol: int) -> int:
     """(internal)"""
     ...
