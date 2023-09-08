@@ -5,7 +5,7 @@ from ctypes import c_void_p, cdll
 from os import path
 from platform import system
 from tempfile import TemporaryDirectory
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Union
 
 from tree_sitter.binding import (
     LookaheadIterator,
@@ -60,7 +60,7 @@ class Language:
     """A tree-sitter language"""
 
     @staticmethod
-    def build_library(output_path: str, repo_paths: List[str]):
+    def build_library(output_path: str, repo_paths: List[str]) -> bool:
         """
         Build a dynamic library at the given path, based on the parser
         repositories at the given paths.
@@ -122,16 +122,23 @@ class Language:
             )
         return True
 
-    def __init__(self, library_path: str, name: str):
+    def __init__(self, path_or_ptr: Union[str, int], name: str):
         """
-        Load the language with the given name from the dynamic library
-        at the given path.
+        Load the language with the given language pointer from the dynamic library,
+        or load the language with the given name from the dynamic library at the
+        given path.
         """
-        self.name = name
-        self.lib = cdll.LoadLibrary(library_path)
-        language_function: Callable[[], c_void_p] = getattr(self.lib, "tree_sitter_%s" % name)
-        language_function.restype = c_void_p
-        self.language_id: c_void_p = language_function()
+        if isinstance(path_or_ptr, str):
+            self.name = name
+            self.lib = cdll.LoadLibrary(path_or_ptr)
+            language_function: Callable[[], int] = getattr(self.lib, "tree_sitter_%s" % name)
+            language_function.restype = c_void_p
+            self.language_id = language_function()
+        elif isinstance(path_or_ptr, int):
+            self.name = name
+            self.language_id = path_or_ptr
+        else:
+            raise TypeError("Expected a string or int for the first argument")
 
     @property
     def version(self) -> int:
@@ -212,6 +219,6 @@ class Language:
         """
         return _lookahead_iterator(self.language_id, state)
 
-    def query(self, source: str):
+    def query(self, source: str) -> Query:
         """Create a Query with the given source code."""
         return _language_query(self.language_id, source)
