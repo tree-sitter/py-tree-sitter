@@ -3,8 +3,8 @@ from os import path
 from typing import List, Optional, Tuple
 from unittest import TestCase
 
-from tree_sitter import Language, Parser, Tree
-from tree_sitter.binding import LookaheadIterator, Node, Range
+from tree_sitter import (Language, LookaheadIterator, Node, Parser, Query,
+                         Range, Tree)
 
 LIB_PATH = path.join("build", "languages.so")
 
@@ -1258,6 +1258,109 @@ class TestQuery(TestCase):
         with self.assertRaisesRegex(SyntaxError, "Invalid syntax at offset 6"):
             PYTHON.query("(list))")
         PYTHON.query("(function_definition)")
+
+    def collect_matches(
+        self,
+        matches: List[Tuple[int, List[Tuple[Node, str]]]],
+    ) -> List[Tuple[int, List[Tuple[str, str]]]]:
+        return [(m[0], self.format_captures(m[1])) for m in matches]
+
+    def format_captures(
+        self,
+        captures: List[Tuple[Node, str]],
+    ) -> List[Tuple[str, str]]:
+        return [(capture[1], capture[0].text.decode("utf-8")) for capture in captures]
+
+    def assert_query_matches(
+        self,
+        language: Language,
+        query: Query,
+        source: bytes,
+        expected: List[Tuple[int, List[Tuple[str, str]]]]
+    ):
+        parser = Parser()
+        parser.set_language(language)
+        tree = parser.parse(source)
+        matches = query.matches(tree.root_node)
+        matches = self.collect_matches(matches)
+        self.assertEqual(matches, expected)
+
+    def test_matches_with_simple_pattern(self):
+        query = JAVASCRIPT.query("(function_declaration name: (identifier) @fn-name)")
+        self.assert_query_matches(
+            JAVASCRIPT,
+            query,
+            b"function one() { two(); function three() {} }",
+            [(0, [('fn-name', 'one')]), (0, [('fn-name', 'three')])]
+        )
+
+    def test_matches_with_multiple_on_same_root(self):
+        query = JAVASCRIPT.query("""
+                (class_declaration
+                    name: (identifier) @the-class-name
+                    (class_body
+                        (method_definition
+                            name: (property_identifier) @the-method-name)))
+                """)
+        self.assert_query_matches(
+            JAVASCRIPT,
+            query,
+            b"""
+            class Person {
+                // the constructor
+                constructor(name) { this.name = name; }
+
+                // the getter
+                getFullName() { return this.name; }
+            }
+            """,
+            [
+                (0, [("the-class-name", "Person"), ("the-method-name", "constructor")]),
+                (0, [("the-class-name", "Person"), ("the-method-name", "getFullName")]),
+            ]
+        )
+
+    def test_matches_with_multiple_patterns_different_roots(self):
+        query = JAVASCRIPT.query("""
+                    (function_declaration name:(identifier) @fn-def)
+                    (call_expression function:(identifier) @fn-ref)
+                """)
+        self.assert_query_matches(
+            JAVASCRIPT,
+            query,
+            b"""
+            function f1() {
+                f2(f3());
+            }
+            """,
+            [(0, [("fn-def", "f1")]), (1, [("fn-ref", "f2")]), (1, [("fn-ref", "f3")])]
+        )
+
+    def test_matches_with_nesting_and_no_fields(self):
+        query = JAVASCRIPT.query("""
+                    (array
+                    (array
+                        (identifier) @x1
+                        (identifier) @x2))
+                """)
+        self.assert_query_matches(
+            JAVASCRIPT,
+            query,
+            b"""
+            [[a]];
+            [[c, d], [e, f, g, h]];
+            [[h], [i]];
+            """,
+            [
+                (0, [("x1", "c"), ("x2", "d")]),
+                (0, [("x1", "e"), ("x2", "f")]),
+                (0, [("x1", "e"), ("x2", "g")]),
+                (0, [("x1", "f"), ("x2", "g")]),
+                (0, [("x1", "e"), ("x2", "h")]),
+                (0, [("x1", "f"), ("x2", "h")]),
+                (0, [("x1", "g"), ("x2", "h")]),
+            ]
+        )
 
     def test_captures(self):
         parser = Parser()
