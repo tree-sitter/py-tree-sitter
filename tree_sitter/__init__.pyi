@@ -8,7 +8,6 @@ from tree_sitter.binding import \
 from tree_sitter.binding import Node as Node
 from tree_sitter.binding import Parser as Parser
 from tree_sitter.binding import Query as Query
-from tree_sitter.binding import QueryCapture as QueryCapture
 from tree_sitter.binding import Range as Range
 from tree_sitter.binding import Tree as Tree
 from tree_sitter.binding import TreeCursor as TreeCursor

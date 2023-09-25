@@ -65,6 +65,13 @@ typedef struct {
 
 typedef struct {
     PyObject_HEAD
+    TSQueryMatch match;
+    PyObject *captures;
+    PyObject *pattern_index;
+} QueryMatch;
+
+typedef struct {
+    PyObject_HEAD
     TSRange range;
 } Range;
 
@@ -87,6 +94,7 @@ typedef struct {
     PyTypeObject *query_type;
     PyTypeObject *range_type;
     PyTypeObject *query_capture_type;
+    PyTypeObject *query_match_type;
     PyTypeObject *capture_eq_capture_type;
     PyTypeObject *capture_eq_string_type;
     PyTypeObject *capture_match_string_type;
@@ -1730,6 +1738,32 @@ static PyObject *query_capture_new_internal(ModuleState *state, TSQueryCapture c
     return (PyObject *)self;
 }
 
+static void match_dealloc(QueryMatch *self) { Py_TYPE(self)->tp_free(self); }
+
+static PyType_Slot query_match_type_slots[] = {
+    {Py_tp_doc, "A query match"},
+    {Py_tp_dealloc, match_dealloc},
+    {0, NULL},
+};
+
+static PyType_Spec query_match_type_spec = {
+    .name = "tree_sitter.QueryMatch",
+    .basicsize = sizeof(QueryMatch),
+    .itemsize = 0,
+    .flags = Py_TPFLAGS_DEFAULT,
+    .slots = query_match_type_slots,
+};
+
+static PyObject *query_match_new_internal(ModuleState *state, TSQueryMatch match) {
+    QueryMatch *self = (QueryMatch *)state->query_match_type->tp_alloc(state->query_match_type, 0);
+    if (self != NULL) {
+        self->match = match;
+        self->captures = PyList_New(0);
+        self->pattern_index = 0;
+    }
+    return (PyObject *)self;
+}
+
 // Text Predicates
 
 static void capture_eq_capture_dealloc(CaptureEqCapture *self) { Py_TYPE(self)->tp_free(self); }
@@ -1776,7 +1810,7 @@ static PyType_Spec capture_eq_string_type_spec = {
 
 // CaptureMatchString
 static PyType_Slot capture_match_string_type_slots[] = {
-    {Py_tp_doc, "Text predicate of the form #eq? @capture regex"},
+    {Py_tp_doc, "Text predicate of the form #match? @capture regex"},
     {Py_tp_dealloc, capture_match_string_dealloc},
     {0, NULL},
 };
@@ -1842,11 +1876,6 @@ static bool capture_match_string_is_instance(PyObject *self) {
 }
 
 // Query
-
-static PyObject *query_matches(Query *self, PyObject *args) {
-    PyErr_SetString(PyExc_NotImplementedError, "Not Implemented");
-    return NULL;
-}
 
 static Node *node_for_capture_index(ModuleState *state, uint32_t index, TSQueryMatch match,
                                     Tree *tree) {
@@ -1960,6 +1989,90 @@ error:
     return false;
 }
 
+static PyObject *query_matches(Query *self, PyObject *args, PyObject *kwargs) {
+    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    char *keywords[] = {
+        "node", "start_point", "end_point", "start_byte", "end_byte", NULL,
+    };
+
+    Node *node = NULL;
+    TSPoint start_point = {.row = 0, .column = 0};
+    TSPoint end_point = {.row = UINT32_MAX, .column = UINT32_MAX};
+    unsigned start_byte = 0, end_byte = UINT32_MAX;
+
+    int ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O|(II)(II)II", keywords, (PyObject **)&node,
+                                         &start_point.row, &start_point.column, &end_point.row,
+                                         &end_point.column, &start_byte, &end_byte);
+    if (!ok) {
+        return NULL;
+    }
+
+    if (!PyObject_IsInstance((PyObject *)node, (PyObject *)state->node_type)) {
+        PyErr_SetString(PyExc_TypeError, "First argument to captures must be a Node");
+        return NULL;
+    }
+
+    ts_query_cursor_set_byte_range(state->query_cursor, start_byte, end_byte);
+    ts_query_cursor_set_point_range(state->query_cursor, start_point, end_point);
+    ts_query_cursor_exec(state->query_cursor, self->query, node->node);
+
+    QueryMatch *match = NULL;
+    PyObject *result = PyList_New(0);
+    if (result == NULL) {
+        goto error;
+    }
+
+    TSQueryMatch _match;
+    while (ts_query_cursor_next_match(state->query_cursor, &_match)) {
+        match = (QueryMatch *)query_match_new_internal(state, _match);
+        if (match == NULL) {
+            goto error;
+        }
+        PyObject *captures_for_match = PyList_New(0);
+        if (captures_for_match == NULL) {
+            goto error;
+        }
+        bool is_satisfied = satisfies_text_predicates(self, _match, (Tree *)node->tree);
+        for (unsigned i = 0; i < _match.capture_count; i++) {
+            QueryCapture *capture =
+                (QueryCapture *)query_capture_new_internal(state, _match.captures[i]);
+            if (capture == NULL) {
+                Py_XDECREF(captures_for_match);
+                goto error;
+            }
+            if (is_satisfied) {
+                PyObject *capture_name =
+                    PyList_GetItem(self->capture_names, capture->capture.index);
+                PyObject *capture_node =
+                    node_new_internal(state, capture->capture.node, node->tree);
+                PyObject *item = PyTuple_Pack(2, capture_node, capture_name);
+                if (item == NULL) {
+                    Py_XDECREF(captures_for_match);
+                    Py_XDECREF(capture_node);
+                    goto error;
+                }
+                Py_XDECREF(capture_node);
+                PyList_Append(captures_for_match, item);
+                Py_XDECREF(item);
+            }
+            Py_XDECREF(capture);
+        }
+        PyObject *pattern_index = PyLong_FromLong(_match.pattern_index);
+        PyObject *tuple_match = PyTuple_Pack(2, pattern_index, captures_for_match);
+        PyList_Append(result, tuple_match);
+        Py_XDECREF(tuple_match);
+        Py_XDECREF(pattern_index);
+        Py_XDECREF(captures_for_match);
+        Py_XDECREF(match);
+    }
+    return result;
+
+error:
+    Py_XDECREF(result);
+    Py_XDECREF(match);
+    return NULL;
+}
+
 static PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     char *keywords[] = {
@@ -2033,7 +2146,7 @@ static void query_dealloc(Query *self) {
 static PyMethodDef query_methods[] = {
     {.ml_name = "matches",
      .ml_meth = (PyCFunction)query_matches,
-     .ml_flags = METH_VARARGS,
+     .ml_flags = METH_KEYWORDS | METH_VARARGS,
      .ml_doc = "matches(node)\n--\n\n\
                Get a list of all of the matches within the given node."},
     {
@@ -2839,6 +2952,8 @@ PyMODINIT_FUNC PyInit_binding(void) {
     state->range_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &range_type_spec, NULL);
     state->query_capture_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &query_capture_type_spec, NULL);
+    state->query_match_type =
+        (PyTypeObject *)PyType_FromModuleAndSpec(module, &query_match_type_spec, NULL);
     state->capture_eq_capture_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &capture_eq_capture_type_spec, NULL);
     state->capture_eq_string_type =
@@ -2858,6 +2973,7 @@ PyMODINIT_FUNC PyInit_binding(void) {
         (AddObjectRef(module, "Query", (PyObject *)state->query_type) < 0) ||
         (AddObjectRef(module, "Range", (PyObject *)state->range_type) < 0) ||
         (AddObjectRef(module, "QueryCapture", (PyObject *)state->query_capture_type) < 0) ||
+        (AddObjectRef(module, "QueryMatch", (PyObject *)state->query_match_type) < 0) ||
         (AddObjectRef(module, "CaptureEqCapture", (PyObject *)state->capture_eq_capture_type) <
          0) ||
         (AddObjectRef(module, "CaptureEqString", (PyObject *)state->capture_eq_string_type) < 0) ||
