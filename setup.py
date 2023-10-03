@@ -29,6 +29,9 @@ setup(
         "Topic :: Software Development :: Compilers",
         "Topic :: Text Processing :: Linguistic",
     ],
+    install_requires=[
+        "setuptools>=60.0.0; python_version>='3.12'"
+    ],
     packages=["tree_sitter"],
     package_data={"tree_sitter": ["py.typed", "*.pyi"]},
     ext_modules=[
