@@ -1432,6 +1432,55 @@ class TestQuery(TestCase):
         self.assertEqual(2, len(captures_notext))
         self.assertSetEqual({"function-name"}, set([c[1] for c in captures_notext]))
 
+    def test_text_predicate_on_optional_capture(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        source = b"fun1(1)"
+        tree = parser.parse(source)
+        root_node = tree.root_node
+
+        # optional capture that is missing in source used in #eq? @capture string
+        query1 = JAVASCRIPT.query(
+            """
+            ((call_expression
+                function: (identifier) @function-name
+                arguments: (arguments (string)? @optional-string-arg)
+                (#eq? @optional-string-arg "1")))
+            """
+        )
+        captures1 = query1.captures(root_node)
+        self.assertEqual(1, len(captures1))
+        self.assertEqual(b"fun1", captures1[0][0].text)
+        self.assertEqual("function-name", captures1[0][1])
+
+        # optional capture that is missing in source used in #eq? @capture @capture
+        query2 = JAVASCRIPT.query(
+            """
+            ((call_expression
+                function: (identifier) @function-name
+                arguments: (arguments (string)? @optional-string-arg)
+                (#eq? @optional-string-arg @function-name)))
+            """
+        )
+        captures2 = query2.captures(root_node)
+        self.assertEqual(1, len(captures2))
+        self.assertEqual(b"fun1", captures2[0][0].text)
+        self.assertEqual("function-name", captures2[0][1])
+
+        # optional capture that is missing in source used in #match? @capture string
+        query3 = JAVASCRIPT.query(
+            """
+            ((call_expression
+                function: (identifier) @function-name
+                arguments: (arguments (string)? @optional-string-arg)
+                (#match? @optional-string-arg "\\d+")))
+            """
+        )
+        captures3 = query3.captures(root_node)
+        self.assertEqual(1, len(captures3))
+        self.assertEqual(b"fun1", captures3[0][0].text)
+        self.assertEqual("function-name", captures3[0][1])
+
     def test_text_predicates_errors(self):
         parser = Parser()
         parser.set_language(JAVASCRIPT)
