@@ -1853,7 +1853,6 @@ static Node *node_for_capture_index(ModuleState *state, uint32_t index, TSQueryM
             return capture_node;
         }
     }
-    PyErr_SetString(PyExc_ValueError, "An error occurred, capture was not found with given index");
     return NULL;
 }
 
@@ -1879,19 +1878,26 @@ static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tr
             node1 = node_for_capture_index(state, capture1_value_id, match, tree);
             node2 = node_for_capture_index(state, capture2_value_id, match, tree);
             if (node1 == NULL || node2 == NULL) {
-                goto error;
+                is_satisfied = true;
+                if (node1 != NULL) {
+                    Py_XDECREF(node1);
+                }
+                if (node2 != NULL) {
+                    Py_XDECREF(node2);
+                }
+            } else {
+                node1_text = node_get_text(node1, NULL);
+                node2_text = node_get_text(node2, NULL);
+                if (node1_text == NULL || node2_text == NULL) {
+                    goto error;
+                }
+                is_satisfied = PyObject_RichCompareBool(node1_text, node2_text, Py_EQ) ==
+                               ((CaptureEqCapture *)text_predicate)->is_positive;
+                Py_XDECREF(node1);
+                Py_XDECREF(node2);
+                Py_XDECREF(node1_text);
+                Py_XDECREF(node2_text);
             }
-            node1_text = node_get_text(node1, NULL);
-            node2_text = node_get_text(node2, NULL);
-            if (node1_text == NULL || node2_text == NULL) {
-                goto error;
-            }
-            Py_XDECREF(node1);
-            Py_XDECREF(node2);
-            is_satisfied = PyObject_RichCompareBool(node1_text, node2_text, Py_EQ) ==
-                           ((CaptureEqCapture *)text_predicate)->is_positive;
-            Py_XDECREF(node1_text);
-            Py_XDECREF(node2_text);
             if (!is_satisfied) {
                 return false;
             }
@@ -1899,16 +1905,17 @@ static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tr
             uint32_t capture_value_id = ((CaptureEqString *)text_predicate)->capture_value_id;
             node1 = node_for_capture_index(state, capture_value_id, match, tree);
             if (node1 == NULL) {
-                goto error;
-            }
-            node1_text = node_get_text(node1, NULL);
-            if (node1_text == NULL) {
-                goto error;
+                is_satisfied = true;
+            } else {
+                node1_text = node_get_text(node1, NULL);
+                if (node1_text == NULL) {
+                    goto error;
+                }
+                PyObject *string_value = ((CaptureEqString *)text_predicate)->string_value;
+                is_satisfied = PyObject_RichCompareBool(node1_text, string_value, Py_EQ) ==
+                               ((CaptureEqString *)text_predicate)->is_positive;
             }
             Py_XDECREF(node1);
-            PyObject *string_value = ((CaptureEqString *)text_predicate)->string_value;
-            is_satisfied = PyObject_RichCompareBool(node1_text, string_value, Py_EQ) ==
-                           ((CaptureEqString *)text_predicate)->is_positive;
             Py_XDECREF(node1_text);
             if (!is_satisfied) {
                 return false;
@@ -1917,22 +1924,23 @@ static bool satisfies_text_predicates(Query *query, TSQueryMatch match, Tree *tr
             uint32_t capture_value_id = ((CaptureMatchString *)text_predicate)->capture_value_id;
             node1 = node_for_capture_index(state, capture_value_id, match, tree);
             if (node1 == NULL) {
-                goto error;
-            }
-            node1_text = node_get_text(node1, NULL);
-            if (node1_text == NULL) {
-                goto error;
+                is_satisfied = true;
+            } else {
+                node1_text = node_get_text(node1, NULL);
+                if (node1_text == NULL) {
+                    goto error;
+                }
+                PyObject *search_result =
+                    PyObject_CallMethod(((CaptureMatchString *)text_predicate)->regex, "search",
+                                        "s", PyBytes_AsString(node1_text));
+                Py_XDECREF(node1_text);
+                is_satisfied = (search_result != NULL && search_result != Py_None) ==
+                               ((CaptureMatchString *)text_predicate)->is_positive;
+                if (search_result != NULL) {
+                    Py_DECREF(search_result);
+                }
             }
             Py_XDECREF(node1);
-            PyObject *search_result =
-                PyObject_CallMethod(((CaptureMatchString *)text_predicate)->regex, "search", "s",
-                                    PyBytes_AsString(node1_text));
-            Py_XDECREF(node1_text);
-            is_satisfied = (search_result != NULL && search_result != Py_None) ==
-                           ((CaptureMatchString *)text_predicate)->is_positive;
-            if (search_result != NULL) {
-                Py_DECREF(search_result);
-            }
             if (!is_satisfied) {
                 return false;
             }
