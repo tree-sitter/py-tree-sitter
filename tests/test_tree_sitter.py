@@ -1,6 +1,6 @@
 import re
 from os import path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from unittest import TestCase
 
 from tree_sitter import Language, LookaheadIterator, Node, Parser, Query, Range, Tree
@@ -1260,19 +1260,19 @@ class TestQuery(TestCase):
 
     def collect_matches(
         self,
-        matches: List[Tuple[int, Dict[str, Node|List[Node]]]],
+        matches: List[Tuple[int, Dict[str, Union[Node, List[Node]]]]],
     ) -> List[Tuple[int, List[Tuple[str, str]]]]:
         return [(m[0], self.format_captures(m[1])) for m in matches]
 
     def format_captures(
         self,
-        captures: Dict[str, Node|List[Node]],
+        captures: Dict[str, Union[Node, List[Node]]],
     ) -> List[Tuple[str, str]]:
         return [(name, self.format_capture(capture)) for name, capture in captures.items()]
     
     def format_capture(
             self,
-            capture: Node|List[Node]
+            capture: Union[Node, List[Node]]
     ) -> str:
         return '[' + ", ".join(["'" + n.text.decode("utf-8") + "'" for n in capture]) + ']' if isinstance(capture, List) else capture.text.decode("utf-8")
 
