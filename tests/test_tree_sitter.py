@@ -1,6 +1,6 @@
 import re
 from os import path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from unittest import TestCase
 
 from tree_sitter import Language, LookaheadIterator, Node, Parser, Query, Range, Tree
@@ -1260,22 +1260,28 @@ class TestQuery(TestCase):
 
     def collect_matches(
         self,
-        matches: List[Tuple[int, List[Tuple[Node, str]]]],
+        matches: List[Tuple[int, Dict[str, Node|List[Node]]]],
     ) -> List[Tuple[int, List[Tuple[str, str]]]]:
         return [(m[0], self.format_captures(m[1])) for m in matches]
 
     def format_captures(
         self,
-        captures: List[Tuple[Node, str]],
+        captures: Dict[str, Node|List[Node]],
     ) -> List[Tuple[str, str]]:
-        return [(capture[1], capture[0].text.decode("utf-8")) for capture in captures]
+        return [(name, self.format_capture(capture)) for name, capture in captures.items()]
+    
+    def format_capture(
+            self,
+            capture: Node|List[Node]
+    ) -> str:
+        return '[' + ", ".join(["'" + n.text.decode("utf-8") + "'" for n in capture]) + ']' if isinstance(capture, List) else capture.text.decode("utf-8")
 
     def assert_query_matches(
         self,
         language: Language,
         query: Query,
         source: bytes,
-        expected: List[Tuple[int, List[Tuple[str, str]]]],
+        expected: List[Tuple[int, Dict[str, str]]]
     ):
         parser = Parser()
         parser.set_language(language)
@@ -1365,6 +1371,26 @@ class TestQuery(TestCase):
                 (0, [("x1", "f"), ("x2", "h")]),
                 (0, [("x1", "g"), ("x2", "h")]),
             ],
+        )
+
+    def test_matches_with_list_capture(self):
+        query = JAVASCRIPT.query("(function_declaration name: (identifier) @fn-name body: (statement_block (_)* @fn-statements))")
+        self.assert_query_matches(
+            JAVASCRIPT,
+            query,
+            b"""function one() { 
+                    x = 1;
+                    y = 2;
+                    z = 3; 
+                } 
+                function two() { 
+                    x = 1;
+                }
+            """,
+            [
+                (0, [('fn-name', 'one'), ('fn-statements', "['x = 1;', 'y = 2;', 'z = 3;']")]),
+                (0, [('fn-name', 'two'), ('fn-statements', "['x = 1;']")])
+            ]
         )
 
     def test_captures(self):

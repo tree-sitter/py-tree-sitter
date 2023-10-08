@@ -1989,6 +1989,14 @@ error:
     return false;
 }
 
+static bool is_list_capture(TSQuery *query, TSQueryMatch *match, unsigned int capture_index) {
+    TSQuantifier quantifier = ts_query_capture_quantifier_for_id(
+        query,
+        match->pattern_index,
+        match->captures[capture_index].index);
+    return quantifier == TSQuantifierZeroOrMore || quantifier == TSQuantifierOneOrMore;
+}
+
 static PyObject *query_matches(Query *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     char *keywords[] = {
@@ -2028,7 +2036,7 @@ static PyObject *query_matches(Query *self, PyObject *args, PyObject *kwargs) {
         if (match == NULL) {
             goto error;
         }
-        PyObject *captures_for_match = PyList_New(0);
+        PyObject *captures_for_match = PyDict_New();
         if (captures_for_match == NULL) {
             goto error;
         }
@@ -2045,15 +2053,18 @@ static PyObject *query_matches(Query *self, PyObject *args, PyObject *kwargs) {
                     PyList_GetItem(self->capture_names, capture->capture.index);
                 PyObject *capture_node =
                     node_new_internal(state, capture->capture.node, node->tree);
-                PyObject *item = PyTuple_Pack(2, capture_node, capture_name);
-                if (item == NULL) {
-                    Py_XDECREF(captures_for_match);
-                    Py_XDECREF(capture_node);
-                    goto error;
+
+                if (is_list_capture(self->query, &_match, i)) {
+                    PyObject *defult_new_capture_list = PyList_New(0);
+                    PyObject *capture_list = PyDict_SetDefault(captures_for_match, capture_name, defult_new_capture_list);
+                    Py_INCREF(capture_list);
+                    Py_DECREF(defult_new_capture_list);
+                    PyList_Append(capture_list, capture_node);
+                    Py_DECREF(capture_list);
+                } else {
+                    PyDict_SetItem(captures_for_match, capture_name, capture_node);
                 }
                 Py_XDECREF(capture_node);
-                PyList_Append(captures_for_match, item);
-                Py_XDECREF(item);
             }
             Py_XDECREF(capture);
         }
