@@ -2,8 +2,6 @@
 
 import enum
 from ctypes import c_void_p, cdll
-from distutils.ccompiler import new_compiler
-from distutils.unixccompiler import UnixCCompiler
 from os import path
 from platform import system
 from tempfile import TemporaryDirectory
@@ -65,12 +63,17 @@ class Language:
             path.getmtime(path_) for path_ in source_paths
         ]
 
+        if max(source_mtimes) <= output_mtime:
+            return False
+
+        # local import saves import time in the common case that nothing is
+        # compiled
+        from distutils.ccompiler import new_compiler
+        from distutils.unixccompiler import UnixCCompiler
+
         compiler = new_compiler()
         if isinstance(compiler, UnixCCompiler):
             compiler.set_executables(compiler_cxx="c++")
-
-        if max(source_mtimes) <= output_mtime:
-            return False
 
         with TemporaryDirectory(suffix="tree_sitter_language") as out_dir:
             object_paths = []
