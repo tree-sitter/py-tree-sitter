@@ -43,7 +43,7 @@ jobs:
         run: script/fetch-fixtures
 
       # Build wheels
-      - run: pip install cibuildwheel==2.9.0
+      - run: pip install cibuildwheel==2.16.1
       - run: python -m cibuildwheel --output-dir dist
         env:
           CIBW_TEST_COMMAND: python -m unittest discover -s {package}/tests
