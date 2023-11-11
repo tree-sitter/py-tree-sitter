@@ -1622,6 +1622,33 @@ class TestQuery(TestCase):
         self.assertEqual(captures[1][0].end_point, (1, 5))
         self.assertEqual(captures[1][1], "func-call")
 
+    def test_node_hash(self):
+        parser = Parser()
+        parser.set_language(PYTHON)
+        source_code = b"def foo():\n  bar()\n  bar()"
+        tree = parser.parse(source_code)
+        root_node = tree.root_node
+        first_function_node = root_node.children[0]
+        second_function_node = root_node.children[0]
+
+        # Uniqueness and consistency
+        self.assertEqual(hash(first_function_node), hash(first_function_node))
+        self.assertNotEqual(hash(root_node), hash(first_function_node))
+
+        # Equality implication
+        self.assertEqual(hash(first_function_node), hash(second_function_node))
+        self.assertTrue(first_function_node == second_function_node)
+
+        # Different nodes with different properties
+        different_tree = parser.parse(b"def baz():\n  qux()")
+        different_node = different_tree.root_node.children[0]
+        self.assertNotEqual(hash(first_function_node), hash(different_node))
+
+        # Same code, different parse trees
+        another_tree = parser.parse(source_code)
+        another_node = another_tree.root_node.children[0]
+        self.assertNotEqual(hash(first_function_node), hash(another_node))
+
 
 class TestLookaheadIterator(TestCase):
     def test_lookahead_iterator(self):

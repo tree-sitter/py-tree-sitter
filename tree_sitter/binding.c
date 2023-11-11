@@ -690,6 +690,18 @@ static PyObject *node_get_text(Node *self, void *payload) {
     return result;
 }
 
+static Py_hash_t node_hash(Node *self) {
+    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+
+    // __eq__ and __hash__ must be compatible. As __eq__ is defined by
+    // ts_node_eq, which in turn checks the tree pointer and the node
+    // id, we can use those values to compute the hash.
+    Py_hash_t tree_hash = _Py_HashPointer(self->node.tree);
+    Py_hash_t id_hash = (Py_hash_t)(self->node.id);
+
+    return tree_hash ^ id_hash;
+}
+
 static PyMethodDef node_methods[] = {
     {
         .ml_name = "walk",
@@ -839,6 +851,7 @@ static PyType_Slot node_type_slots[] = {
     {Py_tp_dealloc, node_dealloc},
     {Py_tp_repr, node_repr},
     {Py_tp_richcompare, node_compare},
+    {Py_tp_hash, node_hash},
     {Py_tp_methods, node_methods},
     {Py_tp_getset, node_accessors},
     {0, NULL},
