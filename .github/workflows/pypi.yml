@@ -3,19 +3,19 @@ name: Upload to PyPI
 on:
   push:
     tags:
-      - 'v[0-9]+.*'
-      - 'test-v[0-9]+.*'  # Uploads to https://test.pypi.org/project/tree-sitter/
+      - "v[0-9]+.*"
+      - "test-v[0-9]+.*" # Uploads to https://test.pypi.org/project/tree-sitter/
 
 jobs:
   build-sdist:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
       - run: python setup.py sdist
       - uses: actions/upload-artifact@v3
         with:
@@ -29,25 +29,31 @@ jobs:
         os: [ubuntu-20.04, macos-11, windows-2022]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - if: ${{ startsWith(matrix.os, 'windows') }}
         run: script\fetch-fixtures.cmd
       - if: ${{ !startsWith(matrix.os, 'windows') }}
         run: script/fetch-fixtures
 
-      # Build wheels
-      - run: pip install cibuildwheel==2.16.1
-      - run: python -m cibuildwheel --output-dir dist
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.16.2
         env:
           CIBW_TEST_COMMAND: python -m unittest discover -s {package}/tests
-          CIBW_ARCHS_MACOS: x86_64 arm64
+          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+          CIBW_ARCHS_LINUX: auto aarch64
 
       # Make wheels downloadable from GitHub UI and from the pypi step
       - uses: actions/upload-artifact@v3
@@ -68,7 +74,7 @@ jobs:
 
       # https://stackoverflow.com/a/58478262
       - if: ${{ startsWith(github.ref, 'refs/tags/test-v') }}
-        name: 'Upload to test.pypi.org'
+        name: "Upload to test.pypi.org"
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
@@ -76,8 +82,21 @@ jobs:
           repository_url: https://test.pypi.org/legacy/
 
       - if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        name: 'Upload to pypi.org'
+        name: "Upload to pypi.org"
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        name: "Create GitHub Release"
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          token: ${{ secrets.GITHUB_TOKEN }}
