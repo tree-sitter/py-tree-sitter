@@ -45,14 +45,10 @@ class Node:
     def field_name_for_child(self, child_index: int) -> Optional[str]:
         """Get the field name of a child node by the index of child."""
         ...
-    def descendant_for_byte_range(
-        self, start_byte: int, end_byte: int
-    ) -> Optional[Node]:
+    def descendant_for_byte_range(self, start_byte: int, end_byte: int) -> Optional[Node]:
         """Get the smallest node within the given byte range."""
         ...
-    def named_descendant_for_byte_range(
-        self, start_byte: int, end_byte: int
-    ) -> Optional[Node]:
+    def named_descendant_for_byte_range(self, start_byte: int, end_byte: int) -> Optional[Node]:
         """Get the smallest named node within the given byte range."""
         ...
     def descendant_for_point_range(
@@ -189,7 +185,9 @@ class Node:
 class Tree:
     """A Syntax Tree"""
 
-    def root_node_with_offset(self, offset_bytes: int, offset_extent: Tuple[int, int]) -> Optional[Node]:
+    def root_node_with_offset(
+        self, offset_bytes: int, offset_extent: Tuple[int, int]
+    ) -> Optional[Node]:
         """Get the root node of the syntax tree, but with its position shifted forward by the given offset."""
         ...
     def walk(self) -> TreeCursor:
@@ -321,8 +319,8 @@ class Parser:
 
     def parse(
         self,
-        source_code: bytes|Callable[[int, Tuple[int, int]], Optional[bytes]],
-        old_tree: Optional[Tree]= None,
+        source_code: bytes | Callable[[int, Tuple[int, int]], Optional[bytes]],
+        old_tree: Optional[Tree] = None,
         keep_text: Optional[bool] = True,
     ) -> Tree:
         """Parse source code, creating a syntax tree.

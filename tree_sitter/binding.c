@@ -847,14 +847,10 @@ static PyGetSetDef node_accessors[] = {
 };
 
 static PyType_Slot node_type_slots[] = {
-    {Py_tp_doc, "A syntax node"},
-    {Py_tp_dealloc, node_dealloc},
-    {Py_tp_repr, node_repr},
-    {Py_tp_richcompare, node_compare},
-    {Py_tp_hash, node_hash},
-    {Py_tp_methods, node_methods},
-    {Py_tp_getset, node_accessors},
-    {0, NULL},
+    {Py_tp_doc, "A syntax node"},   {Py_tp_dealloc, node_dealloc},
+    {Py_tp_repr, node_repr},        {Py_tp_richcompare, node_compare},
+    {Py_tp_hash, node_hash},        {Py_tp_methods, node_methods},
+    {Py_tp_getset, node_accessors}, {0, NULL},
 };
 
 static PyType_Spec node_type_spec = {

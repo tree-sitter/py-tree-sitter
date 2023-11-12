@@ -116,7 +116,7 @@ class TestParser(TestCase):
         self.assertEqual(binary_node.type, "binary_expression")
         self.assertEqual(snake_node.type, "string")
         self.assertEqual(
-            source_code[snake_node.start_byte:snake_node.end_byte].decode("utf8"),
+            source_code[snake_node.start_byte : snake_node.end_byte].decode("utf8"),
             "'🐍'",
         )
 
@@ -133,7 +133,7 @@ class TestParser(TestCase):
         source_code = bytes("'😎' && '🐍'", "utf8")
 
         def read(byte_position, _):
-            return source_code[byte_position:byte_position + 1]
+            return source_code[byte_position : byte_position + 1]
 
         tree = parser.parse(read)
         root_node = tree.root_node
@@ -144,7 +144,7 @@ class TestParser(TestCase):
         self.assertEqual(binary_node.type, "binary_expression")
         self.assertEqual(snake_node.type, "string")
         self.assertEqual(
-            source_code[snake_node.start_byte:snake_node.end_byte].decode("utf8"),
+            source_code[snake_node.start_byte : snake_node.end_byte].decode("utf8"),
             "'🐍'",
         )
 
@@ -164,9 +164,9 @@ class TestParser(TestCase):
 
         self.assertEqual(
             js_tree.root_node.sexp(),
-            "(program (expression_statement (call_expression " +
-            "function: (member_expression object: (identifier) property: (property_identifier)) " +
-            "arguments: (arguments (string (string_fragment))))))"
+            "(program (expression_statement (call_expression "
+            + "function: (member_expression object: (identifier) property: (property_identifier)) "
+            + "arguments: (arguments (string (string_fragment))))))",
         )
         self.assertEqual(js_tree.root_node.start_point, (0, source_code.index(b"console")))
         self.assertEqual(js_tree.included_ranges, [script_content_node.range])
@@ -177,9 +177,9 @@ class TestParser(TestCase):
         parser = Parser()
         parser.set_language(JAVASCRIPT)
         js_tree = parser.parse(source_code)
-        template_string_node = js_tree \
-            .root_node \
-            .descendant_for_byte_range(source_code.index(b"<div>"), source_code.index(b"Hello"))
+        template_string_node = js_tree.root_node.descendant_for_byte_range(
+            source_code.index(b"<div>"), source_code.index(b"Hello")
+        )
         if template_string_node is None:
             self.fail("template_string_node is None")
 
@@ -203,19 +203,19 @@ class TestParser(TestCase):
                 start_byte=open_quote_node.end_byte,
                 start_point=open_quote_node.end_point,
                 end_byte=interpolation_node1.start_byte,
-                end_point=interpolation_node1.start_point
+                end_point=interpolation_node1.start_point,
             ),
             Range(
                 start_byte=interpolation_node1.end_byte,
                 start_point=interpolation_node1.end_point,
                 end_byte=interpolation_node2.start_byte,
-                end_point=interpolation_node2.start_point
+                end_point=interpolation_node2.start_point,
             ),
             Range(
                 start_byte=interpolation_node2.end_byte,
                 start_point=interpolation_node2.end_point,
                 end_byte=close_quote_node.start_byte,
-                end_point=close_quote_node.start_point
+                end_point=close_quote_node.start_point,
             ),
         ]
         parser.set_included_ranges(html_ranges)
@@ -224,12 +224,12 @@ class TestParser(TestCase):
 
         self.assertEqual(
             html_tree.root_node.sexp(),
-            "(fragment (element" +
-            " (start_tag (tag_name))" +
-            " (text)" +
-            " (element (start_tag (tag_name)) (end_tag (tag_name)))" +
-            " (text)" +
-            " (end_tag (tag_name))))"
+            "(fragment (element"
+            + " (start_tag (tag_name))"
+            + " (text)"
+            + " (element (start_tag (tag_name)) (end_tag (tag_name)))"
+            + " (text)"
+            + " (end_tag (tag_name))))",
         )
         self.assertEqual(html_tree.included_ranges, html_ranges)
 
@@ -282,42 +282,46 @@ class TestParser(TestCase):
 
         self.assertEqual(
             html_tree.root_node.sexp(),
-            "(fragment (element (start_tag (tag_name)) (text) (end_tag (tag_name))))"
+            "(fragment (element (start_tag (tag_name)) (text) (end_tag (tag_name))))",
         )
 
     def test_parsing_error_in_invalid_included_ranges(self):
         parser = Parser()
         with self.assertRaises(Exception):
-            parser.set_included_ranges([
-                Range(
-                    start_byte=23,
-                    end_byte=29,
-                    start_point=(0, 23),
-                    end_point=(0, 29),
-                ),
-                Range(
-                    start_byte=0,
-                    end_byte=5,
-                    start_point=(0, 0),
-                    end_point=(0, 5),
-                ),
-                Range(
-                    start_byte=50,
-                    end_byte=60,
-                    start_point=(0, 50),
-                    end_point=(0, 60),
-                ),
-            ])
+            parser.set_included_ranges(
+                [
+                    Range(
+                        start_byte=23,
+                        end_byte=29,
+                        start_point=(0, 23),
+                        end_point=(0, 29),
+                    ),
+                    Range(
+                        start_byte=0,
+                        end_byte=5,
+                        start_point=(0, 0),
+                        end_point=(0, 5),
+                    ),
+                    Range(
+                        start_byte=50,
+                        end_byte=60,
+                        start_point=(0, 50),
+                        end_point=(0, 60),
+                    ),
+                ]
+            )
 
         with self.assertRaises(Exception):
-            parser.set_included_ranges([
-                Range(
-                    start_byte=10,
-                    end_byte=5,
-                    start_point=(0, 10),
-                    end_point=(0, 5),
-                )
-            ])
+            parser.set_included_ranges(
+                [
+                    Range(
+                        start_byte=10,
+                        end_byte=5,
+                        start_point=(0, 10),
+                        end_point=(0, 5),
+                    )
+                ]
+            )
 
     def test_parsing_with_external_scanner_that_uses_included_range_boundaries(self):
         source_code = b"a <%= b() %> c <% d() %>"
@@ -328,20 +332,22 @@ class TestParser(TestCase):
 
         parser = Parser()
         parser.set_language(JAVASCRIPT)
-        parser.set_included_ranges([
-            Range(
-                start_byte=range1_start_byte,
-                end_byte=range1_end_byte,
-                start_point=(0, range1_start_byte),
-                end_point=(0, range1_end_byte),
-            ),
-            Range(
-                start_byte=range2_start_byte,
-                end_byte=range2_end_byte,
-                start_point=(0, range2_start_byte),
-                end_point=(0, range2_end_byte),
-            ),
-        ])
+        parser.set_included_ranges(
+            [
+                Range(
+                    start_byte=range1_start_byte,
+                    end_byte=range1_end_byte,
+                    start_point=(0, range1_start_byte),
+                    end_point=(0, range1_end_byte),
+                ),
+                Range(
+                    start_byte=range2_start_byte,
+                    end_byte=range2_end_byte,
+                    start_point=(0, range2_start_byte),
+                    end_point=(0, range2_end_byte),
+                ),
+            ]
+        )
 
         tree = parser.parse(source_code)
         root = tree.root_node
@@ -355,11 +361,11 @@ class TestParser(TestCase):
         self.assertEqual(
             root.sexp(),
             "(program"
-            + " " +
-            "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
-            + " " +
-            "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
-            + ")"
+            + " "
+            + "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
+            + " "
+            + "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
+            + ")",
         )
 
         self.assertEqual(statement1.start_byte, source_code.index(b"b()"))
@@ -391,29 +397,31 @@ class TestParser(TestCase):
         directive_start = source_code.index(b"<%=")
         directive_end = source_code.index(b"</span>")
         source_code_end = len(source_code)
-        parser.set_included_ranges([
-            Range(
-                start_byte=0,
-                end_byte=directive_start,
-                start_point=(0, 0),
-                end_point=(0, directive_start),
-            ),
-            Range(
-                start_byte=directive_end,
-                end_byte=source_code_end,
-                start_point=(0, directive_end),
-                end_point=(0, source_code_end),
-            ),
-        ])
+        parser.set_included_ranges(
+            [
+                Range(
+                    start_byte=0,
+                    end_byte=directive_start,
+                    start_point=(0, 0),
+                    end_point=(0, directive_start),
+                ),
+                Range(
+                    start_byte=directive_end,
+                    end_byte=source_code_end,
+                    start_point=(0, directive_end),
+                    end_point=(0, source_code_end),
+                ),
+            ]
+        )
 
         tree = parser.parse(source_code, first_tree)
 
         self.assertEqual(
             tree.root_node.sexp(),
-            "(fragment (text) (element" +
-            " (start_tag (tag_name))" +
-            " (element (start_tag (tag_name)) (end_tag (tag_name)))" +
-            " (end_tag (tag_name))))"
+            "(fragment (text) (element"
+            + " (start_tag (tag_name))"
+            + " (element (start_tag (tag_name)) (end_tag (tag_name)))"
+            + " (end_tag (tag_name))))",
         )
 
         self.assertEqual(
@@ -435,7 +443,7 @@ class TestParser(TestCase):
                     start_point=(0, directive_start),
                     end_point=(0, directive_end),
                 ),
-            ]
+            ],
         )
 
     def test_parsing_with_a_newly_included_range(self):
@@ -463,51 +471,55 @@ class TestParser(TestCase):
         self.assertEqual(
             tree.root_node.sexp(),
             "(program"
-            + " " +
-            "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
-            + ")"
+            + " "
+            + "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
+            + ")",
         )
 
         # Parse both the first and third code directives as JavaScript, using the old tree as a
         # reference.
-        parser.set_included_ranges([
-            simple_range(range1_start, range1_end),
-            simple_range(range3_start, range3_end),
-        ])
+        parser.set_included_ranges(
+            [
+                simple_range(range1_start, range1_end),
+                simple_range(range3_start, range3_end),
+            ]
+        )
         tree2 = parser.parse(source_code)
         self.assertEqual(
             tree2.root_node.sexp(),
             "(program"
-            + " " +
-            "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
-            + " " +
-            "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
-            + ")"
+            + " "
+            + "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
+            + " "
+            + "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
+            + ")",
         )
         self.assertEqual(tree2.changed_ranges(tree), [simple_range(range1_end, range3_end)])
 
         # Parse all three code directives as JavaScript, using the old tree as a
         # reference.
-        parser.set_included_ranges([
-            simple_range(range1_start, range1_end),
-            simple_range(range2_start, range2_end),
-            simple_range(range3_start, range3_end),
-        ])
+        parser.set_included_ranges(
+            [
+                simple_range(range1_start, range1_end),
+                simple_range(range2_start, range2_end),
+                simple_range(range3_start, range3_end),
+            ]
+        )
         tree3 = parser.parse(source_code)
         self.assertEqual(
             tree3.root_node.sexp(),
             "(program"
-            + " " +
-            "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
-            + " " +
-            "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
-            + " " +
-            "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
-            + ")"
+            + " "
+            + "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
+            + " "
+            + "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
+            + " "
+            + "(expression_statement (call_expression function: (identifier) arguments: (arguments)))"
+            + ")",
         )
         self.assertEqual(
             tree3.changed_ranges(tree2),
-            [simple_range(range2_start + 1, range2_end - 1)]
+            [simple_range(range2_start + 1, range2_end - 1)],
         )
 
 
@@ -552,9 +564,7 @@ class TestNode(TestCase):
             self.fail("attribute_field is not an int")
 
         attributes = jsx_node.children_by_field_id(attribute_field)
-        self.assertEqual(
-            [a.type for a in attributes], ["jsx_attribute", "jsx_attribute"]
-        )
+        self.assertEqual([a.type for a in attributes], ["jsx_attribute", "jsx_attribute"])
 
     def test_children_by_field_name(self):
         parser = Parser()
@@ -563,9 +573,7 @@ class TestNode(TestCase):
         jsx_node = tree.root_node.children[0].children[0]
 
         attributes = jsx_node.children_by_field_name("attribute")
-        self.assertEqual(
-            [a.type for a in attributes], ["jsx_attribute", "jsx_attribute"]
-        )
+        self.assertEqual([a.type for a in attributes], ["jsx_attribute", "jsx_attribute"])
 
     def test_node_child_by_field_name_with_extra_hidden_children(self):
         parser = Parser()
@@ -576,7 +584,7 @@ class TestNode(TestCase):
         if while_node is None:
             self.fail("while_node is None")
         self.assertEqual(while_node.type, "while_statement")
-        self.assertEqual(while_node.child_by_field_name('body'), while_node.child(3))
+        self.assertEqual(while_node.child_by_field_name("body"), while_node.child(3))
 
     def test_node_descendant_count(self):
         parser = Parser()
@@ -632,9 +640,7 @@ class TestNode(TestCase):
         colon_index = JSON_EXAMPLE.index(b":")
 
         # Leaf node exactly matches the given bounds - byte query
-        colon_node = array_node.descendant_for_byte_range(
-            colon_index, colon_index + 1
-        )
+        colon_node = array_node.descendant_for_byte_range(colon_index, colon_index + 1)
         if colon_node is None:
             self.fail("colon_node is None")
         self.assertEqual(colon_node.type, ":")
@@ -654,9 +660,7 @@ class TestNode(TestCase):
         self.assertEqual(colon_node.end_point, (6, 8))
 
         # The given point is between two adjacent leaf nodes - byte query
-        colon_node = array_node.descendant_for_byte_range(
-            colon_index, colon_index
-        )
+        colon_node = array_node.descendant_for_byte_range(colon_index, colon_index)
         if colon_node is None:
             self.fail("colon_node is None")
         self.assertEqual(colon_node.type, ":")
@@ -677,9 +681,7 @@ class TestNode(TestCase):
 
         # Leaf node starts at the lower bound, ends after the upper bound - byte query
         string_index = JSON_EXAMPLE.index(b'"x"')
-        string_node = array_node.descendant_for_byte_range(
-            string_index, string_index + 2
-        )
+        string_node = array_node.descendant_for_byte_range(string_index, string_index + 2)
         if string_node is None:
             self.fail("string_node is None")
         self.assertEqual(string_node.type, "string")
@@ -700,9 +702,7 @@ class TestNode(TestCase):
 
         # Leaf node starts before the lower bound, ends at the upper bound - byte query
         null_index = JSON_EXAMPLE.index(b"null")
-        null_node = array_node.descendant_for_byte_range(
-            null_index + 1, null_index + 4
-        )
+        null_node = array_node.descendant_for_byte_range(null_index + 1, null_index + 4)
         if null_node is None:
             self.fail("null_node is None")
         self.assertEqual(null_node.type, "null")
@@ -722,9 +722,7 @@ class TestNode(TestCase):
         self.assertEqual(null_node.end_point, (6, 13))
 
         # The bounds span multiple leaf nodes - return the smallest node that does span it.
-        pair_node = array_node.descendant_for_byte_range(
-            string_index + 2, string_index + 4
-        )
+        pair_node = array_node.descendant_for_byte_range(string_index + 2, string_index + 4)
         if pair_node is None:
             self.fail("pair_node is None")
         self.assertEqual(pair_node.type, "pair")
@@ -1021,17 +1019,21 @@ class TestNode(TestCase):
         # `symbol`, aka `kind_id` should match that of a normal `parenthesized_expression`.
         tree = parser.parse(b"(a((*b)))")
         root_node = tree.root_node
-        self.assertEqual(root_node.sexp(), "(module (expression_statement (parenthesized_expression (call function: (identifier) arguments: (argument_list (parenthesized_expression (list_splat (identifier))))))))")  # noqa: E501
+        self.assertEqual(
+            root_node.sexp(),
+            "(module (expression_statement (parenthesized_expression (call "
+            + "function: (identifier) arguments: (argument_list (parenthesized_expression "
+            + "(list_splat (identifier))))))))",
+        )
 
         outer_expr_node = root_node.child(0).child(0)
         if outer_expr_node is None:
             self.fail("outer_expr_node is None")
         self.assertEqual(outer_expr_node.type, "parenthesized_expression")
 
-        inner_expr_node = outer_expr_node \
-            .named_child(0) \
-            .child_by_field_name("arguments") \
-            .named_child(0)
+        inner_expr_node = (
+            outer_expr_node.named_child(0).child_by_field_name("arguments").named_child(0)
+        )
         if inner_expr_node is None:
             self.fail("inner_expr_node is None")
 
@@ -1174,12 +1176,14 @@ class TestTree(TestCase):
         parser = Parser()
         parser.set_language(RUST)
 
-        tree = parser.parse(b"""
+        tree = parser.parse(
+            b"""
                 struct Stuff {
                     a: A,
                     b: Option<B>,
                 }
-            """)
+            """
+        )
 
         cursor = tree.walk()
         self.assertEqual(cursor.node.type, "source_file")
@@ -1665,8 +1669,7 @@ class TestLookaheadIterator(TestCase):
 
         self.assertNotEqual(next_state, 0)
         self.assertEqual(
-            next_state,
-            RUST.next_state(cursor.node.parse_state, cursor.node.grammar_id)
+            next_state, RUST.next_state(cursor.node.parse_state, cursor.node.grammar_id)
         )
         self.assertLess(next_state, RUST.parse_state_count)
         self.assertEqual(cursor.goto_next_sibling(), True)  # type_identifier

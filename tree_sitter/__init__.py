@@ -7,15 +7,40 @@ from platform import system
 from tempfile import TemporaryDirectory
 from typing import Callable, List, Optional
 
-from tree_sitter.binding import (LookaheadIterator, Node, Parser,  # noqa: F401
-                                 Tree, TreeCursor, _language_field_count,
-                                 _language_field_id_for_name,
-                                 _language_field_name_for_id, _language_query,
-                                 _language_state_count, _language_symbol_count,
-                                 _language_symbol_for_name,
-                                 _language_symbol_name, _language_symbol_type,
-                                 _language_version, _lookahead_iterator,
-                                 _next_state)
+from tree_sitter.binding import (
+    LookaheadIterator,
+    LookaheadNamesIterator,
+    Node,
+    Parser,
+    Query,
+    Range,
+    Tree,
+    TreeCursor,
+    _language_field_count,
+    _language_field_id_for_name,
+    _language_field_name_for_id,
+    _language_query,
+    _language_state_count,
+    _language_symbol_count,
+    _language_symbol_for_name,
+    _language_symbol_name,
+    _language_symbol_type,
+    _language_version,
+    _lookahead_iterator,
+    _next_state,
+)
+
+__all__ = [
+    "Language",
+    "Node",
+    "Parser",
+    "Query",
+    "Range",
+    "Tree",
+    "TreeCursor",
+    "LookaheadIterator",
+    "LookaheadNamesIterator",
+]
 
 
 class SymbolType(enum.IntEnum):
@@ -59,9 +84,7 @@ class Language:
                 source_paths.append(path.join(src_path, "scanner.cc"))
             elif path.exists(path.join(src_path, "scanner.c")):
                 source_paths.append(path.join(src_path, "scanner.c"))
-        source_mtimes = [path.getmtime(__file__)] + [
-            path.getmtime(path_) for path_ in source_paths
-        ]
+        source_mtimes = [path.getmtime(__file__)] + [path.getmtime(path_) for path_ in source_paths]
 
         if max(source_mtimes) <= output_mtime:
             return False
