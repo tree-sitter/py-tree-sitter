@@ -178,7 +178,7 @@ class Node:
         """The number of descendants for a node, including itself"""
         ...
     @property
-    def text(self) -> str:
+    def text(self) -> bytes:
         """The node's text, if tree has not been edited"""
         ...
 
