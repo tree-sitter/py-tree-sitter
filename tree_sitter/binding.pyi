@@ -216,7 +216,7 @@ class Tree:
         """The root node of this tree."""
         ...
     @property
-    def text(self) -> str:
+    def text(self) -> bytes:
         """The source text for this tree, if unedited."""
         ...
 
