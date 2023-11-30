@@ -29,7 +29,10 @@ setup(
         "Topic :: Software Development :: Compilers",
         "Topic :: Text Processing :: Linguistic",
     ],
-    install_requires=["setuptools>=60.0.0; python_version>='3.12'"],
+    install_requires=[
+        "setuptools>=60.0.0; python_version>='3.12'",
+        "tomli; python_version < '3.11'",
+    ],
     packages=["tree_sitter"],
     package_data={"tree_sitter": ["py.typed", "*.pyi"]},
     ext_modules=[
@@ -43,4 +46,9 @@ setup(
         )
     ],
     project_urls={"Source": "https://github.com/tree-sitter/py-tree-sitter"},
+    entry_points={
+        "setuptools.finalize_distribution_options": [
+            "tree-sitter = tree_sitter.setuptools:build"
+        ]
+    },
 )
