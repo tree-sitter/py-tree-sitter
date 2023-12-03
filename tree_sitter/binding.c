@@ -283,6 +283,10 @@ static PyObject *node_children_by_field_id_internal(Node *self, TSFieldId field_
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     PyObject *result = PyList_New(0);
 
+    if (field_id == 0) {
+        return result;
+    }
+
     ts_tree_cursor_reset(&state->default_cursor, self->node);
     int ok = ts_tree_cursor_goto_first_child(&state->default_cursor);
     while (ok) {
