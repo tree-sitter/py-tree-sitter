@@ -18,7 +18,7 @@ jobs:
           submodules: true
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.12.1
+        uses: pypa/cibuildwheel@v2.16.2
         env:
           CIBW_SKIP: pp*
           CIBW_ARCHS_MACOS: x86_64 arm64
