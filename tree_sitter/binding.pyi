@@ -107,7 +107,7 @@ class Node:
         ...
     @property
     def next_parse_state(self) -> int:
-        """The parse state afer this node's"""
+        """The parse state after this node's"""
         ...
     @property
     def is_missing(self) -> bool:
