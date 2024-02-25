@@ -1,6 +1,4 @@
-"""
-Py-Tree-sitter
-"""
+"""Py-Tree-sitter"""
 
 from platform import system
 
@@ -21,6 +19,9 @@ setup(
             include_dirs=[
                 "tree_sitter/core/lib/include",
                 "tree_sitter/core/lib/src"
+            ],
+            define_macros=[
+                ("PY_SSIZE_T_CLEAN", None)
             ],
             extra_compile_args=(
                 ["-std=gnu11", "-Wno-unused-variable"] if system() != "Windows" else None

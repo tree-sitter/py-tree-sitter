@@ -1,6 +1,6 @@
-#define PY_SSIZE_T_CLEAN
-#include "Python.h"
 #include "tree_sitter/api.h"
+
+#include <Python.h>
 #include <wctype.h>
 
 // Types

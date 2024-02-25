@@ -6,6 +6,7 @@ from os import path
 from platform import system
 from tempfile import TemporaryDirectory
 from typing import Callable, List, Optional, Union
+from warnings import warn
 
 from tree_sitter.binding import (
     LookaheadIterator,
@@ -30,17 +31,9 @@ from tree_sitter.binding import (
     _next_state,
 )
 
-__all__ = [
-    "Language",
-    "Node",
-    "Parser",
-    "Query",
-    "Range",
-    "Tree",
-    "TreeCursor",
-    "LookaheadIterator",
-    "LookaheadNamesIterator",
-]
+
+def _deprecate(old: str, new: str):
+    warn("{} is deprecated. Use {} instead.".format(old, new), FutureWarning)
 
 
 class SymbolType(enum.IntEnum):
@@ -69,6 +62,7 @@ class Language:
         the library already existed and was modified more recently than
         any of the source files.
         """
+        _deprecate("Language.build_library", "the new bindings")
         output_mtime = path.getmtime(output_path) if path.exists(output_path) else 0
 
         if not repo_paths:
@@ -129,6 +123,7 @@ class Language:
         given path.
         """
         if isinstance(path_or_ptr, str):
+            _deprecate("Language(path, name)", "Language(ptr, name)")
             self.name = name
             self.lib = cdll.LoadLibrary(path_or_ptr)
             language_function: Callable[[], int] = getattr(self.lib, "tree_sitter_%s" % name)
@@ -195,8 +190,7 @@ class Language:
 
     def next_state(self, state: int, id: int) -> int:
         """
-        Get the next parse state. Combine this with
-        [`lookahead_iterator`](Language.lookahead_iterator) to
+        Get the next parse state. Combine this with `lookahead_iterator` to
         generate completion suggestions or valid symbols in error nodes.
         """
         return _next_state(self.language_id, state, id)
@@ -222,3 +216,16 @@ class Language:
     def query(self, source: str) -> Query:
         """Create a Query with the given source code."""
         return _language_query(self.language_id, source)
+
+
+__all__ = [
+    "Language",
+    "Node",
+    "Parser",
+    "Query",
+    "Range",
+    "Tree",
+    "TreeCursor",
+    "LookaheadIterator",
+    "LookaheadNamesIterator",
+]
