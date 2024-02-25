@@ -102,7 +102,7 @@ typedef struct {
     PyTypeObject *lookahead_names_iterator_type;
 } ModuleState;
 
-#if PY_VERSION_HEX < 0x030900f0
+#if PY_MINOR_VERSION < 9
 static ModuleState *global_state = NULL;
 static ModuleState *PyType_GetModuleState(PyTypeObject *obj) { return global_state; }
 static PyObject *PyType_FromModuleAndSpec(PyObject *module, PyType_Spec *spec, PyObject *bases) {
@@ -2922,6 +2922,9 @@ static struct PyModuleDef module_definition = {
     .m_methods = module_methods,
 };
 
+#if PY_MINOR_VERSION > 9
+#define AddObjectRef PyModule_AddObjectRef
+#else
 // simulate PyModule_AddObjectRef for pre-Python 3.10
 static int AddObjectRef(PyObject *module, const char *name, PyObject *value) {
     if (value == NULL) {
@@ -2934,8 +2937,9 @@ static int AddObjectRef(PyObject *module, const char *name, PyObject *value) {
     }
     return ret;
 }
+#endif
 
-PyMODINIT_FUNC PyInit_binding(void) {
+PyMODINIT_FUNC PyInit__binding(void) {
     PyObject *module = PyModule_Create(&module_definition);
     if (module == NULL) {
         return NULL;
@@ -2996,7 +3000,7 @@ PyMODINIT_FUNC PyInit_binding(void) {
         goto cleanup;
     }
 
-#if PY_VERSION_HEX < 0x030900f0
+#if PY_MINOR_VERSION < 9
     global_state = state;
 #endif
     return module;

@@ -11,7 +11,7 @@ setup(
     },
     ext_modules=[
         Extension(
-            name="tree_sitter.binding",
+            name="tree_sitter._binding",
             sources=[
                 "tree_sitter/core/lib/src/lib.c",
                 "tree_sitter/binding.c"

@@ -1,14 +1,14 @@
 """Python bindings for tree-sitter."""
 
-import enum
 from ctypes import c_void_p, cdll
+from enum import IntEnum
 from os import path
 from platform import system
 from tempfile import TemporaryDirectory
 from typing import Callable, List, Optional, Union
 from warnings import warn
 
-from tree_sitter.binding import (
+from tree_sitter._binding import (
     LookaheadIterator,
     LookaheadNamesIterator,
     Node,
@@ -36,7 +36,7 @@ def _deprecate(old: str, new: str):
     warn("{} is deprecated. Use {} instead.".format(old, new), FutureWarning)
 
 
-class SymbolType(enum.IntEnum):
+class SymbolType(IntEnum):
     """An enumeration of the different types of symbols."""
 
     REGULAR = 0
@@ -100,7 +100,7 @@ class Language:
                 else:
                     flags = ["-fPIC"]
                     if source_path.endswith(".c"):
-                        flags.append("-std=c99")
+                        flags.append("-std=c11")
                 object_paths.append(
                     compiler.compile(
                         [source_path],
