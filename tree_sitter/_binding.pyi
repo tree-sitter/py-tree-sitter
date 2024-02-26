@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import tree_sitter
 
@@ -349,7 +349,7 @@ class Query:
         end_point: Optional[Tuple[int, int]] = None,
         start_byte: Optional[int] = None,
         end_byte: Optional[int] = None,
-    ) -> List[Tuple[int, List[Tuple[Node, str]]]]:
+    ) -> List[Tuple[int, Dict[str, Union[Node, List[Node]]]]]:
         """Get a list of all of the matches within the given node."""
 
     def captures(
