@@ -1,8 +1,9 @@
 .tox
+.venv
 build
 dist
 *.pyc
 *.egg-info
 *.so
 __pycache__
-tests/fixtures
+wheelhouse
