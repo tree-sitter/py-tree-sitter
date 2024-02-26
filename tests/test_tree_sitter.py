@@ -1269,12 +1269,13 @@ class TestQuery(TestCase):
         captures: Dict[str, Union[Node, List[Node]]],
     ) -> List[Tuple[str, str]]:
         return [(name, self.format_capture(capture)) for name, capture in captures.items()]
-    
-    def format_capture(
-            self,
-            capture: Union[Node, List[Node]]
-    ) -> str:
-        return '[' + ", ".join(["'" + n.text.decode("utf-8") + "'" for n in capture]) + ']' if isinstance(capture, List) else capture.text.decode("utf-8")
+
+    def format_capture(self, capture: Union[Node, List[Node]]) -> str:
+        return (
+            "[" + ", ".join(["'" + n.text.decode("utf-8") + "'" for n in capture]) + "]"
+            if isinstance(capture, List)
+            else capture.text.decode("utf-8")
+        )
 
     def assert_query_matches(
         self,
@@ -1374,23 +1375,33 @@ class TestQuery(TestCase):
         )
 
     def test_matches_with_list_capture(self):
-        query = JAVASCRIPT.query("(function_declaration name: (identifier) @fn-name body: (statement_block (_)* @fn-statements))")
+        query = JAVASCRIPT.query(
+            """(function_declaration name: (identifier) @fn-name
+                                     body: (statement_block (_)* @fn-statements)
+                )"""
+        )
         self.assert_query_matches(
             JAVASCRIPT,
             query,
-            b"""function one() { 
+            b"""function one() {
                     x = 1;
                     y = 2;
-                    z = 3; 
-                } 
-                function two() { 
+                    z = 3;
+                }
+                function two() {
                     x = 1;
                 }
             """,
             [
-                (0, [('fn-name', 'one'), ('fn-statements', "['x = 1;', 'y = 2;', 'z = 3;']")]),
-                (0, [('fn-name', 'two'), ('fn-statements', "['x = 1;']")])
-            ]
+                (
+                    0,
+                    [
+                        ("fn-name", "one"),
+                        ("fn-statements", "['x = 1;', 'y = 2;', 'z = 3;']"),
+                    ],
+                ),
+                (0, [("fn-name", "two"), ("fn-statements", "['x = 1;']")]),
+            ],
         )
 
     def test_captures(self):
