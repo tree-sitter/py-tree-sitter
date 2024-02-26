@@ -15,11 +15,11 @@ jobs:
         with:
           submodules: true
       - name: Build sources
-        run: pipx run build --sdist
+        run: pipx run build -n -s
       - name: Upload sources
         uses: actions/upload-artifact@v4
         with:
-          name: dist-sdist
+          name: dist-sources
           path: dist/*.tar.gz
 
   build-wheels:
@@ -32,17 +32,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Set up QEMU
-        if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.16
         env:
-          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-          CIBW_ARCHS_LINUX: x86_64 aarch64
-          CIBW_TEST_SKIP: "*aarch64 *arm64"
+          CIBW_SKIP: pp*
+          CIBW_ARCHS_WINDOWS: AMD64
+          CIBW_ARCHS_LINUX: x86_64
+          CIBW_ARCHS_MACOS: x86_64 arm64
+          CIBW_TEST_SKIP: "*arm64"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
