@@ -1,3 +1,21 @@
 [submodule "tree-sitter"]
 	path = tree_sitter/core
 	url = https://github.com/tree-sitter/tree-sitter
+[submodule "tree-sitter-embedded-template"]
+	path = tests/fixtures/tree-sitter-embedded-template
+	url = https://github.com/tree-sitter/tree-sitter-embedded-template
+[submodule "tree-sitter-html"]
+	path = tests/fixtures/tree-sitter-html
+	url = https://github.com/tree-sitter/tree-sitter-html
+[submodule "tree-sitter-javascript"]
+	path = tests/fixtures/tree-sitter-javascript
+	url = https://github.com/tree-sitter/tree-sitter-javascript
+[submodule "tree-sitter-json"]
+	path = tests/fixtures/tree-sitter-json
+	url = https://github.com/tree-sitter/tree-sitter-json
+[submodule "tree-sitter-python"]
+	path = tests/fixtures/tree-sitter-python
+	url = https://github.com/tree-sitter/tree-sitter-python
+[submodule "tree-sitter-rust"]
+	path = tests/fixtures/tree-sitter-rust
+	url = https://github.com/tree-sitter/tree-sitter-rust

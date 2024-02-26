@@ -2,80 +2,81 @@ name: CI
 
 on:
   push:
+    branches: [master]
+    paths:
+      - tree_sitter/**
+      - tests/**
   pull_request:
+    paths:
+      - tree_sitter/**
+      - tests/**
   workflow_dispatch:
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
 
 jobs:
   build_asan:
     runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.8"
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Set Python path
+        run: echo "PYTHON_PATH=$RUNNER_TOOL_CACHE/Python/ASAN" >> "$GITHUB_ENV"
+      - name: Cache Python
+        uses: actions/cache@v4
+        id: python-cache
+        with:
+          path: ${{env.PYTHON_PATH}}
+          key: python-${{env.PYTHON_VERSION}}
       - name: Build Python+ASAN
-        shell: /usr/bin/bash {0}
+        if: steps.python-cache.outputs.cache-hit != 'true'
         run: |
-          git clone --depth=1 -b 3.10 https://github.com/python/cpython.git
-          cd cpython
-          ./configure --with-assertions --with-address-sanitizer --with-undefined-behavior-sanitizer --with-pydebug --disable-shared "--prefix=$(pwd)/opt"
-          make -j2
-          make install
-          ./python -m ensurepip
-      - name: Fetch fixtures
-        run: ./script/fetch-fixtures
-      - name: Test
-        run: |
-          CFLAGS="-O0 -g" ./cpython/python setup.py test
-          ./cpython/python -c 'import tree_sitter'
+          git clone --depth=1 -b $PYTHON_VERSION \
+            https://github.com/python/cpython "$RUNNER_TEMP/cpython"
+          cd "$RUNNER_TEMP/cpython"
+          ./configure \
+              --with-pydebug \
+              --with-assertions \
+              --with-address-sanitizer \
+              --with-undefined-behavior-sanitizer \
+              --disable-shared \
+              --prefix="$PYTHON_PATH"
+          make -j2 && make install
+          "$PYTHON_PATH/bin/python3" -mensurepip
+      - name: Sanitize
+        run: |-
+          "$PYTHON_PATH/bin/pip3" install -e .
+          "$PYTHON_PATH/bin/python3" -c 'import tree_sitter'
+        env:
+          CFLAGS: "-O0 -g"
+
   build:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { os: ubuntu-latest, python: "3.12.0", install_libcxx: false }
-          - { os: ubuntu-latest, python: "3.12.0", install_libcxx: true }
-          - { os: ubuntu-latest, python: "3.11.6", install_libcxx: false }
-          - { os: ubuntu-latest, python: "3.11.6", install_libcxx: true }
-          - { os: ubuntu-latest, python: "3.10.11", install_libcxx: false }
-          - { os: ubuntu-latest, python: "3.10.11", install_libcxx: true }
-          - { os: ubuntu-latest, python: "3.8.17", install_libcxx: false }
-          - { os: ubuntu-latest, python: "3.8.17", install_libcxx: true }
-
-          - { os: macos-latest, python: "3.12.0", install_libcxx: false }
-          - { os: macos-latest, python: "3.11.6", install_libcxx: false }
-          - { os: macos-latest, python: "3.10.11", install_libcxx: false }
-          - { os: macos-latest, python: "3.8.17", install_libcxx: false }
-
-          - { os: windows-latest, python: "3.12.0", install_libcxx: false }
-          - { os: windows-latest, python: "3.11.6", install_libcxx: false }
-          - { os: windows-latest, python: "3.10.11", install_libcxx: false }
-          - { os: windows-latest, python: "3.8.10", install_libcxx: false }
-
-    runs-on: ${{ matrix.os }}
+        python: ["3.8", "3.9", "3.10", "3.11"]
+        os: [ubuntu-latest, macos-13, windows-latest]
+    runs-on: ${{matrix.os}}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           submodules: true
-      - uses: actions/setup-python@v5
+      - name: Set up Python ${{matrix.python}}
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
-      - name: Uninstall libcxx
-        if: ${{ matrix.os == 'ubuntu-latest' && !matrix.install_libcxx }}
-        run: |
-          DEBIAN_FRONTEND=noninteractive sudo apt-get purge -y 'libc++*'
-      - name: Install libcxx
-        if: ${{ matrix.install_libcxx }}
-        run: |
-          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y libc++-dev libc++abi-dev
-      - name: Install setuptools
-        run: python -m pip install setuptools
-      - name: Install flake8
-        run: python -m pip install flake8
-      - name: Fetch fixtures
-        run: ./script/fetch-fixtures
+          python-version: ${{matrix.python}}
       - name: Lint
-        run: ./script/lint
+        run: pipx run ruff .
+      - name: Build
+        run: pip install -e .
+        env:
+          CFLAGS: "-O0 -g"
       - name: Test
-        shell: bash
-        run: |
-          CFLAGS="-O0 -g" python setup.py test
+        run: python -Wignore:::tree_sitter -munittest
