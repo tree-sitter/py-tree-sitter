@@ -19,7 +19,7 @@ jobs:
       - name: Upload sources
         uses: actions/upload-artifact@v4
         with:
-          name: sdist
+          name: dist-sdist
           path: dist/*.tar.gz
 
   build-wheels:
@@ -46,7 +46,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{matrix.os}}
+          name: dist-wheels-${{matrix.os}}
           path: wheelhouse/*.whl
 
   release:
@@ -56,10 +56,8 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: |-
-            sdist
-            wheels-*
           path: dist
+          pattern: dist-*
           merge-multiple: true
       - name: Check artifacts
         run: ls -la dist
