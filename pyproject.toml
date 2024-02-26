@@ -3,7 +3,7 @@ requires = ["setuptools>=43"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tree_sitter"
+name = "tree-sitter"
 version = "0.21.0"
 description = "Python bindings for the Tree-Sitter parsing library"
 classifiers = [

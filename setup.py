@@ -6,6 +6,7 @@ from setuptools import Extension, setup
 
 setup(
     packages=["tree_sitter"],
+    include_package_data=False,
     package_data={
         "tree_sitter": ["py.typed", "*.pyi"]
     },
@@ -23,6 +24,7 @@ setup(
             define_macros=[
                 ("PY_SSIZE_T_CLEAN", None)
             ],
+            undef_macros=["TREE_SITTER_FEATURE_WASM"],
             extra_compile_args=(
                 ["-std=gnu11", "-Wno-unused-variable"] if system() != "Windows" else None
             ),
