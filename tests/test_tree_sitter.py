@@ -3,8 +3,7 @@ from os import path
 from typing import List, Optional, Tuple
 from unittest import TestCase
 
-from tree_sitter import (Language, LookaheadIterator, Node, Parser, Query,
-                         Range, Tree)
+from tree_sitter import Language, LookaheadIterator, Node, Parser, Query, Range, Tree
 
 LIB_PATH = path.join("build", "languages.so")
 
@@ -178,7 +177,7 @@ class TestParser(TestCase):
         parser.set_language(JAVASCRIPT)
         js_tree = parser.parse(source_code)
         template_string_node = js_tree.root_node.descendant_for_byte_range(
-            source_code.index(b"<div>"), source_code.index(b"Hello")
+            source_code.index(b"`<"), source_code.index(b">`")
         )
         if template_string_node is None:
             self.fail("template_string_node is None")
@@ -188,13 +187,13 @@ class TestParser(TestCase):
         open_quote_node = template_string_node.child(0)
         if open_quote_node is None:
             self.fail("open_quote_node is None")
-        interpolation_node1 = template_string_node.child(1)
+        interpolation_node1 = template_string_node.child(2)
         if interpolation_node1 is None:
             self.fail("interpolation_node1 is None")
-        interpolation_node2 = template_string_node.child(2)
+        interpolation_node2 = template_string_node.child(4)
         if interpolation_node2 is None:
             self.fail("interpolation_node2 is None")
-        close_quote_node = template_string_node.child(3)
+        close_quote_node = template_string_node.child(6)
         if close_quote_node is None:
             self.fail("close_quote_node is None")
 
@@ -224,7 +223,7 @@ class TestParser(TestCase):
 
         self.assertEqual(
             html_tree.root_node.sexp(),
-            "(fragment (element"
+            "(document (element"
             + " (start_tag (tag_name))"
             + " (text)"
             + " (element (start_tag (tag_name)) (end_tag (tag_name)))"
@@ -282,7 +281,7 @@ class TestParser(TestCase):
 
         self.assertEqual(
             html_tree.root_node.sexp(),
-            "(fragment (element (start_tag (tag_name)) (text) (end_tag (tag_name))))",
+            "(document (element (start_tag (tag_name)) (text) (end_tag (tag_name))))",
         )
 
     def test_parsing_error_in_invalid_included_ranges(self):
@@ -418,7 +417,7 @@ class TestParser(TestCase):
 
         self.assertEqual(
             tree.root_node.sexp(),
-            "(fragment (text) (element"
+            "(document (text) (element"
             + " (start_tag (tag_name))"
             + " (element (start_tag (tag_name)) (end_tag (tag_name)))"
             + " (end_tag (tag_name))))",
@@ -1254,7 +1253,7 @@ class TestQuery(TestCase):
         with self.assertRaisesRegex(NameError, "Invalid field name buzz"):
             PYTHON.query("(function_definition buzz: (identifier))")
         with self.assertRaisesRegex(NameError, "Invalid capture name garbage"):
-            PYTHON.query("((function_definition) (eq? @garbage foo))")
+            PYTHON.query("((function_definition) (#eq? @garbage foo))")
         with self.assertRaisesRegex(SyntaxError, "Invalid syntax at offset 6"):
             PYTHON.query("(list))")
         PYTHON.query("(function_definition)")
@@ -1276,7 +1275,7 @@ class TestQuery(TestCase):
         language: Language,
         query: Query,
         source: bytes,
-        expected: List[Tuple[int, List[Tuple[str, str]]]]
+        expected: List[Tuple[int, List[Tuple[str, str]]]],
     ):
         parser = Parser()
         parser.set_language(language)
@@ -1291,17 +1290,19 @@ class TestQuery(TestCase):
             JAVASCRIPT,
             query,
             b"function one() { two(); function three() {} }",
-            [(0, [('fn-name', 'one')]), (0, [('fn-name', 'three')])]
+            [(0, [("fn-name", "one")]), (0, [("fn-name", "three")])],
         )
 
     def test_matches_with_multiple_on_same_root(self):
-        query = JAVASCRIPT.query("""
+        query = JAVASCRIPT.query(
+            """
                 (class_declaration
                     name: (identifier) @the-class-name
                     (class_body
                         (method_definition
                             name: (property_identifier) @the-method-name)))
-                """)
+                """
+        )
         self.assert_query_matches(
             JAVASCRIPT,
             query,
@@ -1317,14 +1318,16 @@ class TestQuery(TestCase):
             [
                 (0, [("the-class-name", "Person"), ("the-method-name", "constructor")]),
                 (0, [("the-class-name", "Person"), ("the-method-name", "getFullName")]),
-            ]
+            ],
         )
 
     def test_matches_with_multiple_patterns_different_roots(self):
-        query = JAVASCRIPT.query("""
+        query = JAVASCRIPT.query(
+            """
                     (function_declaration name:(identifier) @fn-def)
                     (call_expression function:(identifier) @fn-ref)
-                """)
+                """
+        )
         self.assert_query_matches(
             JAVASCRIPT,
             query,
@@ -1333,16 +1336,18 @@ class TestQuery(TestCase):
                 f2(f3());
             }
             """,
-            [(0, [("fn-def", "f1")]), (1, [("fn-ref", "f2")]), (1, [("fn-ref", "f3")])]
+            [(0, [("fn-def", "f1")]), (1, [("fn-ref", "f2")]), (1, [("fn-ref", "f3")])],
         )
 
     def test_matches_with_nesting_and_no_fields(self):
-        query = JAVASCRIPT.query("""
+        query = JAVASCRIPT.query(
+            """
                     (array
                     (array
                         (identifier) @x1
                         (identifier) @x2))
-                """)
+                """
+        )
         self.assert_query_matches(
             JAVASCRIPT,
             query,
@@ -1359,7 +1364,7 @@ class TestQuery(TestCase):
                 (0, [("x1", "e"), ("x2", "h")]),
                 (0, [("x1", "f"), ("x2", "h")]),
                 (0, [("x1", "g"), ("x2", "h")]),
-            ]
+            ],
         )
 
     def test_captures(self):
@@ -1773,10 +1778,10 @@ class TestQuery(TestCase):
         )
 
         captures = query.captures(tree.root_node, start_point=(1, 0), end_point=(2, 0))
-        # FIXME: this test is incorrect
-        self.assertEqual(captures[1][0].start_point, (1, 2))
-        self.assertEqual(captures[1][0].end_point, (1, 5))
-        self.assertEqual(captures[1][1], "func-call")
+
+        self.assertEqual(captures[0][0].start_point, (1, 2))
+        self.assertEqual(captures[0][0].end_point, (1, 5))
+        self.assertEqual(captures[0][1], "func-call")
 
     def test_node_hash(self):
         parser = Parser()
@@ -1829,7 +1834,7 @@ class TestLookaheadIterator(TestCase):
         self.assertEqual(cursor.node.grammar_name, "identifier")
         self.assertNotEqual(cursor.node.grammar_id, cursor.node.kind_id)
 
-        expected_symbols = ["identifier", "block_comment", "line_comment"]
+        expected_symbols = ["//", "/*", "identifier", "line_comment", "block_comment"]
         lookahead: LookaheadIterator = RUST.lookahead_iterator(next_state)
         self.assertEqual(lookahead.language, RUST.language_id)
         self.assertEqual(list(lookahead.iter_names()), expected_symbols)

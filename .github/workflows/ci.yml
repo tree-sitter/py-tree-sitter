@@ -40,22 +40,16 @@ jobs:
           - { os: ubuntu-latest, python: "3.10.11", install_libcxx: true }
           - { os: ubuntu-latest, python: "3.8.17", install_libcxx: false }
           - { os: ubuntu-latest, python: "3.8.17", install_libcxx: true }
-          - { os: ubuntu-20.04, python: "3.6.8", install_libcxx: false }
-          - { os: ubuntu-20.04, python: "3.6.8", install_libcxx: true }
-          - { os: ubuntu-latest, python: pypy-3.7, install_libcxx: false }
-          - { os: ubuntu-latest, python: pypy-3.7, install_libcxx: true }
+
           - { os: macos-latest, python: "3.12.0", install_libcxx: false }
           - { os: macos-latest, python: "3.11.6", install_libcxx: false }
           - { os: macos-latest, python: "3.10.11", install_libcxx: false }
           - { os: macos-latest, python: "3.8.17", install_libcxx: false }
-          - { os: macos-latest, python: "3.6.8", install_libcxx: false }
-          - { os: macos-latest, python: pypy-3.7, install_libcxx: false }
+
           - { os: windows-latest, python: "3.12.0", install_libcxx: false }
           - { os: windows-latest, python: "3.11.6", install_libcxx: false }
           - { os: windows-latest, python: "3.10.11", install_libcxx: false }
           - { os: windows-latest, python: "3.8.10", install_libcxx: false }
-          - { os: windows-latest, python: "3.6.8", install_libcxx: false }
-          - { os: windows-latest, python: pypy-3.7, install_libcxx: false }
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -73,10 +67,8 @@ jobs:
         if: ${{ matrix.install_libcxx }}
         run: |
           DEBIAN_FRONTEND=noninteractive sudo apt-get install -y libc++-dev libc++abi-dev
-      - name: Install dependencies if Python version is 3.12.0+
-        if: ${{ matrix.python == '3.12.0' }}
-        run: |
-          python -m pip install .
+      - name: Install setuptools
+        run: python -m pip install setuptools
       - name: Install flake8
         run: python -m pip install flake8
       - name: Fetch fixtures
