@@ -22,11 +22,13 @@ setup(
                 "tree_sitter/core/lib/src"
             ],
             define_macros=[
-                ("PY_SSIZE_T_CLEAN", None)
+                ("PY_SSIZE_T_CLEAN", None),
             ],
-            undef_macros=["TREE_SITTER_FEATURE_WASM"],
+            undef_macros=[
+                "TREE_SITTER_FEATURE_WASM",
+            ],
             extra_compile_args=(
-                ["-std=gnu11", "-Wno-unused-variable"] if system() != "Windows" else None
+                ["-std=c11", "-Wno-unused-variable"] if system() != "Windows" else None
             ),
         )
     ]
