@@ -1,27 +1,50 @@
-# py-tree-sitter
+# Python Tree-sitter
 
-[![Build Status](https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml/badge.svg)](https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml)
-[![Build status](https://ci.appveyor.com/api/projects/status/mde790v0v9gux85w/branch/master?svg=true)](https://ci.appveyor.com/project/maxbrunsfeld/py-tree-sitter/branch/master)
+[![Build Status](https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml/badge.svg)][ci]
 
-This module provides Python bindings to the [tree-sitter](https://github.com/tree-sitter/tree-sitter)
-parsing library.
+This module provides Python bindings to the [tree-sitter] parsing library.
 
 ## Installation
 
-This package currently only works with Python 3. There are no library dependencies,
-but you do need to have a C compiler installed.
+The package has no library dependencies and provides pre-compiled wheels for all major platforms.
+
+> [!NOTE]
+> If your platform is not currently supported, please submit an [issue] on GitHub.
 
 ```sh
-pip3 install tree_sitter
+pip install tree-sitter
 ```
 
 ## Usage
 
 ### Setup
 
-First you'll need a Tree-sitter language implementation for each language that you
-want to parse. You can clone some of the [existing language repos](https://github.com/tree-sitter)
-or [create your own](http://tree-sitter.github.io/tree-sitter/creating-parsers):
+#### Install languages
+
+Tree-sitter language implementations also provide pre-compiled binary wheels.
+Let's take [Python][tree-sitter-python] as an example.
+
+```sh
+pip install tree-sitter-python
+```
+
+Then, you can load it as a `Language` object:
+
+```python
+import tree_sitter_python as tspython
+from tree_sitter import Language, Parser
+
+PY_LANGUAGE = Language(tspython.language(), "python")
+```
+
+#### Build from source
+
+> [!WARNING]
+> This method of loading languages is deprecated and will be removed in `v0.22.0`.
+> You should only use it if you need languages that have not updated their bindings.
+> Keep in mind that you will need a C compiler in this case.
+
+First you'll need a Tree-sitter language implementation for each language that you want to parse.
 
 ```sh
 git clone https://github.com/tree-sitter/tree-sitter-go
@@ -34,7 +57,7 @@ usable from Python. This function will return immediately if the library has
 already been compiled since the last time its source code was modified:
 
 ```python
-from tree_sitter import Language
+from tree_sitter import Language, Parser
 
 Language.build_library(
     # Store the library in the `build` directory
@@ -52,9 +75,9 @@ JS_LANGUAGE = Language("build/my-languages.so", "javascript")
 PY_LANGUAGE = Language("build/my-languages.so", "python")
 ```
 
-#### Basic Parsing
+### Basic parsing
 
-Create a `Parser` and configure it to use one of the languages:
+Create a `Parser` and configure it to use a language:
 
 ```python
 parser = Parser()
@@ -149,7 +172,7 @@ assert root_node.sexp() == "(module "
                         "arguments: (argument_list))))))))"
 ```
 
-#### Walking Syntax Trees
+### Walking syntax trees
 
 If you need to traverse a large number of nodes efficiently, you can use
 a `TreeCursor`:
@@ -178,12 +201,14 @@ assert cursor.goto_parent()
 assert cursor.node.type == "function_definition"
 ```
 
-#### Editing
+### Editing
 
 When a source file is edited, you can edit the syntax tree to keep it in sync with
 the source:
 
 ```python
+new_src = src[:5] + src[5:5 + 2].upper() + src[5 + 2:]
+
 tree.edit(
     start_byte=5,
     old_end_byte=5,
@@ -198,16 +223,16 @@ Then, when you're ready to incorporate the changes into a new syntax tree,
 you can call `Parser.parse` again, but pass in the old tree:
 
 ```python
-new_tree = parser.parse(new_source, tree)
+new_tree = parser.parse(new_src, tree)
 ```
 
 This will run much faster than if you were parsing from scratch.
 
-The `Tree.get_changed_ranges` method can be called on the _old_ tree to return
+The `Tree.changed_ranges` method can be called on the _old_ tree to return
 the list of ranges whose syntactic structure has been changed:
 
 ```python
-for changed_range in tree.get_changed_ranges(new_tree):
+for changed_range in tree.changed_ranges(new_tree):
     print("Changed range:")
     print(f"  Start point {changed_range.start_point}")
     print(f"  Start byte {changed_range.start_byte}")
@@ -215,9 +240,9 @@ for changed_range in tree.get_changed_ranges(new_tree):
     print(f"  End byte {changed_range.end_byte}")
 ```
 
-#### Pattern-matching
+### Pattern-matching
 
-You can search for patterns in a syntax tree using a _tree query_:
+You can search for patterns in a syntax tree using a [tree query]:
 
 ```python
 query = PY_LANGUAGE.query(
@@ -241,3 +266,9 @@ The `Query.captures()` method takes optional `start_point`, `end_point`,
 query's range. Only one of the `..._byte` or `..._point` pairs need to be given
 to restrict the range. If all are omitted, the entire range of the passed node
 is used.
+
+[tree-sitter]: https://tree-sitter.github.io/tree-sitter/
+[issue]: https://github.com/tree-sitter/py-tree-sitter/issues/new
+[tree-sitter-python]: https://github.com/tree-sitter/tree-sitter-python
+[tree query]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
+[ci]: https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml
