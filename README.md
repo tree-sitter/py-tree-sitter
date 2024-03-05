@@ -119,27 +119,27 @@ def foo():
 )
 
 
-def read_callable(byte_offset, point):
+def read_callable_byte_offset(byte_offset, point):
     return src[byte_offset : byte_offset + 1]
 
 
-tree = parser.parse(read_callable)
+tree = parser.parse(read_callable_byte_offset)
 ```
 
 And to use the point:
 
 ```python
-src_lines = ["def foo():\n", "    if bar:\n", "        baz()"]
+src_lines = ["\n", "def foo():\n", "    if bar:\n", "        baz()\n"]
 
 
-def read_callable(byte_offset, point):
+def read_callable_point(byte_offset, point):
     row, column = point
     if row >= len(src_lines) or column >= len(src_lines[row]):
         return None
     return src_lines[row][column:].encode("utf8")
 
 
-tree = parser.parse(read_callable)
+tree = parser.parse(read_callable_point)
 ```
 
 Inspect the resulting `Tree`:
@@ -148,7 +148,7 @@ Inspect the resulting `Tree`:
 root_node = tree.root_node
 assert root_node.type == 'module'
 assert root_node.start_point == (1, 0)
-assert root_node.end_point == (3, 13)
+assert root_node.end_point == (4, 0)
 
 function_node = root_node.children[0]
 assert function_node.type == 'function_definition'
@@ -159,17 +159,34 @@ assert function_name_node.type == 'identifier'
 assert function_name_node.start_point == (1, 4)
 assert function_name_node.end_point == (1, 7)
 
-assert root_node.sexp() == "(module "
-    "(function_definition "
-        "name: (identifier) "
-        "parameters: (parameters) "
-        "body: (block "
-            "(if_statement "
-                "condition: (identifier) "
-                "consequence: (block "
-                    "(expression_statement (call "
-                        "function: (identifier) "
-                        "arguments: (argument_list))))))))"
+function_body_node = function_node.child_by_field_name("body")
+
+if_statement_node = function_body_node.child(0)
+assert if_statement_node.type == "if_statement"
+
+function_call_node = if_statement_node.child_by_field_name("consequence").child(0).child(0)
+assert function_call_node.type == "call"
+
+function_call_name_node = function_call_node.child_by_field_name("function")
+assert function_call_name_node.type == "identifier"
+
+function_call_args_node = function_call_node.child_by_field_name("arguments")
+assert function_call_args_node.type == "argument_list"
+
+
+assert root_node.sexp() == (
+    "(module "
+        "(function_definition "
+            "name: (identifier) "
+            "parameters: (parameters) "
+            "body: (block "
+                "(if_statement "
+                    "condition: (identifier) "
+                    "consequence: (block "
+                        "(expression_statement (call "
+                            "function: (identifier) "
+                            "arguments: (argument_list))))))))"
+)
 ```
 
 ### Walking syntax trees
@@ -201,6 +218,9 @@ assert cursor.goto_parent()
 assert cursor.node.type == "function_definition"
 ```
 
+> [!IMPORTANT]
+> Keep in mind that the cursor can only walk into children of the node that it started from.
+
 See [examples/walk_tree.py] for a complete example of iterating over every node in a tree.
 
 ### Editing
@@ -209,7 +229,7 @@ When a source file is edited, you can edit the syntax tree to keep it in sync wi
 the source:
 
 ```python
-new_src = src[:5] + src[5:5 + 2].upper() + src[5 + 2:]
+new_src = src[:5] + src[5 : 5 + 2].upper() + src[5 + 2 :]
 
 tree.edit(
     start_byte=5,
@@ -250,13 +270,19 @@ You can search for patterns in a syntax tree using a [tree query]:
 query = PY_LANGUAGE.query(
     """
 (function_definition
-  name: (identifier) @function.def)
+  name: (identifier) @function.def
+  body: (block) @function.block)
 
 (call
-  function: (identifier) @function.call)
+  function: (identifier) @function.call
+  arguments: (argument_list) @function.args)
 """
 )
+```
 
+#### Captures
+
+```python
 captures = query.captures(tree.root_node)
 assert len(captures) == 2
 assert captures[0][0] == function_name_node
@@ -269,9 +295,32 @@ query's range. Only one of the `..._byte` or `..._point` pairs need to be given
 to restrict the range. If all are omitted, the entire range of the passed node
 is used.
 
+#### Matches
+
+```python
+matches = query.matches(tree.root_node)
+assert len(matches) == 2
+
+# first match
+assert matches[0][1]["function.def"] == function_name_node
+assert matches[0][1]["function.block"] == function_body_node
+
+# second match
+assert matches[1][1]["function.call"] == function_call_name_node
+assert matches[1][1]["function.args"] == function_call_args_node
+```
+
+The `Query.matches()` method takes the same optional arguments as `Query.captures()`.
+The difference between the two methods is that `Query.matches()` groups captures into matches,
+which is much more useful when your captures within a query relate to each other. It maps the
+capture's name to the node that was captured via a dictionary.
+
+To try out and explore the code referenced in this README, check out [examples/usage.py].
+
 [tree-sitter]: https://tree-sitter.github.io/tree-sitter/
 [issue]: https://github.com/tree-sitter/py-tree-sitter/issues/new
 [tree-sitter-python]: https://github.com/tree-sitter/tree-sitter-python
 [tree query]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
 [ci]: https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml
 [examples/walk_tree.py]: https://github.com/tree-sitter/py-tree-sitter/blob/master/examples/walk_tree.py
+[examples/usage.py]: https://github.com/tree-sitter/py-tree-sitter/blob/master/examples/usage.py
