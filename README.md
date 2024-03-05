@@ -201,6 +201,8 @@ assert cursor.goto_parent()
 assert cursor.node.type == "function_definition"
 ```
 
+See [examples/walk_tree.py] for a complete example of iterating over every node in a tree.
+
 ### Editing
 
 When a source file is edited, you can edit the syntax tree to keep it in sync with
@@ -262,7 +264,7 @@ assert captures[0][1] == "function.def"
 ```
 
 The `Query.captures()` method takes optional `start_point`, `end_point`,
-`start_byte` and `end_byte` keyword arguments which can be used to restrict the
+`start_byte` and `end_byte` keyword arguments, which can be used to restrict the
 query's range. Only one of the `..._byte` or `..._point` pairs need to be given
 to restrict the range. If all are omitted, the entire range of the passed node
 is used.
@@ -272,3 +274,4 @@ is used.
 [tree-sitter-python]: https://github.com/tree-sitter/tree-sitter-python
 [tree query]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
 [ci]: https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml
+[examples/walk_tree.py]: https://github.com/tree-sitter/py-tree-sitter/blob/master/examples/walk_tree.py
