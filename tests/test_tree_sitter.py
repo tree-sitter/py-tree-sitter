@@ -1261,18 +1261,17 @@ class TestQuery(TestCase):
     def collect_matches(
         self,
         matches: List[Tuple[int, Dict[str, Union[Node, List[Node]]]]],
-    ) -> List[Tuple[int, List[Tuple[str, str]]]]:
+    ) -> List[Tuple[int, List[Tuple[str, Union[str, List[str]]]]]]:
         return [(m[0], self.format_captures(m[1])) for m in matches]
 
     def format_captures(
-        self,
-        captures: Dict[str, Union[Node, List[Node]]],
-    ) -> List[Tuple[str, str]]:
+        self, captures: Dict[str, Union[Node, List[Node]]]
+    ) -> List[Tuple[str, Union[str, List[str]]]]:
         return [(name, self.format_capture(capture)) for name, capture in captures.items()]
 
-    def format_capture(self, capture: Union[Node, List[Node]]) -> str:
+    def format_capture(self, capture: Union[Node, List[Node]]) -> Union[str, List[str]]:
         return (
-            "[" + ", ".join(["'" + n.text.decode("utf-8") + "'" for n in capture]) + "]"
+            [n.text.decode("utf-8") for n in capture]
             if isinstance(capture, List)
             else capture.text.decode("utf-8")
         )
@@ -1282,7 +1281,7 @@ class TestQuery(TestCase):
         language: Language,
         query: Query,
         source: bytes,
-        expected: List[Tuple[int, Dict[str, str]]]
+        expected: List[Tuple[int, List[Tuple[str, Union[str, List[str]]]]]],
     ):
         parser = Parser()
         parser.set_language(language)
@@ -1343,7 +1342,11 @@ class TestQuery(TestCase):
                 f2(f3());
             }
             """,
-            [(0, [("fn-def", "f1")]), (1, [("fn-ref", "f2")]), (1, [("fn-ref", "f3")])],
+            [
+                (0, [("fn-def", "f1")]),
+                (1, [("fn-ref", "f2")]),
+                (1, [("fn-ref", "f3")]),
+            ],
         )
 
     def test_matches_with_nesting_and_no_fields(self):
@@ -1397,10 +1400,10 @@ class TestQuery(TestCase):
                     0,
                     [
                         ("fn-name", "one"),
-                        ("fn-statements", "['x = 1;', 'y = 2;', 'z = 3;']"),
+                        ("fn-statements", ["x = 1;", "y = 2;", "z = 3;"]),
                     ],
                 ),
-                (0, [("fn-name", "two"), ("fn-statements", "['x = 1;']")]),
+                (0, [("fn-name", "two"), ("fn-statements", ["x = 1;"])]),
             ],
         )
 
