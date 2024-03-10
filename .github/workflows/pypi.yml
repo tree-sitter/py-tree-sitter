@@ -12,8 +12,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
       - name: Build sources
-        run: pipx run build -n -s
+        run: |-
+          pip install build
+          python -mbuild -n -s
       - name: Upload sources
         uses: actions/upload-artifact@v4
         with:
