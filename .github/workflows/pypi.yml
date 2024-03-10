@@ -67,6 +67,7 @@ jobs:
         with:
           password: ${{secrets.PYPI_API_TOKEN}}
       - name: Create GitHub release
-        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes
         env:
           GH_TOKEN: ${{github.token}}
+          GH_REPO: ${{github.repository}}
