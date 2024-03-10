@@ -2,9 +2,7 @@ name: Upload to PyPI
 
 on:
   push:
-    tags:
-      - v[0-9]+.*
-      - test-v[0-9]+.*
+    tags: ["v*"]
 
 jobs:
   build-sdist:
@@ -40,7 +38,7 @@ jobs:
           CIBW_ARCHS_LINUX: x86_64
           CIBW_ARCHS_MACOS: x86_64 arm64
           CIBW_TEST_SKIP: "*arm64"
-      - name: Upload artifacts
+      - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: dist-wheels-${{matrix.os}}
@@ -57,20 +55,12 @@ jobs:
           pattern: dist-*
           merge-multiple: true
       - name: Check artifacts
-        run: ls -la dist
-      - name: Upload to test.pypi.org
-        if: startsWith(github.ref_name, 'test-v')
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: secrets.TEST_PYPI_API_TOKEN
-          repository_url: https://test.pypi.org/legacy/
-      - name: Upload to pypi.org
-        if: startsWith(github.ref_name, 'v')
+        run: ls -l dist
+      - name: Upload to pypi
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{secrets.PYPI_API_TOKEN}}
-      - name: Create GitHub Release
-        if: startsWith(github.ref_name, 'v')
+      - name: Create GitHub release
         run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes
         env:
           GH_TOKEN: ${{github.token}}
