@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python",
     "Topic :: Software Development :: Compilers",
     "Topic :: Text Processing :: Linguistic",
-    "Typing :: Typed"
+    "Typing :: Typed",
 ]
 requires-python = ">=3.8,<3.12"
 readme = "README.md"
@@ -32,14 +32,11 @@ email = "maxbrunsfeld@gmail.com"
 target-version = "py38"
 line-length = 100
 indent-width = 4
-exclude = [
-    ".git",
+extend-exclude = [
     ".github",
-    ".venv",
-    "build",
-    "dist",
     "__pycache__",
-    "tests/fixtures"
+    "tests/fixtures",
+    "tree_sitter/core",
 ]
 
 [tool.ruff.format]
@@ -49,4 +46,6 @@ indent-style = "space"
 [tool.cibuildwheel]
 build-frontend = "build"
 test-command = "python -munittest discover -s {project}/tests"
-environment = {PYTHONWARNINGS = "ignore:::tree_sitter"}
+
+[tool.cibuildwheel.environment]
+PYTHONWARNINGS = "ignore:::tree_sitter"

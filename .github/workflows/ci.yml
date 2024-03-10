@@ -73,7 +73,7 @@ jobs:
         with:
           python-version: ${{matrix.python}}
       - name: Lint
-        run: pipx run ruff .
+        run: pipx run ruff check .
       - name: Build
         run: pip install -e .
         env:
