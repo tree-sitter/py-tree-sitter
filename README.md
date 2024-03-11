@@ -1,6 +1,7 @@
 # Python Tree-sitter
 
-[![Build Status](https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml/badge.svg)][ci]
+[![CI][ci]](https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml)
+[![pypi][pypi]](https://pypi.org/project/tree-sitter/)
 
 This module provides Python bindings to the [tree-sitter] parsing library.
 
@@ -321,6 +322,7 @@ To try out and explore the code referenced in this README, check out [examples/u
 [issue]: https://github.com/tree-sitter/py-tree-sitter/issues/new
 [tree-sitter-python]: https://github.com/tree-sitter/tree-sitter-python
 [tree query]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
-[ci]: https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml
+[ci]: https://img.shields.io/github/actions/workflow/status/tree-sitter/py-tree-sitter/ci.yml?logo=github&label=CI
+[pypi]: https://img.shields.io/pypi/v/tree-sitter?logo=pypi&logoColor=ffd242&label=PyPI
 [examples/walk_tree.py]: https://github.com/tree-sitter/py-tree-sitter/blob/master/examples/walk_tree.py
 [examples/usage.py]: https://github.com/tree-sitter/py-tree-sitter/blob/master/examples/usage.py
