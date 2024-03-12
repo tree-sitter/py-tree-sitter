@@ -1,6 +1,5 @@
 """Python bindings for tree-sitter."""
 
-from ctypes import c_void_p, cdll
 from enum import IntEnum
 from os import PathLike, fspath, path
 from platform import system
@@ -32,10 +31,6 @@ from tree_sitter._binding import (
 )
 
 
-def _deprecate(old: str, new: str):
-    warn("{} is deprecated. Use {} instead.".format(old, new), FutureWarning)
-
-
 class SymbolType(IntEnum):
     """An enumeration of the different types of symbols."""
 
@@ -52,15 +47,9 @@ class SymbolType(IntEnum):
 class Language:
     """A tree-sitter language"""
 
-    @staticmethod
-    def build_library(output_path: str, repo_paths: List[str]) -> bool:
+    def __init__(self, ptr: int, name: str):
         """
-        Build a dynamic library at the given path, based on the parser
-        repositories at the given paths.
-
-        Returns `True` if the dynamic library was compiled and `False` if
-        the library already existed and was modified more recently than
-        any of the source files.
+        Load the language with the given language pointer from the dynamic library.
         """
         _deprecate("Language.build_library", "the new bindings")
         output_mtime = path.getmtime(output_path) if path.exists(output_path) else 0

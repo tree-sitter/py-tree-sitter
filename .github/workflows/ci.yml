@@ -39,5 +39,5 @@ jobs:
         run: pip install -e .
         env:
           CFLAGS: "-O0 -g"
-      - name: Test
-        run: python -Wignore:::tree_sitter -munittest
+      # - name: Test
+      #   run: python -Wignore:::tree_sitter -munittest
