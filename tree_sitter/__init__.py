@@ -146,11 +146,11 @@ class Language:
         """Get the number of valid states in this language."""
         return _language_state_count(self.language_id)
 
-    def node_kind_for_id(self, id: int) -> Optional[str]:
+    def node_kind_for_id(self, id: int) -> str | None:
         """Get the name of the node kind for the given numerical id."""
         return _language_symbol_name(self.language_id, id)
 
-    def id_for_node_kind(self, kind: str, named: bool) -> Optional[int]:
+    def id_for_node_kind(self, kind: str, named: bool) -> int | None:
         """Get the numerical id for the given node kind."""
         return _language_symbol_for_name(self.language_id, kind, named)
 
@@ -173,11 +173,11 @@ class Language:
         """Get the number of fields in this language."""
         return _language_field_count(self.language_id)
 
-    def field_name_for_id(self, field_id: int) -> Optional[str]:
+    def field_name_for_id(self, field_id: int) -> str | None:
         """Get the name of the field for the given numerical id."""
         return _language_field_name_for_id(self.language_id, field_id)
 
-    def field_id_for_name(self, name: str) -> Optional[int]:
+    def field_id_for_name(self, name: str) -> int | None:
         """Return the field id for a field name."""
         return _language_field_id_for_name(self.language_id, name)
 
@@ -188,7 +188,7 @@ class Language:
         """
         return _next_state(self.language_id, state, id)
 
-    def lookahead_iterator(self, state: int) -> Optional[LookaheadIterator]:
+    def lookahead_iterator(self, state: int) -> LookaheadIterator | None:
         """
         Create a new lookahead iterator for this language and parse state.
 

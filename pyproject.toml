@@ -29,7 +29,7 @@ name = "Max Brunsfeld"
 email = "maxbrunsfeld@gmail.com"
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 line-length = 100
 indent-width = 4
 extend-exclude = [

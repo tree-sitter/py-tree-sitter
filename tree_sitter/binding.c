@@ -102,14 +102,6 @@ typedef struct {
     PyTypeObject *lookahead_names_iterator_type;
 } ModuleState;
 
-#if PY_MINOR_VERSION < 9
-static ModuleState *global_state = NULL;
-static ModuleState *PyType_GetModuleState(PyTypeObject *obj) { return global_state; }
-static PyObject *PyType_FromModuleAndSpec(PyObject *module, PyType_Spec *spec, PyObject *bases) {
-    return PyType_FromSpecWithBases(spec, bases);
-}
-#endif
-
 // Point
 
 static PyObject *point_new(TSPoint point) {
@@ -2933,10 +2925,11 @@ static struct PyModuleDef module_definition = {
     .m_methods = module_methods,
 };
 
+// TODO(0.24): drop Python 3.9 support
 #if PY_MINOR_VERSION > 9
 #define AddObjectRef PyModule_AddObjectRef
 #else
-// simulate PyModule_AddObjectRef for pre-Python 3.10
+// simulate PyModule_AddObjectRef for Python 3.9
 static int AddObjectRef(PyObject *module, const char *name, PyObject *value) {
     if (value == NULL) {
         PyErr_Format(PyExc_SystemError, "PyModule_AddObjectRef() %s == NULL", name);
@@ -3011,9 +3004,6 @@ PyMODINIT_FUNC PyInit__binding(void) {
         goto cleanup;
     }
 
-#if PY_MINOR_VERSION < 9
-    global_state = state;
-#endif
     return module;
 
 cleanup:
