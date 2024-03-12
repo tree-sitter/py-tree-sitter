@@ -49,3 +49,6 @@ test-command = "python -munittest discover -s {project}/tests"
 
 [tool.cibuildwheel.environment]
 PYTHONWARNINGS = "ignore:::tree_sitter"
+
+[tool.mypy]
+exclude = ["tree_sitter/core"]
