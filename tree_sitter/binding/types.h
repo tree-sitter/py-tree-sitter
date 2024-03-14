@@ -21,6 +21,13 @@ typedef struct {
 
 typedef struct {
     PyObject_HEAD
+    TSLanguage *language;
+    uint32_t version;
+    char *name;
+} Language;
+
+typedef struct {
+    PyObject_HEAD
     TSParser *parser;
 } Parser;
 
@@ -90,6 +97,7 @@ typedef struct {
 
     PyTypeObject *tree_type;
     PyTypeObject *tree_cursor_type;
+    PyTypeObject *language_type;
     PyTypeObject *parser_type;
     PyTypeObject *node_type;
     PyTypeObject *query_type;
@@ -103,20 +111,6 @@ typedef struct {
     PyTypeObject *lookahead_names_iterator_type;
 } ModuleState;
 
-// TODO(0.24): drop Python 3.9 support
-#if PY_MINOR_VERSION > 9
-#define AddObjectRef PyModule_AddObjectRef
-#else
-// simulate PyModule_AddObjectRef for Python 3.9
-int AddObjectRef(PyObject *module, const char *name, PyObject *value) {
-    if (value == NULL) {
-        PyErr_Format(PyExc_SystemError, "PyModule_AddObjectRef() %s == NULL", name);
-        return -1;
-    }
-    int ret = PyModule_AddObject(module, name, value);
-    if (ret == 0) {
-        Py_INCREF(value);
-    }
-    return ret;
-}
-#endif
+#define GET_MODULE_STATE(type) ((ModuleState *)PyType_GetModuleState(type))
+
+#define IS_INSTANCE(obj, type) PyObject_IsInstance((obj), (PyObject *)(GET_MODULE_STATE(Py_TYPE(obj))->type))

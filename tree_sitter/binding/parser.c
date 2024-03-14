@@ -191,33 +191,21 @@ PyObject *parser_set_included_ranges(Parser *self, PyObject *arg) {
 }
 
 PyObject *parser_set_language(Parser *self, PyObject *arg) {
-    PyObject *language_id = PyObject_GetAttrString(arg, "language_id");
-    if (!language_id) {
+    if (!IS_INSTANCE(arg, language_type)) {
         PyErr_SetString(PyExc_TypeError, "Argument to set_language must be a Language");
         return NULL;
     }
 
-    if (!PyLong_Check(language_id)) {
-        PyErr_SetString(PyExc_TypeError, "Language ID must be an integer");
-        return NULL;
-    }
+    Language *language = (Language *)arg;
 
-    TSLanguage *language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
-    Py_XDECREF(language_id);
-    if (!language) {
-        PyErr_SetString(PyExc_ValueError, "Language ID must not be null");
-        return NULL;
-    }
-
-    unsigned version = ts_language_version(language);
-    if (version < TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION ||
-        TREE_SITTER_LANGUAGE_VERSION < version) {
+    if (language->version < TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION ||
+        TREE_SITTER_LANGUAGE_VERSION < language->version) {
         return PyErr_Format(
             PyExc_ValueError, "Incompatible Language version %u. Must be between %u and %u",
-            version, TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION, TREE_SITTER_LANGUAGE_VERSION);
+            language->version, TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION, TREE_SITTER_LANGUAGE_VERSION);
     }
 
-    ts_parser_set_language(self->parser, language);
+    ts_parser_set_language(self->parser, language->language);
     Py_RETURN_NONE;
 }
 
