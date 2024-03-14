@@ -40,5 +40,11 @@ jobs:
         env:
           CFLAGS: "-O0 -g"
       - name: Test
-        run: python -c 'import tree_sitter'
+        shell: python
         # run: python -Wignore:::tree_sitter -munittest
+        run: |-
+          import tree_sitter as ts
+          try:
+            ts.Language(1, "foo")
+          except RuntimeError as err:
+            print(err)

@@ -77,26 +77,6 @@ PyObject *lookahead_iterator_names_iterator(LookaheadIterator *self) {
                                                  self->lookahead_iterator);
 }
 
-PyObject *lookahead_iterator(PyObject *self, PyObject *args) {
-    ModuleState *state = PyModule_GetState(self);
-
-    TSLanguage *language;
-    PyObject *language_id;
-    uint16_t state_id;
-    if (!PyArg_ParseTuple(args, "OH", &language_id, &state_id)) {
-        return NULL;
-    }
-    language = (TSLanguage *)PyLong_AsVoidPtr(language_id);
-
-    TSLookaheadIterator *lookahead_iterator = ts_lookahead_iterator_new(language, state_id);
-
-    if (lookahead_iterator == NULL) {
-        Py_RETURN_NONE;
-    }
-
-    return lookahead_iterator_new_internal(state, lookahead_iterator);
-}
-
 static PyGetSetDef lookahead_iterator_accessors[] = {
     {"language", (getter)lookahead_iterator_get_language, NULL, "Get the language.", NULL},
     {"current_symbol", (getter)lookahead_iterator_get_current_symbol, NULL,
