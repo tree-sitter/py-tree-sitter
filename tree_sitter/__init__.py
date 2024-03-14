@@ -5,7 +5,7 @@ from enum import IntEnum
 from os import path
 from platform import system
 from tempfile import TemporaryDirectory
-from typing import Callable, List, Optional, Union
+from typing import List, Optional, Union
 from warnings import warn
 
 from tree_sitter._binding import (
@@ -83,10 +83,14 @@ class Language:
         if max(source_mtimes) <= output_mtime:
             return False
 
-        # local import saves import time in the common case that nothing is
-        # compiled
-        from distutils.ccompiler import new_compiler
-        from distutils.unixccompiler import UnixCCompiler
+        # local import saves import time in the common case that nothing is compiled
+        try:
+            from distutils.ccompiler import new_compiler
+            from distutils.unixccompiler import UnixCCompiler
+        except ImportError as err:
+            raise RuntimeError(
+                "Failed to import distutils. You may need to install setuptools."
+            ) from err
 
         compiler = new_compiler()
         if isinstance(compiler, UnixCCompiler):
@@ -126,7 +130,7 @@ class Language:
             _deprecate("Language(path, name)", "Language(ptr, name)")
             self.name = name
             self.lib = cdll.LoadLibrary(path_or_ptr)
-            language_function: Callable[[], int] = getattr(self.lib, "tree_sitter_%s" % name)
+            language_function = getattr(self.lib, "tree_sitter_%s" % name)
             language_function.restype = c_void_p
             self.language_id = language_function()
         elif isinstance(path_or_ptr, int):

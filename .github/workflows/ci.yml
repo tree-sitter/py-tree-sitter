@@ -19,6 +19,7 @@ concurrency:
 jobs:
   build_asan:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
     env:
       PYTHON_VERSION: "3.8"
     steps:
