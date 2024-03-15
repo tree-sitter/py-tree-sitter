@@ -146,6 +146,10 @@ PyMODINIT_FUNC PyInit__binding(void) {
         goto cleanup;
     }
 
+    PyModule_AddIntConstant(module, "LANGUAGE_VERSION", TREE_SITTER_LANGUAGE_VERSION);
+    PyModule_AddIntConstant(module, "MIN_COMPATIBLE_LANGUAGE_VERSION",
+                            TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION);
+
     return module;
 
 cleanup:

@@ -11,6 +11,8 @@ from ._binding import (
     Range,
     Tree,
     TreeCursor,
+    LANGUAGE_VERSION,
+    MIN_COMPATIBLE_LANGUAGE_VERSION,
 )
 
 __all__ = [
@@ -24,4 +26,6 @@ __all__ = [
     "Range",
     "Tree",
     "TreeCursor",
+    "LANGUAGE_VERSION",
+    "MIN_COMPATIBLE_LANGUAGE_VERSION",
 ]
