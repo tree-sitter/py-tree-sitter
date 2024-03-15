@@ -78,6 +78,8 @@ PyMODINIT_FUNC PyInit__binding(void) {
 
     ModuleState *state = PyModule_GetState(module);
 
+    ts_set_allocator(PyMem_Malloc, PyMem_Calloc, PyMem_Realloc, PyMem_Free);
+
     state->query_cursor = ts_query_cursor_new();
 
     state->tree_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &tree_type_spec, NULL);

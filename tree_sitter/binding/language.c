@@ -63,14 +63,14 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
         return -1;
     }
 
-    self->name = PyMem_RawCalloc(length + 1, sizeof(char));
+    self->name = PyMem_Calloc(length + 1, sizeof(char));
     strncpy(self->name, name, length);
 
     return 0;
 }
 
 void language_dealloc(Language *self) {
-    PyMem_RawFree(self->name);
+    PyMem_Free(self->name);
     Py_TYPE(self)->tp_free(self);
 }
 

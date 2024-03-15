@@ -162,7 +162,7 @@ PyObject *parser_set_included_ranges(Parser *self, PyObject *arg) {
     }
 
     uint32_t length = PyList_Size(ranges);
-    TSRange *c_ranges = malloc(sizeof(TSRange) * length);
+    TSRange *c_ranges = PyMem_Malloc(sizeof(TSRange) * length);
     if (!c_ranges) {
         PyErr_SetString(PyExc_MemoryError, "Out of memory");
         return NULL;
@@ -172,7 +172,7 @@ PyObject *parser_set_included_ranges(Parser *self, PyObject *arg) {
         PyObject *range = PyList_GetItem(ranges, i);
         if (!PyObject_IsInstance(range, (PyObject *)state->range_type)) {
             PyErr_SetString(PyExc_TypeError, "Included range must be a Range");
-            free(c_ranges);
+            PyMem_Free(c_ranges);
             return NULL;
         }
         c_ranges[i] = ((Range *)range)->range;
@@ -182,11 +182,11 @@ PyObject *parser_set_included_ranges(Parser *self, PyObject *arg) {
     if (!res) {
         PyErr_SetString(PyExc_ValueError,
                         "Included ranges must not overlap or end before it starts");
-        free(c_ranges);
+        PyMem_Free(c_ranges);
         return NULL;
     }
 
-    free(c_ranges);
+    PyMem_Free(c_ranges);
     Py_RETURN_NONE;
 }
 

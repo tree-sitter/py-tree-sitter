@@ -56,7 +56,7 @@ PyObject *node_compare(Node *self, Node *other, int op) {
 PyObject *node_sexp(Node *self, PyObject *args) {
     char *string = ts_node_string(self->node);
     PyObject *result = PyUnicode_FromString(string);
-    free(string);
+    PyMem_Free(string);
     return result;
 }
 
