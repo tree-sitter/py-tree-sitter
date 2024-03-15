@@ -32,9 +32,20 @@ static int AddObjectRef(PyObject *module, const char *name, PyObject *value) {
 }
 #endif
 
+static inline PyObject *import_attribute(const char *mod, const char *attr) {
+    PyObject *module = PyImport_ImportModule(mod);
+    if (module == NULL) {
+        return NULL;
+    }
+    PyObject *import = PyObject_GetAttrString(module, attr);
+    Py_DECREF(module);
+    return import;
+}
+
 static void module_free(void *self) {
     ModuleState *state = PyModule_GetState((PyObject *)self);
     ts_query_cursor_delete(state->query_cursor);
+    Py_XDECREF(state->point_type);
     Py_XDECREF(state->tree_type);
     Py_XDECREF(state->tree_cursor_type);
     Py_XDECREF(state->language_type);
@@ -48,6 +59,7 @@ static void module_free(void *self) {
     Py_XDECREF(state->capture_match_string_type);
     Py_XDECREF(state->lookahead_iterator_type);
     Py_XDECREF(state->re_compile);
+    Py_XDECREF(state->namedtuple);
 }
 
 static struct PyModuleDef module_definition = {
@@ -65,6 +77,8 @@ PyMODINIT_FUNC PyInit__binding(void) {
     }
 
     ModuleState *state = PyModule_GetState(module);
+
+    state->query_cursor = ts_query_cursor_new();
 
     state->tree_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &tree_type_spec, NULL);
     state->tree_cursor_type =
@@ -90,7 +104,6 @@ PyMODINIT_FUNC PyInit__binding(void) {
     state->lookahead_names_iterator_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &lookahead_names_iterator_type_spec, NULL);
 
-    state->query_cursor = ts_query_cursor_new();
     if ((AddObjectRef(module, "Tree", (PyObject *)state->tree_type) < 0) ||
         (AddObjectRef(module, "TreeCursor", (PyObject *)state->tree_cursor_type) < 0) ||
         (AddObjectRef(module, "Language", (PyObject *)state->language_type) < 0) ||
@@ -112,13 +125,24 @@ PyMODINIT_FUNC PyInit__binding(void) {
         goto cleanup;
     }
 
-    PyObject *re_module = PyImport_ImportModule("re");
-    if (re_module == NULL) {
+    state->re_compile = import_attribute("re", "compile");
+    if (state->re_compile == NULL) {
         goto cleanup;
     }
-    state->re_compile = PyObject_GetAttrString(re_module, (char *)"compile");
-    Py_DECREF(re_module);
-    if (state->re_compile == NULL) {
+
+    state->namedtuple = import_attribute("collections", "namedtuple");
+    if (state->namedtuple == NULL) {
+        goto cleanup;
+    }
+
+    PyObject *point_args = Py_BuildValue("s[ss]", "Point", "row", "column");
+    PyObject *point_kwargs = PyDict_New();
+    PyDict_SetItemString(point_kwargs, "module", PyUnicode_FromString("tree_sitter"));
+    state->point_type = (PyTypeObject *)PyObject_Call(state->namedtuple, point_args, point_kwargs);
+    Py_DECREF(point_args);
+    Py_DECREF(point_kwargs);
+    if (state->point_type == NULL ||
+        AddObjectRef(module, "Point", (PyObject *)state->point_type) < 0) {
         goto cleanup;
     }
 
