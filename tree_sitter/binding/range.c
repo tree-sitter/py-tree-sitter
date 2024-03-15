@@ -82,11 +82,11 @@ PyObject *range_compare(Range *self, Range *other, int op) {
 }
 
 PyObject *range_get_start_point(Range *self, void *payload) {
-    return point_new(self->range.start_point);
+    return POINT_NEW(GET_MODULE_STATE(Py_TYPE(self)), self->range.start_point);
 }
 
 PyObject *range_get_end_point(Range *self, void *payload) {
-    return point_new(self->range.end_point);
+    return POINT_NEW(GET_MODULE_STATE(Py_TYPE(self)), self->range.end_point);
 }
 
 PyObject *range_get_start_byte(Range *self, void *payload) {

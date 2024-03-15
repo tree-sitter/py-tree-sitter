@@ -1,5 +1,4 @@
 #include "parser.h"
-#include "point.h"
 #include "tree.h"
 
 PyObject *parser_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
@@ -17,7 +16,7 @@ void parser_dealloc(Parser *self) {
 
 static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPoint position,
                                        uint32_t *bytes_read) {
-    ReadWrapperPayload *wrapper_payload = payload;
+    ReadWrapperPayload *wrapper_payload = (ReadWrapperPayload *)payload;
     PyObject *read_cb = wrapper_payload->read_cb;
 
     // We assume that the parser only needs the return value until the next time
@@ -30,7 +29,7 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
 
     // Form arguments to callable.
     PyObject *byte_offset_obj = PyLong_FromSize_t((size_t)byte_offset);
-    PyObject *position_obj = point_new(position);
+    PyObject *position_obj = POINT_NEW(wrapper_payload->state, position);
     if (!position_obj || !byte_offset_obj) {
         *bytes_read = 0;
         return NULL;
@@ -98,6 +97,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         PyErr_Clear(); // clear the GetBuffer error
         // parse a callable
         ReadWrapperPayload payload = {
+            .state = state,
             .read_cb = source_or_callback,
             .previous_return_value = NULL,
         };

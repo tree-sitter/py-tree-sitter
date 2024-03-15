@@ -20,7 +20,6 @@ setup(
                 "tree_sitter/binding/lookahead_names_iterator.c",
                 "tree_sitter/binding/node.c",
                 "tree_sitter/binding/parser.c",
-                "tree_sitter/binding/point.c",
                 "tree_sitter/binding/query.c",
                 "tree_sitter/binding/range.c",
                 "tree_sitter/binding/tree.c",

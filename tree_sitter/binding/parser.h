@@ -5,6 +5,7 @@
 typedef struct {
     PyObject *read_cb;
     PyObject *previous_return_value;
+    ModuleState *state;
 } ReadWrapperPayload;
 
 PyObject *parser_new(PyTypeObject *type, PyObject *args, PyObject *kwds);

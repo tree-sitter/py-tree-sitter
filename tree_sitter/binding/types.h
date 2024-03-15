@@ -93,8 +93,11 @@ typedef LookaheadIterator LookaheadNamesIterator;
 typedef struct {
     TSTreeCursor default_cursor;
     TSQueryCursor *query_cursor;
-    PyObject *re_compile;
 
+    PyObject *re_compile;
+    PyObject *namedtuple;
+
+    PyTypeObject *point_type;
     PyTypeObject *tree_type;
     PyTypeObject *tree_cursor_type;
     PyTypeObject *language_type;
@@ -113,4 +116,8 @@ typedef struct {
 
 #define GET_MODULE_STATE(type) ((ModuleState *)PyType_GetModuleState(type))
 
-#define IS_INSTANCE(obj, type) PyObject_IsInstance((obj), (PyObject *)(GET_MODULE_STATE(Py_TYPE(obj))->type))
+#define IS_INSTANCE(obj, type) \
+    PyObject_IsInstance((obj), (PyObject *)(GET_MODULE_STATE(Py_TYPE(obj))->type))
+
+#define POINT_NEW(state, point) \
+    PyObject_CallFunction((PyObject *)(state)->point_type, "II", (point).row, (point).column)

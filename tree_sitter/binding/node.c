@@ -406,11 +406,13 @@ PyObject *node_get_range(Node *self, void *payload) {
 }
 
 PyObject *node_get_start_point(Node *self, void *payload) {
-    return point_new(ts_node_start_point(self->node));
+    TSPoint point = ts_node_start_point(self->node);
+    return POINT_NEW(GET_MODULE_STATE(Py_TYPE(self)), point);
 }
 
 PyObject *node_get_end_point(Node *self, void *payload) {
-    return point_new(ts_node_end_point(self->node));
+    TSPoint point = ts_node_end_point(self->node);
+    return POINT_NEW(GET_MODULE_STATE(Py_TYPE(self)), point);
 }
 
 PyObject *node_get_children(Node *self, void *payload) {
