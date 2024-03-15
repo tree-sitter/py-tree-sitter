@@ -115,7 +115,7 @@ PyObject *tree_changed_ranges(Tree *self, PyObject *args, PyObject *kwargs) {
         PyList_SetItem(result, i, range);
     }
 
-    free(ranges);
+    PyMem_Free(ranges);
     return result;
 }
 
@@ -133,7 +133,7 @@ PyObject *tree_get_included_ranges(Tree *self, PyObject *args) {
         PyList_SetItem(result, i, range);
     }
 
-    free(ranges);
+    PyMem_Free(ranges);
     return result;
 }
 
