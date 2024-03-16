@@ -33,6 +33,7 @@ setup(
             ],
             define_macros=[
                 ("PY_SSIZE_T_CLEAN", None),
+                ("TREE_SITTER_HIDE_SYMBOLS", None),
             ],
             undef_macros=[
                 "TREE_SITTER_FEATURE_WASM",

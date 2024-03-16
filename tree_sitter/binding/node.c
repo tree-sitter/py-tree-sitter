@@ -20,10 +20,6 @@ void node_dealloc(Node *self) {
     Py_TYPE(self)->tp_free(self);
 }
 
-static inline bool node_is_instance(ModuleState *state, PyObject *self) {
-    return PyObject_IsInstance(self, (PyObject *)state->node_type);
-}
-
 PyObject *node_repr(Node *self) {
     const char *type = ts_node_type(self->node);
     TSPoint start_point = ts_node_start_point(self->node);
@@ -36,28 +32,27 @@ PyObject *node_repr(Node *self) {
                                 end_point.row, end_point.column);
 }
 
-PyObject *node_compare(Node *self, Node *other, int op) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    if (node_is_instance(state, (PyObject *)other)) {
-        bool result = ts_node_eq(self->node, other->node);
-        switch (op) {
-        case Py_EQ:
-            return PyBool_FromLong(result);
-        case Py_NE:
-            return PyBool_FromLong(!result);
-        default:
-            Py_RETURN_FALSE;
-        }
-    } else {
-        Py_RETURN_FALSE;
-    }
-}
-
-PyObject *node_sexp(Node *self, PyObject *args) {
+PyObject *node_str(Node *self) {
     char *string = ts_node_string(self->node);
     PyObject *result = PyUnicode_FromString(string);
     PyMem_Free(string);
     return result;
+}
+
+PyObject *node_compare(Node *self, PyObject *other, int op) {
+    if ((op != Py_EQ && op != Py_NE) || !IS_INSTANCE(other, node_type)) {
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+
+    bool result = ts_node_eq(self->node, ((Node *)other)->node);
+    return PyBool_FromLong(result & (op == Py_EQ));
+}
+
+PyObject *node_sexp(Node *self, PyObject *Py_UNUSED(args)) {
+    if (REPLACE("Node.sexp()", "str()") < 0) {
+        return NULL;
+    }
+    return node_str(self);
 }
 
 PyObject *node_walk(Node *self, PyObject *args) {
@@ -587,10 +582,8 @@ Py_hash_t node_hash(Node *self) {
     // __eq__ and __hash__ must be compatible. As __eq__ is defined by
     // ts_node_eq, which in turn checks the tree pointer and the node
     // id, we can use those values to compute the hash.
-    Py_hash_t tree_hash = _Py_HashPointer(self->node.tree);
-    Py_hash_t id_hash = (Py_hash_t)(self->node.id);
-
-    return tree_hash ^ id_hash;
+    Py_hash_t id = (Py_hash_t)self->node.id, tree = (Py_hash_t)self->node.tree;
+    return id == tree ? id : id ^ tree;
 }
 
 static PyMethodDef node_methods[] = {
@@ -738,10 +731,9 @@ static PyGetSetDef node_accessors[] = {
 };
 
 static PyType_Slot node_type_slots[] = {
-    {Py_tp_doc, "A syntax node"},   {Py_tp_dealloc, node_dealloc},
-    {Py_tp_repr, node_repr},        {Py_tp_richcompare, node_compare},
-    {Py_tp_hash, node_hash},        {Py_tp_methods, node_methods},
-    {Py_tp_getset, node_accessors}, {0, NULL},
+    {Py_tp_doc, "A syntax node"},  {Py_tp_dealloc, node_dealloc},     {Py_tp_repr, node_repr},
+    {Py_tp_str, node_str},         {Py_tp_richcompare, node_compare}, {Py_tp_hash, node_hash},
+    {Py_tp_methods, node_methods}, {Py_tp_getset, node_accessors},    {0, NULL},
 };
 
 PyType_Spec node_type_spec = {

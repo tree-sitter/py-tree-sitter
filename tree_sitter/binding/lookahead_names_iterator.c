@@ -13,8 +13,7 @@ PyObject *lookahead_names_iterator_new_internal(ModuleState *state,
 }
 
 PyObject *lookahead_names_iterator_repr(LookaheadNamesIterator *self) {
-    const char *format_string = "<LookaheadNamesIterator %x>";
-    return PyUnicode_FromFormat(format_string, self->lookahead_iterator);
+    return PyUnicode_FromFormat("<LookaheadNamesIterator %p>", self->lookahead_iterator);
 }
 
 void lookahead_names_iterator_dealloc(LookaheadNamesIterator *self) {
@@ -27,13 +26,12 @@ PyObject *lookahead_names_iterator_iter(LookaheadNamesIterator *self) {
 }
 
 PyObject *lookahead_names_iterator_next(LookaheadNamesIterator *self) {
-    bool res = ts_lookahead_iterator_next(self->lookahead_iterator);
-    if (res) {
-        return PyUnicode_FromString(
-            ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator));
+    if (!ts_lookahead_iterator_next(self->lookahead_iterator)) {
+        PyErr_SetNone(PyExc_StopIteration);
+        return NULL;
     }
-    PyErr_SetNone(PyExc_StopIteration);
-    return NULL;
+    const char *symbol = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
+    return PyUnicode_FromString(symbol);
 }
 
 static PyType_Slot lookahead_names_iterator_type_slots[] = {

@@ -48,7 +48,7 @@ jobs:
           CIBW_ARCHS_WINDOWS: AMD64
           CIBW_ARCHS_LINUX: x86_64 aarch64
           CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_TEST_SKIP: cp312* *arm64 *aarch64
+          CIBW_TEST_SKIP: "*arm64 *aarch64"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:

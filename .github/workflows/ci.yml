@@ -43,8 +43,7 @@ jobs:
         shell: python
         # run: python -Wignore:::tree_sitter -munittest
         run: |-
-          import tree_sitter as ts
-          try:
-            ts.Language(1, "foo")
-          except RuntimeError as err:
-            print(err)
+          try: __import__('tree_sitter').Language(1048576)
+          except RuntimeError as err: print(err)
+        env:
+          PYTHONFAULTHANDLER: 1
