@@ -4,6 +4,8 @@
 
 #include <Python.h>
 
+#define HAS_LANGUAGE_NAMES (TREE_SITTER_LANGUAGE_VERSION >= 15)
+
 // Types
 
 typedef struct {
@@ -23,12 +25,15 @@ typedef struct {
     PyObject_HEAD
     TSLanguage *language;
     uint32_t version;
-    char *name;
+#if HAS_LANGUAGE_NAMES
+    const char *name;
+#endif
 } Language;
 
 typedef struct {
     PyObject_HEAD
     TSParser *parser;
+    PyObject* language;
 } Parser;
 
 typedef struct {
@@ -86,6 +91,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     TSLookaheadIterator *lookahead_iterator;
+    PyObject* language;
 } LookaheadIterator;
 
 typedef LookaheadIterator LookaheadNamesIterator;
@@ -117,7 +123,11 @@ typedef struct {
 #define GET_MODULE_STATE(type) ((ModuleState *)PyType_GetModuleState(type))
 
 #define IS_INSTANCE(obj, type) \
-    PyObject_IsInstance((obj), (PyObject *)(GET_MODULE_STATE(Py_TYPE(obj))->type))
+    PyObject_IsInstance((obj), (PyObject *)(GET_MODULE_STATE(Py_TYPE(self))->type))
 
 #define POINT_NEW(state, point) \
     PyObject_CallFunction((PyObject *)(state)->point_type, "II", (point).row, (point).column)
+
+#define DEPRECATE(msg) PyErr_WarnEx(PyExc_DeprecationWarning, msg, 1)
+
+#define REPLACE(old, new) DEPRECATE(old " is deprecated. Use " new " instead.")

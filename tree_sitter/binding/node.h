@@ -8,7 +8,9 @@ void node_dealloc(Node *self);
 
 PyObject *node_repr(Node *self);
 
-PyObject *node_compare(Node *self, Node *other, int op);
+PyObject *node_str(Node *self);
+
+PyObject *node_compare(Node *self, PyObject *other, int op);
 
 PyObject *node_sexp(Node *self, PyObject *args);
 

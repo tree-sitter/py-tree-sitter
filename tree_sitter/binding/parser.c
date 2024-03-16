@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "range.h"
 #include "tree.h"
 
 PyObject *parser_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
@@ -11,6 +12,7 @@ PyObject *parser_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 void parser_dealloc(Parser *self) {
     ts_parser_delete(self->parser);
+    Py_XDECREF(self->language);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -130,88 +132,178 @@ PyObject *parser_reset(Parser *self, void *payload) {
     Py_RETURN_NONE;
 }
 
-PyObject *parser_get_timeout_micros(Parser *self, void *payload) {
+PyObject *parser_get_timeout_micros(Parser *self, void *Py_UNUSED(payload)) {
     return PyLong_FromUnsignedLong(ts_parser_timeout_micros(self->parser));
 }
 
-PyObject *parser_set_timeout_micros(Parser *self, PyObject *arg) {
-    long timeout;
-    if (!PyArg_Parse(arg, "l", &timeout)) {
-        return NULL;
+int parser_set_timeout_micros(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
+    if (arg == NULL) {
+        PyErr_SetString(PyExc_AttributeError, "the 'timeout_micros' attribute cannot be deleted");
+        return -1;
+    }
+    if (!PyLong_CheckExact(arg)) {
+        PyErr_Format(PyExc_TypeError, "timeout must be an int, not '%s'", arg->ob_type->tp_name);
+        return -1;
     }
 
+    long timeout = PyLong_AsLong(arg);
     if (timeout < 0) {
         PyErr_SetString(PyExc_ValueError, "Timeout must be a positive integer");
-        return NULL;
+        return -1;
     }
 
     ts_parser_set_timeout_micros(self->parser, timeout);
+    return 0;
+}
+
+PyObject *parser_set_timeout_micros_old(Parser *self, PyObject *arg) {
+    if (PyLong_AsLong(arg) < 0) {
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError, "Timeout must be a positive integer");
+        }
+        return NULL;
+    }
+    if (REPLACE("Parser.set_timeout_micros()", "the timeout_micros setter") < 0) {
+        return NULL;
+    }
+    if (parser_set_timeout_micros(self, arg, NULL) < 0) {
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
-PyObject *parser_set_included_ranges(Parser *self, PyObject *arg) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    PyObject *ranges = NULL;
-    if (!PyArg_Parse(arg, "O", &ranges)) {
-        return NULL;
+PyObject *parser_get_included_ranges(Parser *self, void *Py_UNUSED(payload)) {
+    uint32_t count;
+    const TSRange *ranges = ts_parser_included_ranges(self->parser, &count);
+    if (count == 0) {
+        return PyList_New(0);
     }
 
-    if (!PyList_Check(ranges)) {
-        PyErr_SetString(PyExc_TypeError, "Included ranges must be a list");
-        return NULL;
+    ModuleState *state = GET_MODULE_STATE(Py_TYPE(self));
+    PyObject *list = PyList_New(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        PyList_SET_ITEM(list, i, range_new_internal(state, ranges[i]));
+    }
+    return list;
+}
+
+int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
+    if (arg == NULL) {
+        PyErr_SetString(PyExc_AttributeError, "the 'included_ranges' attribute cannot be deleted");
+        return -1;
+    }
+    if (!PyList_Check(arg)) {
+        PyErr_Format(PyExc_TypeError, "included_ranges must be assigned a list, not '%s'",
+                     arg->ob_type->tp_name);
+        return -1;
     }
 
-    uint32_t length = PyList_Size(ranges);
-    TSRange *c_ranges = PyMem_Malloc(sizeof(TSRange) * length);
-    if (!c_ranges) {
-        PyErr_SetString(PyExc_MemoryError, "Out of memory");
-        return NULL;
+    uint32_t length = PyList_Size(arg);
+    TSRange *ranges = PyMem_Calloc(length, sizeof(TSRange));
+    if (!ranges) {
+        PyErr_Format(PyExc_MemoryError, "Failed to allocate memory for ranges of length %u",
+                     length);
+        return -1;
     }
 
-    for (unsigned i = 0; i < length; i++) {
-        PyObject *range = PyList_GetItem(ranges, i);
+    ModuleState *state = GET_MODULE_STATE(Py_TYPE(self));
+    for (uint32_t i = 0; i < length; ++i) {
+        PyObject *range = PyList_GetItem(arg, i);
         if (!PyObject_IsInstance(range, (PyObject *)state->range_type)) {
-            PyErr_SetString(PyExc_TypeError, "Included range must be a Range");
-            PyMem_Free(c_ranges);
-            return NULL;
+            PyErr_Format(PyExc_TypeError, "Item at index %u is not a Range object", i);
+            PyMem_Free(ranges);
+            return -1;
         }
-        c_ranges[i] = ((Range *)range)->range;
+        ranges[i] = ((Range *)range)->range;
     }
 
-    bool res = ts_parser_set_included_ranges(self->parser, c_ranges, length);
-    if (!res) {
+    if (!ts_parser_set_included_ranges(self->parser, ranges, length)) {
         PyErr_SetString(PyExc_ValueError,
                         "Included ranges must not overlap or end before it starts");
-        PyMem_Free(c_ranges);
-        return NULL;
+        PyMem_Free(ranges);
+        return -1;
     }
 
-    PyMem_Free(c_ranges);
+    PyMem_Free(ranges);
+    return 0;
+}
+
+PyObject *parser_set_included_ranges_old(Parser *self, PyObject *arg) {
+    if (!PyList_Check(arg)) {
+        PyErr_Format(PyExc_TypeError, "included_ranges must be assigned a list, not '%s'",
+                     arg->ob_type->tp_name);
+        return NULL;
+    }
+    if (REPLACE("Parser.set_included_ranges()", "the included_ranges setter") < 0) {
+        return NULL;
+    }
+    if (parser_set_included_ranges(self, arg, NULL) < 0) {
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
-PyObject *parser_set_language(Parser *self, PyObject *arg) {
+PyObject *parser_get_language(Parser *self, void *Py_UNUSED(payload)) {
+    if (!self->language) {
+        Py_RETURN_NONE;
+    }
+    Py_INCREF(self->language);
+    return self->language;
+}
+
+int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
+    if (arg == NULL) {
+        PyErr_SetString(PyExc_AttributeError, "the 'language' attribute cannot be deleted");
+        return -1;
+    }
     if (!IS_INSTANCE(arg, language_type)) {
-        PyErr_SetString(PyExc_TypeError, "Argument to set_language must be a Language");
-        return NULL;
+        PyErr_Format(PyExc_TypeError, "language must be assigned a Language object, not '%s'",
+                     arg->ob_type->tp_name);
+        return -1;
     }
 
     Language *language = (Language *)arg;
-
     if (language->version < TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION ||
         TREE_SITTER_LANGUAGE_VERSION < language->version) {
-        return PyErr_Format(
-            PyExc_ValueError, "Incompatible Language version %u. Must be between %u and %u",
-            language->version, TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION, TREE_SITTER_LANGUAGE_VERSION);
+        PyErr_Format(PyExc_ValueError,
+                     "Incompatible Language version %u. Must be between %u and %u",
+                     language->version, TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION,
+                     TREE_SITTER_LANGUAGE_VERSION);
+        return -1;
     }
 
-    ts_parser_set_language(self->parser, language->language);
+    if (!ts_parser_set_language(self->parser, language->language)) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to set the parser language.");
+        return -1;
+    }
+
+    Py_XSETREF(self->language, (PyObject *)language);
+    return 0;
+}
+
+PyObject *parser_set_language_old(Parser *self, PyObject *arg) {
+    if (!IS_INSTANCE(arg, language_type)) {
+        PyErr_Format(PyExc_TypeError,
+                     "set_language() argument must be a Language object, not '%s'",
+                     arg->ob_type->tp_name);
+        return NULL;
+    }
+    if (REPLACE("Parser.set_language()", "the language setter") < 0) {
+        return NULL;
+    }
+    if (parser_set_language(self, arg, NULL) < 0) {
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
-static PyGetSetDef Py_UNUSED(parser_accessors[]) = {
-    {"timeout_micros", (getter)parser_get_timeout_micros, NULL,
-     "The timeout for parsing, in microseconds.", NULL},
+static PyGetSetDef parser_accessors[] = {
+    {"language", (getter)parser_get_language, (setter)parser_set_language,
+     "The parser's current language.", NULL},
+    {"included_ranges", (getter)parser_get_included_ranges, (setter)parser_set_included_ranges,
+     "The ranges of text that the parser should include when parsing.", NULL},
+    {"timeout_micros", (getter)parser_get_timeout_micros, (setter)parser_set_timeout_micros,
+     "The duration in microseconds that parsing is allowed to take.", NULL},
     {NULL},
 };
 
@@ -232,7 +324,7 @@ static PyMethodDef parser_methods[] = {
     },
     {
         .ml_name = "set_timeout_micros",
-        .ml_meth = (PyCFunction)parser_set_timeout_micros,
+        .ml_meth = (PyCFunction)parser_set_timeout_micros_old,
         .ml_flags = METH_O,
         .ml_doc = "set_timeout_micros(timeout_micros)\n--\n\n\
 			  Set the maximum duration in microseconds that parsing should be allowed to\
@@ -240,14 +332,14 @@ static PyMethodDef parser_methods[] = {
     },
     {
         .ml_name = "set_included_ranges",
-        .ml_meth = (PyCFunction)parser_set_included_ranges,
+        .ml_meth = (PyCFunction)parser_set_included_ranges_old,
         .ml_flags = METH_O,
         .ml_doc = "set_included_ranges(ranges)\n--\n\n\
 			   Set the ranges of text that the parser should include when parsing.",
     },
     {
         .ml_name = "set_language",
-        .ml_meth = (PyCFunction)parser_set_language,
+        .ml_meth = (PyCFunction)parser_set_language_old,
         .ml_flags = METH_O,
         .ml_doc = "set_language(language)\n--\n\n\
                Set the parser language.",
@@ -256,11 +348,9 @@ static PyMethodDef parser_methods[] = {
 };
 
 static PyType_Slot parser_type_slots[] = {
-    {Py_tp_doc, "A parser"},
-    {Py_tp_new, parser_new},
-    {Py_tp_dealloc, parser_dealloc},
-    {Py_tp_methods, parser_methods},
-    {0, NULL},
+    {Py_tp_doc, "A parser"},          {Py_tp_new, parser_new},
+    {Py_tp_dealloc, parser_dealloc},  {Py_tp_methods, parser_methods},
+    {Py_tp_getset, parser_accessors}, {0, NULL},
 };
 
 PyType_Spec parser_type_spec = {

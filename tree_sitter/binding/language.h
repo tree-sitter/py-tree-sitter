@@ -8,15 +8,15 @@ void language_dealloc(Language *self);
 
 PyObject *language_repr(Language *self);
 
-PyObject *language_str(Language *self);
-
 PyObject *language_int(Language *self);
 
 PyObject *language_compare(Language *self, PyObject *other, int op);
 
 Py_hash_t language_hash(Language *self);
 
+#if HAS_LANGUAGE_NAMES
 PyObject *language_get_name(Language *self, void *payload);
+#endif
 
 PyObject *language_get_version(Language *self, void *payload);
 
@@ -43,3 +43,6 @@ PyObject *language_next_state(Language *self, PyObject *args);
 PyObject *language_lookahead_iterator(Language *self, PyObject *args);
 
 PyObject *language_query(Language *self, PyObject *args);
+
+// TODO(0.23): remove and replace with a static converter
+TSLanguage *language_check_pointer(void *ptr);

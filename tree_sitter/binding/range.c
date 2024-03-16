@@ -48,11 +48,26 @@ void range_dealloc(Range *self) { Py_TYPE(self)->tp_free(self); }
 
 PyObject *range_repr(Range *self) {
     const char *format_string =
-        "<Range start_point=(%u, %u), start_byte=%u, end_point=(%u, %u), end_byte=%u>";
+        "<Range start_point=(%u, %u), end_point=(%u, %u), start_byte=%u, end_byte=%u>";
     return PyUnicode_FromFormat(format_string, self->range.start_point.row,
-                                self->range.start_point.column, self->range.start_byte,
-                                self->range.end_point.row, self->range.end_point.column,
+                                self->range.start_point.column, self->range.end_point.row,
+                                self->range.end_point.column, self->range.start_byte,
                                 self->range.end_byte);
+}
+
+Py_hash_t range_hash(Range *self) {
+    // FIXME: replace with an efficient integer hashing algorithm
+    PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_point.row), PyLong_FromLong(self->range.end_point.row));
+    PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_point.column), PyLong_FromLong(self->range.end_point.column));
+    PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_byte), PyLong_FromLong(self->range.end_byte));
+    PyObject *range_tuple = PyTuple_Pack(3, row_tuple, col_tuple, bytes_tuple);
+    Py_hash_t hash = PyObject_Hash(range_tuple);
+
+    Py_DECREF(range_tuple);
+    Py_DECREF(row_tuple);
+    Py_DECREF(col_tuple);
+    Py_DECREF(bytes_tuple);
+    return hash;
 }
 
 static inline bool range_is_instance(PyObject *self) {
@@ -110,6 +125,7 @@ static PyType_Slot range_type_slots[] = {
     {Py_tp_init, range_init},
     {Py_tp_dealloc, range_dealloc},
     {Py_tp_repr, range_repr},
+    {Py_tp_hash, range_hash},
     {Py_tp_richcompare, range_compare},
     {Py_tp_getset, range_accessors},
     {0, NULL},

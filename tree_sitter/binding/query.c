@@ -489,9 +489,9 @@ PyObject *query_matches(Query *self, PyObject *args, PyObject *kwargs) {
     TSPoint end_point = {.row = UINT32_MAX, .column = UINT32_MAX};
     unsigned start_byte = 0, end_byte = UINT32_MAX;
 
-    int ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O|(II)(II)II", keywords, (PyObject **)&node,
-                                         &start_point.row, &start_point.column, &end_point.row,
-                                         &end_point.column, &start_byte, &end_byte);
+    int ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O|$(II)(II)II:matches", keywords,
+                                         (PyObject **)&node, &start_point.row, &start_point.column,
+                                         &end_point.row, &end_point.column, &start_byte, &end_byte);
     if (!ok) {
         return NULL;
     }
@@ -577,9 +577,9 @@ PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
     TSPoint end_point = {.row = UINT32_MAX, .column = UINT32_MAX};
     unsigned start_byte = 0, end_byte = UINT32_MAX;
 
-    int ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O|(II)(II)II", keywords, (PyObject **)&node,
-                                         &start_point.row, &start_point.column, &end_point.row,
-                                         &end_point.column, &start_byte, &end_byte);
+    int ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O|$(II)(II)II:captures", keywords,
+                                         (PyObject **)&node, &start_point.row, &start_point.column,
+                                         &end_point.row, &end_point.column, &start_byte, &end_byte);
     if (!ok) {
         return NULL;
     }

@@ -30,6 +30,10 @@ PyObject *tree_get_root_node(Tree *self, void *payload) {
 }
 
 PyObject *tree_get_text(Tree *self, void *payload) {
+    if (REPLACE("Tree.text", "Tree.root_node.text") < 0) {
+        return NULL;
+    }
+
     PyObject *source = self->source;
     if (source == NULL) {
         Py_RETURN_NONE;

@@ -14,7 +14,7 @@ PyObject *tree_cursor_current_field_name(TreeCursor *self, PyObject *args);
 
 PyObject *tree_cursor_current_depth(TreeCursor *self, PyObject *args);
 
-PyObject *tree_cursor_current_descendant_index(TreeCursor *self, PyObject *args);
+PyObject *tree_cursor_current_descendant_index(TreeCursor *self, PyObject *payload);
 
 PyObject *tree_cursor_goto_first_child(TreeCursor *self, PyObject *args);
 

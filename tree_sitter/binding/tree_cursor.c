@@ -51,7 +51,7 @@ PyObject *tree_cursor_current_depth(TreeCursor *self, PyObject *args) {
     return PyLong_FromUnsignedLong(depth);
 }
 
-PyObject *tree_cursor_current_descendant_index(TreeCursor *self, PyObject *args) {
+PyObject *tree_cursor_current_descendant_index(TreeCursor *self, PyObject *Py_UNUSED(payload)) {
     uint32_t index = ts_tree_cursor_current_descendant_index(&self->cursor);
     return PyLong_FromUnsignedLong(index);
 }
@@ -127,8 +127,16 @@ PyObject *tree_cursor_goto_first_child_for_byte(TreeCursor *self, PyObject *args
 
 PyObject *tree_cursor_goto_first_child_for_point(TreeCursor *self, PyObject *args) {
     uint32_t row, column;
-    if (!PyArg_ParseTuple(args, "II", &row, &column)) {
-        return NULL;
+    if (!PyArg_ParseTuple(args, "(II):goto_first_child_for_point", &row, &column)) {
+        if (PyArg_ParseTuple(args, "II:goto_first_child_for_point", &row, &column)) {
+            PyErr_Clear();
+            if (REPLACE("TreeCursor.goto_first_child_for_point(row, col)",
+                        "TreeCursor.goto_first_child_for_point(point)") < 0) {
+                return NULL;
+            }
+        } else {
+            return NULL;
+        }
     }
     bool result = ts_tree_cursor_goto_first_child_for_point(&self->cursor, (TSPoint){row, column});
     if (result) {
@@ -187,13 +195,6 @@ PyObject *tree_cursor_copy(PyObject *self) {
 }
 
 static PyMethodDef tree_cursor_methods[] = {
-    {
-        .ml_name = "descendant_index",
-        .ml_meth = (PyCFunction)tree_cursor_current_descendant_index,
-        .ml_flags = METH_NOARGS,
-        .ml_doc = "current_descendant_index()\n--\n\n\
-			   Get the index of the cursor's current node out of all of the descendants of the original node.",
-    },
     {
         .ml_name = "goto_first_child",
         .ml_meth = (PyCFunction)tree_cursor_goto_first_child,
@@ -288,11 +289,23 @@ static PyMethodDef tree_cursor_methods[] = {
         .ml_doc = "copy()\n--\n\n\
                Create an independent copy of the cursor.\n",
     },
+    {.ml_name = "__copy__",
+     .ml_meth = (PyCFunction)tree_cursor_copy,
+     .ml_flags = METH_NOARGS,
+     .ml_doc = NULL},
     {NULL},
 };
 
 static PyGetSetDef tree_cursor_accessors[] = {
     {"node", (getter)tree_cursor_get_node, NULL, "The current node.", NULL},
+    {
+        "descendant_index",
+        (getter)tree_cursor_current_descendant_index,
+        NULL,
+        "current_descendant_index()\n--\n\n\
+			   Get the index of the cursor's current node out of all of the descendants of the original node.",
+        NULL,
+    },
     {
         "field_id",
         (getter)tree_cursor_current_field_id,

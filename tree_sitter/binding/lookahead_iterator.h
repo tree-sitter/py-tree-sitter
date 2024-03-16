@@ -17,7 +17,7 @@ PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self, vo
 
 PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args);
 
-PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args);
+PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args, PyObject *kwargs);
 
 PyObject *lookahead_iterator_iter(LookaheadIterator *self);
 
