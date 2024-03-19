@@ -119,6 +119,23 @@ class TestParser(TestCase):
             "'🐍'",
         )
 
+    def test_multibyte_characters_utf16(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        source_code = bytes("'😎' && '🐍'", "utf16")
+        tree = parser.parse(source_code, encoding="utf16")
+        root_node = tree.root_node
+        statement_node = root_node.children[0]
+        binary_node = statement_node.children[0]
+        snake_node = binary_node.children[2]
+
+        self.assertEqual(binary_node.type, "binary_expression")
+        self.assertEqual(snake_node.type, "string")
+        self.assertEqual(
+            source_code[snake_node.start_byte : snake_node.end_byte].decode("utf16"),
+            "'🐍'",
+        )
+
     def test_buffer_protocol(self):
         parser = Parser()
         parser.set_language(JAVASCRIPT)
@@ -144,6 +161,28 @@ class TestParser(TestCase):
         self.assertEqual(snake_node.type, "string")
         self.assertEqual(
             source_code[snake_node.start_byte : snake_node.end_byte].decode("utf8"),
+            "'🐍'",
+        )
+
+    def test_multibyte_characters_utf16_via_read_callback(self):
+        parser = Parser()
+        parser.set_language(JAVASCRIPT)
+        source_code = bytes("'😎' && '🐍'", "utf16")
+
+        def read(byte_position, _):
+            # In utf16 encoding, word (2 bytes) should be the smallest unit.
+            return source_code[byte_position: byte_position + 2]
+
+        tree = parser.parse(read, encoding='utf16')
+        root_node = tree.root_node
+        statement_node = root_node.children[0]
+        binary_node = statement_node.children[0]
+        snake_node = binary_node.children[2]
+
+        self.assertEqual(binary_node.type, "binary_expression")
+        self.assertEqual(snake_node.type, "string")
+        self.assertEqual(
+            source_code[snake_node.start_byte: snake_node.end_byte].decode("utf16"),
             "'🐍'",
         )
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, Literal
 
 import tree_sitter
 
@@ -318,6 +318,7 @@ class Parser:
         source_code: bytes | Callable[[int, Tuple[int, int]], Optional[bytes]],
         old_tree: Optional[Tree] = None,
         keep_text: Optional[bool] = True,
+        encoding: Literal['utf8', 'utf16'] = 'utf8'
     ) -> Tree:
         """Parse source code, creating a syntax tree.
         Note that by default `keep_text` will be True, unless source_code is a callable.
