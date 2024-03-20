@@ -85,8 +85,8 @@ class Language:
 
         # local import saves import time in the common case that nothing is compiled
         try:
-            from distutils.ccompiler import new_compiler
-            from distutils.unixccompiler import UnixCCompiler
+            from setuptools._distutils.ccompiler import new_compiler
+            from setuptools._distutils.unixccompiler import UnixCCompiler
         except ImportError as err:
             raise RuntimeError(
                 "Failed to import distutils. You may need to install setuptools."
