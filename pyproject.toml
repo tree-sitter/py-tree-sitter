@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tree-sitter"
-version = "0.21.1"
+version = "0.21.2"
 description = "Python bindings for the Tree-Sitter parsing library"
 keywords = ["incremental", "parsing", "tree-sitter"]
 classifiers = [
