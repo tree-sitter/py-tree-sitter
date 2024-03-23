@@ -875,6 +875,9 @@ static PyType_Spec node_type_spec = {
 
 static PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree) {
     Node *self = (Node *)state->node_type->tp_alloc(state->node_type, 0);
+    if (ts_node_is_null(node)) {
+        Py_RETURN_NONE;
+    }
     if (self != NULL) {
         self->node = node;
         Py_INCREF(tree);
