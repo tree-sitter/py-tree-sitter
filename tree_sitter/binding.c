@@ -1498,10 +1498,21 @@ static PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     PyObject *source_or_callback = NULL;
     PyObject *old_tree_arg = NULL;
+    enum TSInputEncoding input_encoding;
+    const char *source_encoding = "utf8";
     int keep_text = 1;
-    static char *keywords[] = {"", "old_tree", "keep_text", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|Op:parse", keywords, &source_or_callback,
-                                     &old_tree_arg, &keep_text)) {
+    static char *keywords[] = {"", "old_tree", "keep_text", "encoding", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|Ops:parse", keywords, &source_or_callback,
+                                     &old_tree_arg, &keep_text, &source_encoding)) {
+        return NULL;
+    }
+
+    if (!strcmp(source_encoding, "utf8")) {
+        input_encoding = TSInputEncodingUTF8;
+    } else if (!strcmp(source_encoding, "utf16")) {
+        input_encoding = TSInputEncodingUTF16;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "encoding must be 'utf8' or 'utf16'");
         return NULL;
     }
 
@@ -1520,7 +1531,7 @@ static PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         // parse a buffer
         const char *source_bytes = (const char *)source_view.buf;
         size_t length = source_view.len;
-        new_tree = ts_parser_parse_string(self->parser, old_tree, source_bytes, length);
+        new_tree = ts_parser_parse_string_encoding(self->parser, old_tree, source_bytes, length, input_encoding);
         PyBuffer_Release(&source_view);
     } else if (PyCallable_Check(source_or_callback)) {
         PyErr_Clear(); // clear the GetBuffer error
@@ -1532,7 +1543,7 @@ static PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         TSInput input = {
             .payload = &payload,
             .read = parser_read_wrapper,
-            .encoding = TSInputEncodingUTF8,
+            .encoding = input_encoding,
         };
         new_tree = ts_parser_parse(self->parser, old_tree, input);
         Py_XDECREF(payload.previous_return_value);
@@ -1660,7 +1671,7 @@ static PyMethodDef parser_methods[] = {
         .ml_name = "parse",
         .ml_meth = (PyCFunction)parser_parse,
         .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc = "parse(bytes, old_tree=None, keep_text=True)\n--\n\n\
+        .ml_doc = "parse(bytes, old_tree=None, keep_text=True, encoding='utf-8')\n--\n\n\
                Parse source code, creating a syntax tree.",
     },
     {

@@ -96,7 +96,8 @@ def foo():
         baz()
 """,
         "utf8",
-    )
+    ),
+    encoding="utf8"
 )
 ```
 
@@ -105,9 +106,10 @@ you can pass a "read" callable to the parse function.
 
 The read callable can use either the byte offset or point tuple to read from
 buffer and return source code as bytes object. An empty bytes object or None
-terminates parsing for that line. The bytes must encode the source as UTF-8.
+terminates parsing for that line. The bytes must encode the source as UTF-8 or 
+UTF-16.
 
-For example, to use the byte offset:
+For example, to use the byte offset when UTF-8 encoding:
 
 ```python
 src = bytes(
@@ -124,7 +126,7 @@ def read_callable_byte_offset(byte_offset, point):
     return src[byte_offset : byte_offset + 1]
 
 
-tree = parser.parse(read_callable_byte_offset)
+tree = parser.parse(read_callable_byte_offset, encoding="utf8")
 ```
 
 And to use the point:
@@ -140,7 +142,7 @@ def read_callable_point(byte_offset, point):
     return src_lines[row][column:].encode("utf8")
 
 
-tree = parser.parse(read_callable_point)
+tree = parser.parse(read_callable_point, encoding="utf8")
 ```
 
 Inspect the resulting `Tree`:
@@ -188,6 +190,27 @@ assert root_node.sexp() == (
                             "function: (identifier) "
                             "arguments: (argument_list))))))))"
 )
+```
+
+To use the byte offset when UTF-16 encoding in other hand:
+
+```python
+parser.set_language(JAVASCRIPT)
+source_code = bytes("'😎' && '🐍'", "utf16")
+
+def read(byte_position, _):
+    # In utf16 encoding, word (2 bytes) should be the smallest unit.
+    return source_code[byte_position: byte_position + 2]
+
+tree = parser.parse(read, encoding='utf16')
+root_node = tree.root_node
+statement_node = root_node.children[0]
+binary_node = statement_node.children[0]
+snake_node = binary_node.children[2]
+
+assert binary_node.type == "binary_expression"
+assert snake_node.type == "string"
+assert source_code[snake_node.start_byte:snake_node.end_byte].decode("utf16") == "'🐍'"
 ```
 
 ### Walking syntax trees
