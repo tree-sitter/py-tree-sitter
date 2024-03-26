@@ -15,21 +15,34 @@ setup(
             name="tree_sitter._binding",
             sources=[
                 "tree_sitter/core/lib/src/lib.c",
-                "tree_sitter/binding.c"
+                "tree_sitter/binding/language.c",
+                "tree_sitter/binding/lookahead_iterator.c",
+                "tree_sitter/binding/lookahead_names_iterator.c",
+                "tree_sitter/binding/node.c",
+                "tree_sitter/binding/parser.c",
+                "tree_sitter/binding/query.c",
+                "tree_sitter/binding/range.c",
+                "tree_sitter/binding/tree.c",
+                "tree_sitter/binding/tree_cursor.c",
+                "tree_sitter/binding/module.c",
             ],
             include_dirs=[
+                "tree_sitter/binding",
                 "tree_sitter/core/lib/include",
-                "tree_sitter/core/lib/src"
+                "tree_sitter/core/lib/src",
             ],
             define_macros=[
                 ("PY_SSIZE_T_CLEAN", None),
+                ("TREE_SITTER_HIDE_SYMBOLS", None),
             ],
             undef_macros=[
                 "TREE_SITTER_FEATURE_WASM",
             ],
-            extra_compile_args=(
-                ["-std=c11", "-Wno-unused-variable"] if system() != "Windows" else None
-            ),
+            extra_compile_args=[
+                "-std=c11",
+                "-fvisibility=hidden",
+                "-Werror=implicit-function-declaration",
+            ] if system() != "Windows" else None
         )
     ]
 )
