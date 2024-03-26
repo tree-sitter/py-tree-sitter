@@ -2,7 +2,7 @@
 
 from ctypes import c_void_p, cdll
 from enum import IntEnum
-from os import path
+from os import PathLike, fspath, path
 from platform import system
 from tempfile import TemporaryDirectory
 from typing import List, Optional, Union
@@ -120,16 +120,16 @@ class Language:
             )
         return True
 
-    def __init__(self, path_or_ptr: Union[str, int], name: str):
+    def __init__(self, path_or_ptr: Union[PathLike, str, int], name: str):
         """
         Load the language with the given language pointer from the dynamic library,
         or load the language with the given name from the dynamic library at the
         given path.
         """
-        if isinstance(path_or_ptr, str):
+        if isinstance(path_or_ptr, (str, PathLike)):
             _deprecate("Language(path, name)", "Language(ptr, name)")
             self.name = name
-            self.lib = cdll.LoadLibrary(path_or_ptr)
+            self.lib = cdll.LoadLibrary(fspath(path_or_ptr))
             language_function = getattr(self.lib, "tree_sitter_%s" % name)
             language_function.restype = c_void_p
             self.language_id = language_function()
@@ -137,7 +137,7 @@ class Language:
             self.name = name
             self.language_id = path_or_ptr
         else:
-            raise TypeError("Expected a string or int for the first argument")
+            raise TypeError("Expected a path or pointer for the first argument")
 
     @property
     def version(self) -> int:
