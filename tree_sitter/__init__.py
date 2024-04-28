@@ -3,7 +3,6 @@
 from ._binding import (
     Language,
     LookaheadIterator,
-    LookaheadNamesIterator,
     Node,
     Parser,
     Point,
@@ -18,7 +17,6 @@ from ._binding import (
 __all__ = [
     "Language",
     "LookaheadIterator",
-    "LookaheadNamesIterator",
     "Node",
     "Parser",
     "Point",

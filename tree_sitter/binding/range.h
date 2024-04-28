@@ -2,9 +2,7 @@
 
 #include "types.h"
 
-PyObject *range_new_internal(ModuleState *state, TSRange range);
-
-PyObject *range_init(Range *self, PyObject *args, PyObject *kwargs);
+int range_init(Range *self, PyObject *args, PyObject *kwargs);
 
 void range_dealloc(Range *self);
 
@@ -12,7 +10,7 @@ PyObject *range_repr(Range *self);
 
 Py_hash_t range_hash(Range *self);
 
-PyObject *range_compare(Range *self, Range *other, int op);
+PyObject *range_compare(Range *self, PyObject *other, int op);
 
 PyObject *range_get_start_point(Range *self, void *payload);
 

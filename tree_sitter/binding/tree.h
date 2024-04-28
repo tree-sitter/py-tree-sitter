@@ -2,8 +2,6 @@
 
 #include "types.h"
 
-PyObject *tree_new_internal(ModuleState *state, TSTree *tree, PyObject *source, int keep_text);
-
 void tree_dealloc(Tree *self);
 
 PyObject *tree_get_root_node(Tree *self, void *payload);

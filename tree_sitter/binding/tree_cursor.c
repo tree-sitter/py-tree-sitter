@@ -1,44 +1,36 @@
 #include "tree_cursor.h"
-
 #include "node.h"
-
-PyObject *tree_cursor_new_internal(ModuleState *state, TSNode node, PyObject *tree) {
-    TreeCursor *self = (TreeCursor *)state->tree_cursor_type->tp_alloc(state->tree_cursor_type, 0);
-    if (self != NULL) {
-        self->cursor = ts_tree_cursor_new(node);
-        Py_INCREF(tree);
-        self->tree = tree;
-    }
-    return (PyObject *)self;
-}
 
 void tree_cursor_dealloc(TreeCursor *self) {
     ts_tree_cursor_delete(&self->cursor);
     Py_XDECREF(self->node);
     Py_XDECREF(self->tree);
-    Py_TYPE(self)->tp_free((PyObject *)self);
+    Py_TYPE(self)->tp_free(self);
 }
 
-PyObject *tree_cursor_get_node(TreeCursor *self, void *payload) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+PyObject *tree_cursor_get_node(TreeCursor *self, void *Py_UNUSED(payload)) {
+    ModuleState *state = GET_MODULE_STATE(self);
     if (!self->node) {
-        self->node =
-            node_new_internal(state, ts_tree_cursor_current_node(&self->cursor), self->tree);
+        TSNode current_node = ts_tree_cursor_current_node(&self->cursor);
+        if (ts_node_is_null(current_node)) {
+            Py_RETURN_NONE;
+        }
+        return node_new_internal(state, current_node, self->tree);
     }
 
     Py_INCREF(self->node);
     return self->node;
 }
 
-PyObject *tree_cursor_current_field_id(TreeCursor *self, PyObject *args) {
-    uint32_t field_id = ts_tree_cursor_current_field_id(&self->cursor);
+PyObject *tree_cursor_get_current_field_id(TreeCursor *self, void *Py_UNUSED(payload)) {
+    TSFieldId field_id = ts_tree_cursor_current_field_id(&self->cursor);
     if (field_id == 0) {
         Py_RETURN_NONE;
     }
     return PyLong_FromUnsignedLong(field_id);
 }
 
-PyObject *tree_cursor_current_field_name(TreeCursor *self, PyObject *args) {
+PyObject *tree_cursor_get_current_field_name(TreeCursor *self, void *Py_UNUSED(payload)) {
     const char *field_name = ts_tree_cursor_current_field_name(&self->cursor);
     if (field_name == NULL) {
         Py_RETURN_NONE;
@@ -46,17 +38,17 @@ PyObject *tree_cursor_current_field_name(TreeCursor *self, PyObject *args) {
     return PyUnicode_FromString(field_name);
 }
 
-PyObject *tree_cursor_current_depth(TreeCursor *self, PyObject *args) {
+PyObject *tree_cursor_get_current_depth(TreeCursor *self, void *Py_UNUSED(args)) {
     uint32_t depth = ts_tree_cursor_current_depth(&self->cursor);
     return PyLong_FromUnsignedLong(depth);
 }
 
-PyObject *tree_cursor_current_descendant_index(TreeCursor *self, PyObject *Py_UNUSED(payload)) {
+PyObject *tree_cursor_get_current_descendant_index(TreeCursor *self, void *Py_UNUSED(payload)) {
     uint32_t index = ts_tree_cursor_current_descendant_index(&self->cursor);
     return PyLong_FromUnsignedLong(index);
 }
 
-PyObject *tree_cursor_goto_first_child(TreeCursor *self, PyObject *args) {
+PyObject *tree_cursor_goto_first_child(TreeCursor *self, PyObject *Py_UNUSED(args)) {
     bool result = ts_tree_cursor_goto_first_child(&self->cursor);
     if (result) {
         Py_XDECREF(self->node);
@@ -65,7 +57,7 @@ PyObject *tree_cursor_goto_first_child(TreeCursor *self, PyObject *args) {
     return PyBool_FromLong(result);
 }
 
-PyObject *tree_cursor_goto_last_child(TreeCursor *self, PyObject *args) {
+PyObject *tree_cursor_goto_last_child(TreeCursor *self, PyObject *Py_UNUSED(args)) {
     bool result = ts_tree_cursor_goto_last_child(&self->cursor);
     if (result) {
         Py_XDECREF(self->node);
@@ -74,7 +66,7 @@ PyObject *tree_cursor_goto_last_child(TreeCursor *self, PyObject *args) {
     return PyBool_FromLong(result);
 }
 
-PyObject *tree_cursor_goto_parent(TreeCursor *self, PyObject *args) {
+PyObject *tree_cursor_goto_parent(TreeCursor *self, PyObject *Py_UNUSED(args)) {
     bool result = ts_tree_cursor_goto_parent(&self->cursor);
     if (result) {
         Py_XDECREF(self->node);
@@ -83,7 +75,7 @@ PyObject *tree_cursor_goto_parent(TreeCursor *self, PyObject *args) {
     return PyBool_FromLong(result);
 }
 
-PyObject *tree_cursor_goto_next_sibling(TreeCursor *self, PyObject *args) {
+PyObject *tree_cursor_goto_next_sibling(TreeCursor *self, PyObject *Py_UNUSED(args)) {
     bool result = ts_tree_cursor_goto_next_sibling(&self->cursor);
     if (result) {
         Py_XDECREF(self->node);
@@ -92,7 +84,7 @@ PyObject *tree_cursor_goto_next_sibling(TreeCursor *self, PyObject *args) {
     return PyBool_FromLong(result);
 }
 
-PyObject *tree_cursor_goto_previous_sibling(TreeCursor *self, PyObject *args) {
+PyObject *tree_cursor_goto_previous_sibling(TreeCursor *self, PyObject *Py_UNUSED(args)) {
     bool result = ts_tree_cursor_goto_previous_sibling(&self->cursor);
     if (result) {
         Py_XDECREF(self->node);
@@ -103,7 +95,7 @@ PyObject *tree_cursor_goto_previous_sibling(TreeCursor *self, PyObject *args) {
 
 PyObject *tree_cursor_goto_descendant(TreeCursor *self, PyObject *args) {
     uint32_t index;
-    if (!PyArg_ParseTuple(args, "I", &index)) {
+    if (!PyArg_ParseTuple(args, "I:goto_descendant", &index)) {
         return NULL;
     }
     ts_tree_cursor_goto_descendant(&self->cursor, index);
@@ -114,7 +106,7 @@ PyObject *tree_cursor_goto_descendant(TreeCursor *self, PyObject *args) {
 
 PyObject *tree_cursor_goto_first_child_for_byte(TreeCursor *self, PyObject *args) {
     uint32_t byte;
-    if (!PyArg_ParseTuple(args, "I", &byte)) {
+    if (!PyArg_ParseTuple(args, "I:goto_first_child_for_byte", &byte)) {
         return NULL;
     }
     bool result = ts_tree_cursor_goto_first_child_for_byte(&self->cursor, byte);
@@ -147,15 +139,12 @@ PyObject *tree_cursor_goto_first_child_for_point(TreeCursor *self, PyObject *arg
 }
 
 PyObject *tree_cursor_reset(TreeCursor *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    PyObject *node_obj = NULL;
-    if (!PyArg_ParseTuple(args, "O", &node_obj)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    PyObject *node_obj;
+    if (!PyArg_ParseTuple(args, "O!:reset", state->node_type, &node_obj)) {
         return NULL;
     }
-    if (!PyObject_IsInstance(node_obj, (PyObject *)state->node_type)) {
-        PyErr_SetString(PyExc_TypeError, "First argument to reset must be a Node");
-        return NULL;
-    }
+
     Node *node = (Node *)node_obj;
     ts_tree_cursor_reset(&self->cursor, node->node);
     Py_XDECREF(self->node);
@@ -164,15 +153,12 @@ PyObject *tree_cursor_reset(TreeCursor *self, PyObject *args) {
 }
 
 PyObject *tree_cursor_reset_to(TreeCursor *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    PyObject *cursor_obj = NULL;
-    if (!PyArg_ParseTuple(args, "O", &cursor_obj)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    PyObject *cursor_obj;
+    if (!PyArg_ParseTuple(args, "O!:reset_to", state->tree_cursor_type, &cursor_obj)) {
         return NULL;
     }
-    if (!PyObject_IsInstance(cursor_obj, (PyObject *)state->tree_cursor_type)) {
-        PyErr_SetString(PyExc_TypeError, "First argument to reset_to must be a TreeCursor");
-        return NULL;
-    }
+
     TreeCursor *cursor = (TreeCursor *)cursor_obj;
     ts_tree_cursor_reset_to(&self->cursor, &cursor->cursor);
     Py_XDECREF(self->node);
@@ -180,18 +166,17 @@ PyObject *tree_cursor_reset_to(TreeCursor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PyObject *tree_cursor_copy(PyObject *self) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+PyObject *tree_cursor_copy(PyObject *self, PyObject *Py_UNUSED(args)) {
+    ModuleState *state = GET_MODULE_STATE(self);
     TreeCursor *origin = (TreeCursor *)self;
-    PyObject *tree = origin->tree;
-    TreeCursor *copied =
-        (TreeCursor *)state->tree_cursor_type->tp_alloc(state->tree_cursor_type, 0);
-    if (copied != NULL) {
-        copied->cursor = ts_tree_cursor_copy(&origin->cursor);
-        Py_INCREF(tree);
-        copied->tree = tree;
+    TreeCursor *copied = PyObject_New(TreeCursor, state->tree_cursor_type);
+    if (copied == NULL) {
+        return NULL;
     }
-    return (PyObject *)copied;
+    copied->cursor = ts_tree_cursor_copy(&origin->cursor);
+    Py_INCREF(origin->tree);
+    copied->tree = origin->tree;
+    return PyObject_Init((PyObject *)copied, state->tree_cursor_type);
 }
 
 static PyMethodDef tree_cursor_methods[] = {
@@ -300,7 +285,7 @@ static PyGetSetDef tree_cursor_accessors[] = {
     {"node", (getter)tree_cursor_get_node, NULL, "The current node.", NULL},
     {
         "descendant_index",
-        (getter)tree_cursor_current_descendant_index,
+        (getter)tree_cursor_get_current_descendant_index,
         NULL,
         "current_descendant_index()\n--\n\n\
 			   Get the index of the cursor's current node out of all of the descendants of the original node.",
@@ -308,7 +293,7 @@ static PyGetSetDef tree_cursor_accessors[] = {
     },
     {
         "field_id",
-        (getter)tree_cursor_current_field_id,
+        (getter)tree_cursor_get_current_field_id,
         NULL,
         "current_field_id()\n--\n\n\
 			   Get the field id of the tree cursor's current node.\n\n\
@@ -317,7 +302,7 @@ static PyGetSetDef tree_cursor_accessors[] = {
     },
     {
         "field_name",
-        (getter)tree_cursor_current_field_name,
+        (getter)tree_cursor_get_current_field_name,
         NULL,
         "current_field_name()\n--\n\n\
                Get the field name of the tree cursor's current node.\n\n\
@@ -326,7 +311,7 @@ static PyGetSetDef tree_cursor_accessors[] = {
     },
     {
         "depth",
-        (getter)tree_cursor_current_depth,
+        (getter)tree_cursor_get_current_depth,
         NULL,
         "current_depth()\n--\n\n\
 			   Get the depth of the cursor's current node relative to the original node.",
@@ -336,17 +321,15 @@ static PyGetSetDef tree_cursor_accessors[] = {
 };
 
 static PyType_Slot tree_cursor_type_slots[] = {
-    {Py_tp_doc, "A syntax tree cursor"},
-    {Py_tp_dealloc, tree_cursor_dealloc},
-    {Py_tp_methods, tree_cursor_methods},
-    {Py_tp_getset, tree_cursor_accessors},
-    {0, NULL},
+    {Py_tp_doc, "A syntax tree cursor"},   {Py_tp_new, NULL},
+    {Py_tp_dealloc, tree_cursor_dealloc},  {Py_tp_methods, tree_cursor_methods},
+    {Py_tp_getset, tree_cursor_accessors}, {0, NULL},
 };
 
 PyType_Spec tree_cursor_type_spec = {
     .name = "tree_sitter.TreeCursor",
     .basicsize = sizeof(TreeCursor),
     .itemsize = 0,
-    .flags = Py_TPFLAGS_DEFAULT,
+    .flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_DISALLOW_INSTANTIATION,
     .slots = tree_cursor_type_slots,
 };

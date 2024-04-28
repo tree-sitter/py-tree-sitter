@@ -1,17 +1,5 @@
 #include "lookahead_iterator.h"
 #include "language.h"
-#include "lookahead_names_iterator.h"
-
-PyObject *lookahead_iterator_new_internal(ModuleState *state,
-                                          TSLookaheadIterator *lookahead_iterator) {
-    LookaheadIterator *self = (LookaheadIterator *)state->lookahead_iterator_type->tp_alloc(
-        state->lookahead_iterator_type, 0);
-    if (self != NULL) {
-        self->lookahead_iterator = lookahead_iterator;
-        self->language = NULL;
-    }
-    return (PyObject *)self;
-}
 
 void lookahead_iterator_dealloc(LookaheadIterator *self) {
     if (self->lookahead_iterator) {
@@ -25,26 +13,32 @@ PyObject *lookahead_iterator_repr(LookaheadIterator *self) {
     return PyUnicode_FromFormat("<LookaheadIterator %p>", self->lookahead_iterator);
 }
 
-PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *payload) {
-    TSLanguage *language_id = (TSLanguage *)ts_lookahead_iterator_language(self->lookahead_iterator);
+PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *Py_UNUSED(payload)) {
+    TSLanguage *language_id =
+        (TSLanguage *)ts_lookahead_iterator_language(self->lookahead_iterator);
     if (self->language == NULL || ((Language *)self->language)->language != language_id) {
-        ModuleState *state = GET_MODULE_STATE(Py_TYPE(self));
-        Language* language = PyObject_New(Language, state->language_type);
+        ModuleState *state = GET_MODULE_STATE(self);
+        Language *language = PyObject_New(Language, state->language_type);
+        if (language == NULL) {
+            return NULL;
+        }
         language->language = language_id;
         language->version = ts_language_version(language->language);
-        Py_XSETREF(self->language, PyObject_Init((PyObject *)language, state->language_type));
+        PyObject *obj = PyObject_Init((PyObject *)language, state->language_type);
+        Py_XSETREF(self->language, obj);
     } else {
         Py_INCREF(self->language);
     }
     return self->language;
 }
 
-PyObject *lookahead_iterator_get_current_symbol(LookaheadIterator *self, void *payload) {
+PyObject *lookahead_iterator_get_current_symbol(LookaheadIterator *self, void *Py_UNUSED(payload)) {
     TSSymbol symbol = ts_lookahead_iterator_current_symbol(self->lookahead_iterator);
     return PyLong_FromUnsignedLong(symbol);
 }
 
-PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self, void *payload) {
+PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self,
+                                                     void *Py_UNUSED(payload)) {
     const char *name = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
     return PyUnicode_FromString(name);
 }
@@ -72,9 +66,10 @@ PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args
                                          PyObject *kwargs) {
     uint16_t state_id;
     PyObject *language_obj;
+    ModuleState *state = GET_MODULE_STATE(self);
     char *keywords[] = {"state", "language", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "H|O:reset_state", keywords, &state_id,
-                                     &language_obj)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "H|O!:reset_state", keywords, &state_id,
+                                     state->language_type, &language_obj)) {
         return NULL;
     }
 
@@ -82,12 +77,6 @@ PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args
     if (language_obj == NULL) {
         result = ts_lookahead_iterator_reset_state(self->lookahead_iterator, state_id);
     } else {
-        if (!IS_INSTANCE(language_obj, language_type)) {
-            PyErr_Format(PyExc_TypeError,
-                         "the 'language' argument must be a Language object, not '%s'",
-                         language_obj->ob_type->tp_name);
-            return NULL;
-        }
         TSLanguage *language_id = ((Language *)language_obj)->language;
         result = ts_lookahead_iterator_reset(self->lookahead_iterator, language_id, state_id);
     }
@@ -104,12 +93,19 @@ PyObject *lookahead_iterator_next(LookaheadIterator *self) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
-    return PyLong_FromUnsignedLong(ts_lookahead_iterator_current_symbol(self->lookahead_iterator));
+    TSSymbol symbol = ts_lookahead_iterator_current_symbol(self->lookahead_iterator);
+    return PyLong_FromUnsignedLong(symbol);
 }
 
 PyObject *lookahead_iterator_names_iterator(LookaheadIterator *self) {
-    return lookahead_names_iterator_new_internal(PyType_GetModuleState(Py_TYPE(self)),
-                                                 self->lookahead_iterator);
+    ModuleState *state = GET_MODULE_STATE(self);
+    LookaheadNamesIterator *iter =
+        PyObject_New(LookaheadNamesIterator, state->lookahead_names_iterator_type);
+    if (iter == NULL) {
+        return NULL;
+    }
+    iter->lookahead_iterator = self->lookahead_iterator;
+    return PyObject_Init((PyObject *)iter, state->lookahead_names_iterator_type);
 }
 
 static PyGetSetDef lookahead_iterator_accessors[] = {
@@ -146,6 +142,7 @@ static PyMethodDef lookahead_iterator_methods[] = {
 
 static PyType_Slot lookahead_iterator_type_slots[] = {
     {Py_tp_doc, "An iterator over the possible syntax nodes that could come next."},
+    {Py_tp_new, NULL},
     {Py_tp_dealloc, lookahead_iterator_dealloc},
     {Py_tp_repr, lookahead_iterator_repr},
     {Py_tp_getset, lookahead_iterator_accessors},
@@ -159,6 +156,6 @@ PyType_Spec lookahead_iterator_type_spec = {
     .name = "tree_sitter.LookaheadIterator",
     .basicsize = sizeof(LookaheadIterator),
     .itemsize = 0,
-    .flags = Py_TPFLAGS_DEFAULT,
+    .flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_DISALLOW_INSTANTIATION,
     .slots = lookahead_iterator_type_slots,
 };

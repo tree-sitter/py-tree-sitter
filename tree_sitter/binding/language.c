@@ -1,6 +1,4 @@
 #include "language.h"
-#include "lookahead_iterator.h"
-#include "query.h"
 
 #ifndef _MSC_VER
 #include <setjmp.h>
@@ -20,7 +18,7 @@ TSLanguage *language_check_pointer(void *ptr) {
     if (!setjmp(segv_jmp)) {
         (void)ts_language_version(ptr);
     } else {
-        PyErr_SetString(PyExc_RuntimeError, "Invalid TSLanguage pointer.");
+        PyErr_SetString(PyExc_RuntimeError, "Invalid TSLanguage pointer");
     }
     PyOS_setsig(SIGSEGV, SIG_DFL);
     return PyErr_Occurred() ? NULL : (TSLanguage *)ptr;
@@ -47,7 +45,7 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     }
     if (PyLong_AsLong(language) < 1) {
         if (!PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError, "The language ID must be positive.");
+            PyErr_SetString(PyExc_ValueError, "language ID must be positive");
         }
         return -1;
     }
@@ -121,7 +119,10 @@ PyObject *language_node_kind_for_id(Language *self, PyObject *args) {
         return NULL;
     }
     const char *name = ts_language_symbol_name(self->language, symbol);
-    return name == NULL ? Py_None : PyUnicode_FromString(name);
+    if (name == NULL) {
+        Py_RETURN_NONE;
+    }
+    return PyUnicode_FromString(name);
 }
 
 PyObject *language_id_for_node_kind(Language *self, PyObject *args) {
@@ -132,7 +133,10 @@ PyObject *language_id_for_node_kind(Language *self, PyObject *args) {
         return NULL;
     }
     TSSymbol symbol = ts_language_symbol_for_name(self->language, kind, length, named);
-    return symbol == 0 ? Py_None : PyLong_FromUnsignedLong(symbol);
+    if (symbol == 0) {
+        Py_RETURN_NONE;
+    }
+    return PyLong_FromUnsignedLong(symbol);
 }
 
 PyObject *language_node_kind_is_named(Language *self, PyObject *args) {
@@ -159,7 +163,10 @@ PyObject *language_field_name_for_id(Language *self, PyObject *args) {
         return NULL;
     }
     const char *field_name = ts_language_field_name_for_id(self->language, field_id);
-    return field_name == NULL ? Py_None : PyUnicode_FromString(field_name);
+    if (field_name == NULL) {
+        Py_RETURN_NONE;
+    }
+    return PyUnicode_FromString(field_name);
 }
 
 PyObject *language_field_id_for_name(Language *self, PyObject *args) {
@@ -169,12 +176,14 @@ PyObject *language_field_id_for_name(Language *self, PyObject *args) {
         return NULL;
     }
     TSFieldId field_id = ts_language_field_id_for_name(self->language, field_name, length);
-    return field_id == 0 ? Py_None : PyLong_FromUnsignedLong(field_id);
+    if (field_id == 0) {
+        Py_RETURN_NONE;
+    }
+    return PyLong_FromUnsignedLong(field_id);
 }
 
 PyObject *language_next_state(Language *self, PyObject *args) {
-    uint16_t state_id;
-    uint16_t symbol;
+    uint16_t state_id, symbol;
     if (!PyArg_ParseTuple(args, "HH:next_state", &state_id, &symbol)) {
         return NULL;
     }
@@ -183,7 +192,6 @@ PyObject *language_next_state(Language *self, PyObject *args) {
 }
 
 PyObject *language_lookahead_iterator(Language *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     uint16_t state_id;
     if (!PyArg_ParseTuple(args, "H:lookahead_iterator", &state_id)) {
         return NULL;
@@ -192,17 +200,24 @@ PyObject *language_lookahead_iterator(Language *self, PyObject *args) {
     if (lookahead_iterator == NULL) {
         Py_RETURN_NONE;
     }
-    return lookahead_iterator_new_internal(state, lookahead_iterator);
+    ModuleState *state = GET_MODULE_STATE(self);
+    LookaheadIterator *iter = PyObject_New(LookaheadIterator, state->lookahead_iterator_type);
+    if (iter == NULL) {
+        return NULL;
+    }
+    iter->lookahead_iterator = lookahead_iterator;
+    iter->language = (PyObject *)self;
+    return PyObject_Init((PyObject *)iter, state->lookahead_iterator_type);
 }
 
 PyObject *language_query(Language *self, PyObject *args) {
+    ModuleState *state = GET_MODULE_STATE(self);
     char *source;
     Py_ssize_t length;
     if (!PyArg_ParseTuple(args, "s#:query", &source, &length)) {
         return NULL;
     }
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    return query_new_internal(state, self->language, source, length);
+    return PyObject_CallFunction((PyObject *)state->query_type, "Os#", self, source, length);
 }
 
 static PyMethodDef language_methods[] = {

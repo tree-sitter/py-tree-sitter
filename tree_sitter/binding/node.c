@@ -1,17 +1,15 @@
 #include "node.h"
-#include "point.h"
-#include "range.h"
-#include "tree_cursor.h"
 
 PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree) {
-    Node *self = (Node *)state->node_type->tp_alloc(state->node_type, 0);
-    if (self != NULL) {
-        self->node = node;
-        Py_INCREF(tree);
-        self->tree = tree;
-        self->children = NULL;
+    Node *self = PyObject_New(Node, state->node_type);
+    if (self == NULL) {
+        return NULL;
     }
-    return (PyObject *)self;
+    self->node = node;
+    Py_INCREF(tree);
+    self->tree = tree;
+    self->children = NULL;
+    return PyObject_Init((PyObject *)self, state->node_type);
 }
 
 void node_dealloc(Node *self) {
@@ -55,26 +53,31 @@ PyObject *node_sexp(Node *self, PyObject *Py_UNUSED(args)) {
     return node_str(self);
 }
 
-PyObject *node_walk(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    return tree_cursor_new_internal(state, self->node, self->tree);
+PyObject *node_walk(Node *self, PyObject *Py_UNUSED(args)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    TreeCursor *tree_cursor = PyObject_New(TreeCursor, state->tree_cursor_type);
+    if (tree_cursor == NULL) {
+        return NULL;
+    }
+    tree_cursor->cursor = ts_tree_cursor_new(self->node);
+    Py_INCREF(self->tree);
+    tree_cursor->tree = self->tree;
+    return PyObject_Init((PyObject *)tree_cursor, state->tree_cursor_type);
 }
 
 PyObject *node_edit(Node *self, PyObject *args, PyObject *kwargs) {
-    unsigned start_byte, start_row, start_column;
-    unsigned old_end_byte, old_end_row, old_end_column;
-    unsigned new_end_byte, new_end_row, new_end_column;
-
+    uint32_t start_byte, start_row, start_column;
+    uint32_t old_end_byte, old_end_row, old_end_column;
+    uint32_t new_end_byte, new_end_row, new_end_column;
     char *keywords[] = {
         "start_byte",    "old_end_byte",  "new_end_byte", "start_point",
         "old_end_point", "new_end_point", NULL,
     };
 
-    int ok = PyArg_ParseTupleAndKeywords(
-        args, kwargs, "III(II)(II)(II)", keywords, &start_byte, &old_end_byte, &new_end_byte,
-        &start_row, &start_column, &old_end_row, &old_end_column, &new_end_row, &new_end_column);
-
-    if (!ok) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "III(II)(II)(II):edit", keywords, &start_byte,
+                                     &old_end_byte, &new_end_byte, &start_row, &start_column,
+                                     &old_end_row, &old_end_column, &new_end_row,
+                                     &new_end_column)) {
         Py_RETURN_NONE;
     }
 
@@ -82,21 +85,9 @@ PyObject *node_edit(Node *self, PyObject *args, PyObject *kwargs) {
         .start_byte = start_byte,
         .old_end_byte = old_end_byte,
         .new_end_byte = new_end_byte,
-        .start_point =
-            {
-                .row = start_row,
-                .column = start_column,
-            },
-        .old_end_point =
-            {
-                .row = old_end_row,
-                .column = old_end_column,
-            },
-        .new_end_point =
-            {
-                .row = new_end_row,
-                .column = new_end_column,
-            },
+        .start_point = {start_row, start_column},
+        .old_end_point = {old_end_row, old_end_column},
+        .new_end_point = {new_end_row, new_end_column},
     };
 
     ts_node_edit(&self->node, &edit);
@@ -105,13 +96,18 @@ PyObject *node_edit(Node *self, PyObject *args, PyObject *kwargs) {
 }
 
 PyObject *node_child(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    ModuleState *state = GET_MODULE_STATE(self);
     long index;
-    if (!PyArg_ParseTuple(args, "l", &index)) {
+    if (!PyArg_ParseTuple(args, "l:child", &index)) {
         return NULL;
     }
     if (index < 0) {
-        PyErr_SetString(PyExc_ValueError, "Index must be positive");
+        PyErr_SetString(PyExc_ValueError, "child index must be positive");
+        return NULL;
+    }
+
+    if ((uint32_t)index >= ts_node_child_count(self->node)) {
+        PyErr_SetString(PyExc_IndexError, "child index out of range");
         return NULL;
     }
 
@@ -120,13 +116,17 @@ PyObject *node_child(Node *self, PyObject *args) {
 }
 
 PyObject *node_named_child(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    ModuleState *state = GET_MODULE_STATE(self);
     long index;
-    if (!PyArg_ParseTuple(args, "l", &index)) {
+    if (!PyArg_ParseTuple(args, "l:named_child", &index)) {
         return NULL;
     }
     if (index < 0) {
-        PyErr_SetString(PyExc_ValueError, "Index must be positive");
+        PyErr_SetString(PyExc_ValueError, "child index must be positive");
+        return NULL;
+    }
+    if ((uint32_t)index >= ts_node_named_child_count(self->node)) {
+        PyErr_SetString(PyExc_IndexError, "child index out of range");
         return NULL;
     }
 
@@ -135,11 +135,12 @@ PyObject *node_named_child(Node *self, PyObject *args) {
 }
 
 PyObject *node_child_by_field_id(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    ModuleState *state = GET_MODULE_STATE(self);
     TSFieldId field_id;
-    if (!PyArg_ParseTuple(args, "H", &field_id)) {
+    if (!PyArg_ParseTuple(args, "H:child_by_field_id", &field_id)) {
         return NULL;
     }
+
     TSNode child = ts_node_child_by_field_id(self->node, field_id);
     if (ts_node_is_null(child)) {
         Py_RETURN_NONE;
@@ -148,12 +149,13 @@ PyObject *node_child_by_field_id(Node *self, PyObject *args) {
 }
 
 PyObject *node_child_by_field_name(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    ModuleState *state = GET_MODULE_STATE(self);
     char *name;
     Py_ssize_t length;
-    if (!PyArg_ParseTuple(args, "s#", &name, &length)) {
+    if (!PyArg_ParseTuple(args, "s#:child_by_field_name", &name, &length)) {
         return NULL;
     }
+
     TSNode child = ts_node_child_by_field_name(self->node, name, length);
     if (ts_node_is_null(child)) {
         Py_RETURN_NONE;
@@ -162,7 +164,7 @@ PyObject *node_child_by_field_name(Node *self, PyObject *args) {
 }
 
 PyObject *node_children_by_field_id_internal(Node *self, TSFieldId field_id) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    ModuleState *state = GET_MODULE_STATE(self);
     PyObject *result = PyList_New(0);
 
     if (field_id == 0) {
@@ -186,7 +188,7 @@ PyObject *node_children_by_field_id_internal(Node *self, TSFieldId field_id) {
 
 PyObject *node_children_by_field_id(Node *self, PyObject *args) {
     TSFieldId field_id;
-    if (!PyArg_ParseTuple(args, "H", &field_id)) {
+    if (!PyArg_ParseTuple(args, "H:child_by_field_id", &field_id)) {
         return NULL;
     }
 
@@ -196,7 +198,7 @@ PyObject *node_children_by_field_id(Node *self, PyObject *args) {
 PyObject *node_children_by_field_name(Node *self, PyObject *args) {
     char *name;
     Py_ssize_t length;
-    if (!PyArg_ParseTuple(args, "s#", &name, &length)) {
+    if (!PyArg_ParseTuple(args, "s#:child_by_field_name", &name, &length)) {
         return NULL;
     }
 
@@ -206,8 +208,16 @@ PyObject *node_children_by_field_name(Node *self, PyObject *args) {
 }
 
 PyObject *node_field_name_for_child(Node *self, PyObject *args) {
-    uint32_t index;
-    if (!PyArg_ParseTuple(args, "I", &index)) {
+    long index;
+    if (!PyArg_ParseTuple(args, "l:field_name_for_child", &index)) {
+        return NULL;
+    }
+    if (index < 0) {
+        PyErr_SetString(PyExc_ValueError, "child index must be positive");
+        return NULL;
+    }
+    if ((uint32_t)index >= ts_node_named_child_count(self->node)) {
+        PyErr_SetString(PyExc_IndexError, "child index out of range");
         return NULL;
     }
 
@@ -215,14 +225,13 @@ PyObject *node_field_name_for_child(Node *self, PyObject *args) {
     if (field_name == NULL) {
         Py_RETURN_NONE;
     }
-
     return PyUnicode_FromString(field_name);
 }
 
 PyObject *node_descendant_for_byte_range(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    ModuleState *state = GET_MODULE_STATE(self);
     uint32_t start_byte, end_byte;
-    if (!PyArg_ParseTuple(args, "II", &start_byte, &end_byte)) {
+    if (!PyArg_ParseTuple(args, "II:descendant_for_byte_range", &start_byte, &end_byte)) {
         return NULL;
     }
     TSNode descendant = ts_node_descendant_for_byte_range(self->node, start_byte, end_byte);
@@ -233,9 +242,9 @@ PyObject *node_descendant_for_byte_range(Node *self, PyObject *args) {
 }
 
 PyObject *node_named_descendant_for_byte_range(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+    ModuleState *state = GET_MODULE_STATE(self);
     uint32_t start_byte, end_byte;
-    if (!PyArg_ParseTuple(args, "II", &start_byte, &end_byte)) {
+    if (!PyArg_ParseTuple(args, "II:named_descendant_for_byte_range", &start_byte, &end_byte)) {
         return NULL;
     }
     TSNode descendant = ts_node_named_descendant_for_byte_range(self->node, start_byte, end_byte);
@@ -246,26 +255,10 @@ PyObject *node_named_descendant_for_byte_range(Node *self, PyObject *args) {
 }
 
 PyObject *node_descendant_for_point_range(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-
-    if (!PyTuple_Check(args) || PyTuple_Size(args) != 2) {
-        PyErr_SetString(PyExc_TypeError, "Expected two tuples as arguments");
-        return NULL;
-    }
-
-    PyObject *start_point = PyTuple_GetItem(args, 0);
-    PyObject *end_point = PyTuple_GetItem(args, 1);
-
-    if (!PyTuple_Check(start_point) || !PyTuple_Check(end_point)) {
-        PyErr_SetString(PyExc_TypeError, "Both start_point and end_point must be tuples");
-        return NULL;
-    }
-
+    ModuleState *state = GET_MODULE_STATE(self);
     TSPoint start, end;
-    if (!PyArg_ParseTuple(start_point, "ii", &start.row, &start.column)) {
-        return NULL;
-    }
-    if (!PyArg_ParseTuple(end_point, "ii", &end.row, &end.column)) {
+    if (!PyArg_ParseTuple(args, "(II)(II):descendant_for_point_range", &start.row, &start.column,
+                          &end.row, &end.column)) {
         return NULL;
     }
 
@@ -277,26 +270,10 @@ PyObject *node_descendant_for_point_range(Node *self, PyObject *args) {
 }
 
 PyObject *node_named_descendant_for_point_range(Node *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-
-    if (!PyTuple_Check(args) || PyTuple_Size(args) != 2) {
-        PyErr_SetString(PyExc_TypeError, "Expected two tuples as arguments");
-        return NULL;
-    }
-
-    PyObject *start_point = PyTuple_GetItem(args, 0);
-    PyObject *end_point = PyTuple_GetItem(args, 1);
-
-    if (!PyTuple_Check(start_point) || !PyTuple_Check(end_point)) {
-        PyErr_SetString(PyExc_TypeError, "Both start_point and end_point must be tuples");
-        return NULL;
-    }
-
+    ModuleState *state = GET_MODULE_STATE(self);
     TSPoint start, end;
-    if (!PyArg_ParseTuple(start_point, "ii", &start.row, &start.column)) {
-        return NULL;
-    }
-    if (!PyArg_ParseTuple(end_point, "ii", &end.row, &end.column)) {
+    if (!PyArg_ParseTuple(args, "(II)(II):descendant_for_point_range", &start.row, &start.column,
+                          &end.row, &end.column)) {
         return NULL;
     }
 
@@ -307,76 +284,76 @@ PyObject *node_named_descendant_for_point_range(Node *self, PyObject *args) {
     return node_new_internal(state, descendant, self->tree);
 }
 
-PyObject *node_get_id(Node *self, void *payload) {
+PyObject *node_get_id(Node *self, void *Py_UNUSED(payload)) {
     return PyLong_FromVoidPtr((void *)self->node.id);
 }
 
-PyObject *node_get_kind_id(Node *self, void *payload) {
-    TSSymbol kind_id = ts_node_symbol(self->node);
-    return PyLong_FromLong(kind_id);
+PyObject *node_get_kind_id(Node *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromLong(ts_node_symbol(self->node));
 }
 
-PyObject *node_get_grammar_id(Node *self, void *payload) {
-    TSSymbol grammar_id = ts_node_grammar_symbol(self->node);
-    return PyLong_FromLong(grammar_id);
+PyObject *node_get_grammar_id(Node *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromLong(ts_node_grammar_symbol(self->node));
 }
 
-PyObject *node_get_type(Node *self, void *payload) {
+PyObject *node_get_type(Node *self, void *Py_UNUSED(payload)) {
     return PyUnicode_FromString(ts_node_type(self->node));
 }
 
-PyObject *node_get_grammar_name(Node *self, void *payload) {
+PyObject *node_get_grammar_name(Node *self, void *Py_UNUSED(payload)) {
     return PyUnicode_FromString(ts_node_grammar_type(self->node));
 }
 
-PyObject *node_get_is_named(Node *self, void *payload) {
+PyObject *node_get_is_named(Node *self, void *Py_UNUSED(payload)) {
     return PyBool_FromLong(ts_node_is_named(self->node));
 }
 
-PyObject *node_get_is_extra(Node *self, void *payload) {
+PyObject *node_get_is_extra(Node *self, void *Py_UNUSED(payload)) {
     return PyBool_FromLong(ts_node_is_extra(self->node));
 }
 
-PyObject *node_get_has_changes(Node *self, void *payload) {
+PyObject *node_get_has_changes(Node *self, void *Py_UNUSED(payload)) {
     return PyBool_FromLong(ts_node_has_changes(self->node));
 }
 
-PyObject *node_get_has_error(Node *self, void *payload) {
+PyObject *node_get_has_error(Node *self, void *Py_UNUSED(payload)) {
     return PyBool_FromLong(ts_node_has_error(self->node));
 }
 
-PyObject *node_get_is_error(Node *self, void *payload) {
+PyObject *node_get_is_error(Node *self, void *Py_UNUSED(payload)) {
     return PyBool_FromLong(ts_node_is_error(self->node));
 }
 
-PyObject *node_get_parse_state(Node *self, void *payload) {
+PyObject *node_get_parse_state(Node *self, void *Py_UNUSED(payload)) {
     return PyLong_FromLong(ts_node_parse_state(self->node));
 }
 
-PyObject *node_get_next_parse_state(Node *self, void *payload) {
+PyObject *node_get_next_parse_state(Node *self, void *Py_UNUSED(payload)) {
     return PyLong_FromLong(ts_node_next_parse_state(self->node));
 }
 
-PyObject *node_get_is_missing(Node *self, void *payload) {
+PyObject *node_get_is_missing(Node *self, void *Py_UNUSED(payload)) {
     return PyBool_FromLong(ts_node_is_missing(self->node));
 }
 
-PyObject *node_get_start_byte(Node *self, void *payload) {
+PyObject *node_get_start_byte(Node *self, void *Py_UNUSED(payload)) {
     return PyLong_FromSize_t((size_t)ts_node_start_byte(self->node));
 }
 
-PyObject *node_get_end_byte(Node *self, void *payload) {
+PyObject *node_get_end_byte(Node *self, void *Py_UNUSED(payload)) {
     return PyLong_FromSize_t((size_t)ts_node_end_byte(self->node));
 }
 
-PyObject *node_get_byte_range(Node *self, void *payload) {
-    PyObject *start_byte = PyLong_FromSize_t((size_t)ts_node_start_byte(self->node));
+PyObject *node_get_byte_range(Node *self, void *Py_UNUSED(payload)) {
+    PyObject *start_byte = PyLong_FromUnsignedLong(ts_node_start_byte(self->node));
     if (start_byte == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to determine start byte");
         return NULL;
     }
-    PyObject *end_byte = PyLong_FromSize_t((size_t)ts_node_end_byte(self->node));
+    PyObject *end_byte = PyLong_FromUnsignedLong(ts_node_end_byte(self->node));
     if (end_byte == NULL) {
         Py_DECREF(start_byte);
+        PyErr_SetString(PyExc_RuntimeError, "Failed to determine end byte");
         return NULL;
     }
     PyObject *result = PyTuple_Pack(2, start_byte, end_byte);
@@ -385,39 +362,39 @@ PyObject *node_get_byte_range(Node *self, void *payload) {
     return result;
 }
 
-PyObject *node_get_range(Node *self, void *payload) {
-    uint32_t start_byte = ts_node_start_byte(self->node);
-    uint32_t end_byte = ts_node_end_byte(self->node);
-    TSPoint start_point = ts_node_start_point(self->node);
-    TSPoint end_point = ts_node_end_point(self->node);
-    TSRange range = {
-        .start_byte = start_byte,
-        .end_byte = end_byte,
-        .start_point = start_point,
-        .end_point = end_point,
+PyObject *node_get_range(Node *self, void *Py_UNUSED(payload)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    Range *range = PyObject_New(Range, state->range_type);
+    if (range == NULL) {
+        return NULL;
+    }
+    range->range = (TSRange){
+        .start_byte = ts_node_start_byte(self->node),
+        .end_byte = ts_node_end_byte(self->node),
+        .start_point = ts_node_start_point(self->node),
+        .end_point = ts_node_end_point(self->node),
     };
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    return range_new_internal(state, range);
+    return PyObject_Init((PyObject *)range, state->range_type);
 }
 
-PyObject *node_get_start_point(Node *self, void *payload) {
+PyObject *node_get_start_point(Node *self, void *Py_UNUSED(payload)) {
     TSPoint point = ts_node_start_point(self->node);
-    return POINT_NEW(GET_MODULE_STATE(Py_TYPE(self)), point);
+    return POINT_NEW(GET_MODULE_STATE(self), point);
 }
 
-PyObject *node_get_end_point(Node *self, void *payload) {
+PyObject *node_get_end_point(Node *self, void *Py_UNUSED(payload)) {
     TSPoint point = ts_node_end_point(self->node);
-    return POINT_NEW(GET_MODULE_STATE(Py_TYPE(self)), point);
+    return POINT_NEW(GET_MODULE_STATE(self), point);
 }
 
-PyObject *node_get_children(Node *self, void *payload) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+PyObject *node_get_children(Node *self, void *Py_UNUSED(payload)) {
+    ModuleState *state = GET_MODULE_STATE(self);
     if (self->children) {
         Py_INCREF(self->children);
         return self->children;
     }
 
-    long length = (long)ts_node_child_count(self->node);
+    uint32_t length = ts_node_child_count(self->node);
     PyObject *result = PyList_New(length);
     if (result == NULL) {
         return NULL;
@@ -425,14 +402,14 @@ PyObject *node_get_children(Node *self, void *payload) {
     if (length > 0) {
         ts_tree_cursor_reset(&state->default_cursor, self->node);
         ts_tree_cursor_goto_first_child(&state->default_cursor);
-        int i = 0;
+        uint32_t i = 0;
         do {
             TSNode child = ts_tree_cursor_current_node(&state->default_cursor);
-            if (PyList_SetItem(result, i, node_new_internal(state, child, self->tree))) {
+            PyObject *node = node_new_internal(state, child, self->tree);
+            if (PyList_SetItem(result, i++, node) < 0) {
                 Py_DECREF(result);
                 return NULL;
             }
-            i++;
         } while (ts_tree_cursor_goto_next_sibling(&state->default_cursor));
     }
     Py_INCREF(result);
@@ -448,19 +425,18 @@ PyObject *node_get_named_children(Node *self, void *payload) {
     // children is retained by self->children
     Py_DECREF(children);
 
-    long named_count = (long)ts_node_named_child_count(self->node);
+    uint32_t named_count = ts_node_named_child_count(self->node);
     PyObject *result = PyList_New(named_count);
     if (result == NULL) {
         return NULL;
     }
 
-    long length = (long)ts_node_child_count(self->node);
-    int j = 0;
-    for (int i = 0; i < length; i++) {
+    uint32_t length = ts_node_child_count(self->node);
+    for (uint32_t i = 0, j = 0; i < length; ++i) {
         PyObject *child = PyList_GetItem(self->children, i);
         if (ts_node_is_named(((Node *)child)->node)) {
             Py_INCREF(child);
-            if (PyList_SetItem(result, j++, child)) {
+            if (PyList_SetItem(result, ++j, child)) {
                 Py_DECREF(result);
                 return NULL;
             }
@@ -469,20 +445,16 @@ PyObject *node_get_named_children(Node *self, void *payload) {
     return result;
 }
 
-PyObject *node_get_child_count(Node *self, void *payload) {
-    long length = (long)ts_node_child_count(self->node);
-    PyObject *result = PyLong_FromLong(length);
-    return result;
+PyObject *node_get_child_count(Node *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromUnsignedLong(ts_node_child_count(self->node));
 }
 
-PyObject *node_get_named_child_count(Node *self, void *payload) {
-    long length = (long)ts_node_named_child_count(self->node);
-    PyObject *result = PyLong_FromLong(length);
-    return result;
+PyObject *node_get_named_child_count(Node *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromUnsignedLong(ts_node_named_child_count(self->node));
 }
 
-PyObject *node_get_parent(Node *self, void *payload) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+PyObject *node_get_parent(Node *self, void *Py_UNUSED(payload)) {
+    ModuleState *state = GET_MODULE_STATE(self);
     TSNode parent = ts_node_parent(self->node);
     if (ts_node_is_null(parent)) {
         Py_RETURN_NONE;
@@ -490,7 +462,7 @@ PyObject *node_get_parent(Node *self, void *payload) {
     return node_new_internal(state, parent, self->tree);
 }
 
-PyObject *node_get_next_sibling(Node *self, void *payload) {
+PyObject *node_get_next_sibling(Node *self, void *Py_UNUSED(payload)) {
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     TSNode next_sibling = ts_node_next_sibling(self->node);
     if (ts_node_is_null(next_sibling)) {
@@ -499,7 +471,7 @@ PyObject *node_get_next_sibling(Node *self, void *payload) {
     return node_new_internal(state, next_sibling, self->tree);
 }
 
-PyObject *node_get_prev_sibling(Node *self, void *payload) {
+PyObject *node_get_prev_sibling(Node *self, void *Py_UNUSED(payload)) {
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     TSNode prev_sibling = ts_node_prev_sibling(self->node);
     if (ts_node_is_null(prev_sibling)) {
@@ -508,7 +480,7 @@ PyObject *node_get_prev_sibling(Node *self, void *payload) {
     return node_new_internal(state, prev_sibling, self->tree);
 }
 
-PyObject *node_get_next_named_sibling(Node *self, void *payload) {
+PyObject *node_get_next_named_sibling(Node *self, void *Py_UNUSED(payload)) {
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     TSNode next_named_sibling = ts_node_next_named_sibling(self->node);
     if (ts_node_is_null(next_named_sibling)) {
@@ -517,7 +489,7 @@ PyObject *node_get_next_named_sibling(Node *self, void *payload) {
     return node_new_internal(state, next_named_sibling, self->tree);
 }
 
-PyObject *node_get_prev_named_sibling(Node *self, void *payload) {
+PyObject *node_get_prev_named_sibling(Node *self, void *Py_UNUSED(payload)) {
     ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
     TSNode prev_named_sibling = ts_node_prev_named_sibling(self->node);
     if (ts_node_is_null(prev_named_sibling)) {
@@ -526,28 +498,26 @@ PyObject *node_get_prev_named_sibling(Node *self, void *payload) {
     return node_new_internal(state, prev_named_sibling, self->tree);
 }
 
-PyObject *node_get_descendant_count(Node *self, void *payload) {
-    long length = (long)ts_node_descendant_count(self->node);
-    PyObject *result = PyLong_FromLong(length);
-    return result;
+PyObject *node_get_descendant_count(Node *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromUnsignedLong(ts_node_descendant_count(self->node));
 }
 
-PyObject *node_get_text(Node *self, void *payload) {
+PyObject *node_get_text(Node *self, void *Py_UNUSED(payload)) {
     Tree *tree = (Tree *)self->tree;
     if (tree == NULL) {
-        PyErr_SetString(PyExc_ValueError, "No tree");
+        PyErr_SetString(PyExc_RuntimeError, "This Node is not associated with a Tree");
         return NULL;
     }
     if (tree->source == Py_None || tree->source == NULL) {
         Py_RETURN_NONE;
     }
 
-    PyObject *start_byte = PyLong_FromSize_t((size_t)ts_node_start_byte(self->node));
+    PyObject *start_byte = PyLong_FromUnsignedLong(ts_node_start_byte(self->node));
     if (start_byte == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to determine start byte");
         return NULL;
     }
-    PyObject *end_byte = PyLong_FromSize_t((size_t)ts_node_end_byte(self->node));
+    PyObject *end_byte = PyLong_FromUnsignedLong(ts_node_end_byte(self->node));
     if (end_byte == NULL) {
         Py_DECREF(start_byte);
         PyErr_SetString(PyExc_RuntimeError, "Failed to determine end byte");
@@ -557,20 +527,17 @@ PyObject *node_get_text(Node *self, void *payload) {
     Py_DECREF(start_byte);
     Py_DECREF(end_byte);
     if (slice == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "PySlice_New failed");
         return NULL;
     }
     PyObject *node_mv = PyMemoryView_FromObject(tree->source);
     if (node_mv == NULL) {
         Py_DECREF(slice);
-        PyErr_SetString(PyExc_RuntimeError, "PyMemoryView_FromObject failed");
         return NULL;
     }
     PyObject *node_slice = PyObject_GetItem(node_mv, slice);
     Py_DECREF(slice);
     Py_DECREF(node_mv);
     if (node_slice == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "PyObject_GetItem failed");
         return NULL;
     }
     PyObject *result = PyBytes_FromObject(node_slice);
@@ -731,15 +698,17 @@ static PyGetSetDef node_accessors[] = {
 };
 
 static PyType_Slot node_type_slots[] = {
-    {Py_tp_doc, "A syntax node"},  {Py_tp_dealloc, node_dealloc},     {Py_tp_repr, node_repr},
-    {Py_tp_str, node_str},         {Py_tp_richcompare, node_compare}, {Py_tp_hash, node_hash},
-    {Py_tp_methods, node_methods}, {Py_tp_getset, node_accessors},    {0, NULL},
+    {Py_tp_doc, "A syntax node"},   {Py_tp_new, NULL},
+    {Py_tp_dealloc, node_dealloc},  {Py_tp_repr, node_repr},
+    {Py_tp_str, node_str},          {Py_tp_richcompare, node_compare},
+    {Py_tp_hash, node_hash},        {Py_tp_methods, node_methods},
+    {Py_tp_getset, node_accessors}, {0, NULL},
 };
 
 PyType_Spec node_type_spec = {
     .name = "tree_sitter.Node",
     .basicsize = sizeof(Node),
     .itemsize = 0,
-    .flags = Py_TPFLAGS_DEFAULT,
+    .flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_DISALLOW_INSTANTIATION,
     .slots = node_type_slots,
 };

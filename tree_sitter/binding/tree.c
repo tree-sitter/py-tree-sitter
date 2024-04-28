@@ -1,35 +1,19 @@
 #include "tree.h"
 #include "node.h"
-#include "range.h"
-#include "tree_cursor.h"
-
-PyObject *tree_new_internal(ModuleState *state, TSTree *tree, PyObject *source, int keep_text) {
-    Tree *self = (Tree *)state->tree_type->tp_alloc(state->tree_type, 0);
-    if (self != NULL) {
-        self->tree = tree;
-    }
-
-    if (keep_text) {
-        self->source = source;
-    } else {
-        self->source = Py_None;
-    }
-    Py_INCREF(self->source);
-    return (PyObject *)self;
-}
 
 void tree_dealloc(Tree *self) {
     ts_tree_delete(self->tree);
     Py_XDECREF(self->source);
-    Py_TYPE(self)->tp_free((PyObject *)self);
+    Py_TYPE(self)->tp_free(self);
 }
 
-PyObject *tree_get_root_node(Tree *self, void *payload) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    return node_new_internal(state, ts_tree_root_node(self->tree), (PyObject *)self);
+PyObject *tree_get_root_node(Tree *self, void *Py_UNUSED(payload)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    TSNode node = ts_tree_root_node(self->tree);
+    return node_new_internal(state, node, (PyObject *)self);
 }
 
-PyObject *tree_get_text(Tree *self, void *payload) {
+PyObject *tree_get_text(Tree *self, void *Py_UNUSED(payload)) {
     if (REPLACE("Tree.text", "Tree.root_node.text") < 0) {
         return NULL;
     }
@@ -43,23 +27,28 @@ PyObject *tree_get_text(Tree *self, void *payload) {
 }
 
 PyObject *tree_root_node_with_offset(Tree *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-
-    unsigned offset_bytes;
+    uint32_t offset_bytes;
     TSPoint offset_extent;
-
-    if (!PyArg_ParseTuple(args, "I(ii)", &offset_bytes, &offset_extent.row,
+    if (!PyArg_ParseTuple(args, "I(II):root_node_with_offset", &offset_bytes, &offset_extent.row,
                           &offset_extent.column)) {
         return NULL;
     }
 
+    ModuleState *state = GET_MODULE_STATE(self);
     TSNode node = ts_tree_root_node_with_offset(self->tree, offset_bytes, offset_extent);
     return node_new_internal(state, node, (PyObject *)self);
 }
 
-PyObject *tree_walk(Tree *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    return tree_cursor_new_internal(state, ts_tree_root_node(self->tree), (PyObject *)self);
+PyObject *tree_walk(Tree *self, PyObject *Py_UNUSED(args)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    TreeCursor *tree_cursor = PyObject_New(TreeCursor, state->tree_cursor_type);
+    if (tree_cursor == NULL) {
+        return NULL;
+    }
+    tree_cursor->cursor = ts_tree_cursor_new(ts_tree_root_node(self->tree));
+    Py_INCREF(self);
+    tree_cursor->tree = (PyObject *)self;
+    return PyObject_Init((PyObject *)tree_cursor, state->tree_cursor_type);
 }
 
 PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
@@ -73,7 +62,7 @@ PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
     };
 
     int ok = PyArg_ParseTupleAndKeywords(
-        args, kwargs, "III(II)(II)(II)", keywords, &start_byte, &old_end_byte, &new_end_byte,
+        args, kwargs, "III(II)(II)(II):edit", keywords, &start_byte, &old_end_byte, &new_end_byte,
         &start_row, &start_column, &old_end_row, &old_end_column, &new_end_row, &new_end_column);
 
     if (ok) {
@@ -94,47 +83,51 @@ PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
 }
 
 PyObject *tree_changed_ranges(Tree *self, PyObject *args, PyObject *kwargs) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    Tree *new_tree = NULL;
+    ModuleState *state = GET_MODULE_STATE(self);
+    PyObject *new_tree;
     char *keywords[] = {"new_tree", NULL};
-    int ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O", keywords, (PyObject **)&new_tree);
-    if (!ok) {
-        return NULL;
-    }
-
-    if (!PyObject_IsInstance((PyObject *)new_tree, (PyObject *)state->tree_type)) {
-        PyErr_SetString(PyExc_TypeError, "First argument to get_changed_ranges must be a Tree");
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!:changed_ranges", keywords, state->tree_type,
+                                     &new_tree)) {
         return NULL;
     }
 
     uint32_t length = 0;
-    TSRange *ranges = ts_tree_get_changed_ranges(self->tree, new_tree->tree, &length);
+    TSTree *tree = ((Tree *)new_tree)->tree;
+    TSRange *ranges = ts_tree_get_changed_ranges(self->tree, tree, &length);
 
     PyObject *result = PyList_New(length);
-    if (!result) {
+    if (result == NULL) {
         return NULL;
     }
-    for (unsigned i = 0; i < length; i++) {
-        PyObject *range = range_new_internal(state, ranges[i]);
-        PyList_SetItem(result, i, range);
+    for (unsigned i = 0; i < length; ++i) {
+        Range *range = PyObject_New(Range, state->range_type);
+        if (range == NULL) {
+            return NULL;
+        }
+        range->range = ranges[i];
+        PyList_SetItem(result, i, PyObject_Init((PyObject *)range, state->range_type));
     }
 
     PyMem_Free(ranges);
     return result;
 }
 
-PyObject *tree_get_included_ranges(Tree *self, PyObject *args) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
+PyObject *tree_get_included_ranges(Tree *self, PyObject *Py_UNUSED(args)) {
+    ModuleState *state = GET_MODULE_STATE(self);
     uint32_t length = 0;
     TSRange *ranges = ts_tree_included_ranges(self->tree, &length);
 
     PyObject *result = PyList_New(length);
-    if (!result) {
+    if (result == NULL) {
         return NULL;
     }
-    for (unsigned i = 0; i < length; i++) {
-        PyObject *range = range_new_internal(state, ranges[i]);
-        PyList_SetItem(result, i, range);
+    for (unsigned i = 0; i < length; ++i) {
+        Range *range = PyObject_New(Range, state->range_type);
+        if (range == NULL) {
+            return NULL;
+        }
+        range->range = ranges[i];
+        PyList_SetItem(result, i, PyObject_Init((PyObject *)range, state->range_type));
     }
 
     PyMem_Free(ranges);
@@ -183,17 +176,15 @@ static PyGetSetDef tree_accessors[] = {
 };
 
 static PyType_Slot tree_type_slots[] = {
-    {Py_tp_doc, "A syntax tree"},
-    {Py_tp_dealloc, tree_dealloc},
-    {Py_tp_methods, tree_methods},
-    {Py_tp_getset, tree_accessors},
-    {0, NULL},
+    {Py_tp_doc, "A syntax tree"},   {Py_tp_new, NULL},
+    {Py_tp_dealloc, tree_dealloc},  {Py_tp_methods, tree_methods},
+    {Py_tp_getset, tree_accessors}, {0, NULL},
 };
 
 PyType_Spec tree_type_spec = {
     .name = "tree_sitter.Tree",
     .basicsize = sizeof(Tree),
     .itemsize = 0,
-    .flags = Py_TPFLAGS_DEFAULT,
+    .flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_DISALLOW_INSTANTIATION,
     .slots = tree_type_slots,
 };

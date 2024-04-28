@@ -2,9 +2,6 @@
 
 #include "types.h"
 
-PyObject *lookahead_iterator_new_internal(ModuleState *state,
-                                          TSLookaheadIterator *lookahead_iterator);
-
 void lookahead_iterator_dealloc(LookaheadIterator *self);
 
 PyObject *lookahead_iterator_repr(LookaheadIterator *self);

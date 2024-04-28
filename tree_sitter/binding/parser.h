@@ -8,7 +8,9 @@ typedef struct {
     ModuleState *state;
 } ReadWrapperPayload;
 
-PyObject *parser_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+PyObject *parser_new(PyTypeObject *cls, PyObject *args, PyObject *kwds);
+
+int parser_init(Parser *self, PyObject *args, PyObject *kwargs);
 
 void parser_dealloc(Parser *self);
 

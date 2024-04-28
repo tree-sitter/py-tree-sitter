@@ -1,17 +1,5 @@
 #include "lookahead_names_iterator.h"
 
-PyObject *lookahead_names_iterator_new_internal(ModuleState *state,
-                                                TSLookaheadIterator *lookahead_iterator) {
-    LookaheadNamesIterator *self =
-        (LookaheadNamesIterator *)state->lookahead_names_iterator_type->tp_alloc(
-            state->lookahead_names_iterator_type, 0);
-    if (self == NULL) {
-        return NULL;
-    }
-    self->lookahead_iterator = lookahead_iterator;
-    return (PyObject *)self;
-}
-
 PyObject *lookahead_names_iterator_repr(LookaheadNamesIterator *self) {
     return PyUnicode_FromFormat("<LookaheadNamesIterator %p>", self->lookahead_iterator);
 }
@@ -36,6 +24,7 @@ PyObject *lookahead_names_iterator_next(LookaheadNamesIterator *self) {
 
 static PyType_Slot lookahead_names_iterator_type_slots[] = {
     {Py_tp_doc, "An iterator over the possible syntax nodes that could come next."},
+    {Py_tp_new, NULL},
     {Py_tp_dealloc, lookahead_names_iterator_dealloc},
     {Py_tp_repr, lookahead_names_iterator_repr},
     {Py_tp_iter, lookahead_names_iterator_iter},
@@ -47,6 +36,6 @@ PyType_Spec lookahead_names_iterator_type_spec = {
     .name = "tree_sitter.LookaheadNamesIterator",
     .basicsize = sizeof(LookaheadNamesIterator),
     .itemsize = 0,
-    .flags = Py_TPFLAGS_DEFAULT,
+    .flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_DISALLOW_INSTANTIATION,
     .slots = lookahead_names_iterator_type_slots,
 };

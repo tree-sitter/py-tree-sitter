@@ -6,6 +6,11 @@
 
 #define HAS_LANGUAGE_NAMES (TREE_SITTER_LANGUAGE_VERSION >= 15)
 
+#if PY_MINOR_VERSION < 10
+#define Py_TPFLAGS_DISALLOW_INSTANTIATION 0
+#define Py_TPFLAGS_IMMUTABLETYPE 0
+#endif
+
 // Types
 
 typedef struct {
@@ -33,7 +38,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     TSParser *parser;
-    PyObject* language;
+    PyObject *language;
 } Parser;
 
 typedef struct {
@@ -91,7 +96,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     TSLookaheadIterator *lookahead_iterator;
-    PyObject* language;
+    PyObject *language;
 } LookaheadIterator;
 
 typedef LookaheadIterator LookaheadNamesIterator;
@@ -120,12 +125,12 @@ typedef struct {
     PyTypeObject *lookahead_names_iterator_type;
 } ModuleState;
 
-#define GET_MODULE_STATE(type) ((ModuleState *)PyType_GetModuleState(type))
+#define GET_MODULE_STATE(obj) ((ModuleState *)PyType_GetModuleState(Py_TYPE(obj)))
 
-#define IS_INSTANCE(obj, type) \
-    PyObject_IsInstance((obj), (PyObject *)(GET_MODULE_STATE(Py_TYPE(self))->type))
+#define IS_INSTANCE(obj, type)                                                                     \
+    PyObject_IsInstance((obj), (PyObject *)(GET_MODULE_STATE(self)->type))
 
-#define POINT_NEW(state, point) \
+#define POINT_NEW(state, point)                                                                    \
     PyObject_CallFunction((PyObject *)(state)->point_type, "II", (point).row, (point).column)
 
 #define DEPRECATE(msg) PyErr_WarnEx(PyExc_DeprecationWarning, msg, 1)

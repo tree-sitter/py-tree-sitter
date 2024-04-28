@@ -1,43 +1,19 @@
 #include "range.h"
-#include "point.h"
 
-PyObject *range_new_internal(ModuleState *state, TSRange range) {
-    Range *self = (Range *)state->range_type->tp_alloc(state->range_type, 0);
-    if (self != NULL) {
-        self->range = range;
-    }
-    return (PyObject *)self;
-}
-
-PyObject *range_init(Range *self, PyObject *args, PyObject *kwargs) {
+int range_init(Range *self, PyObject *args, PyObject *kwargs) {
+    uint32_t start_row, start_col, end_row, end_col, start_byte, end_byte;
     char *keywords[] = {
         "start_point", "end_point", "start_byte", "end_byte", NULL,
     };
-
-    PyObject *start_point_obj;
-    PyObject *end_point_obj;
-    unsigned start_byte;
-    unsigned end_byte;
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!O!II", keywords, &PyTuple_Type,
-                                     &start_point_obj, &PyTuple_Type, &end_point_obj, &start_byte,
-                                     &end_byte)) {
-        PyErr_SetString(PyExc_TypeError, "Invalid arguments to Range()");
-        return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "(II)(II)II:__init__", keywords, &start_row,
+                                     &start_col, &end_row, &end_col, &start_byte, &end_byte)) {
+        return -1;
     }
 
-    if (start_point_obj && !PyArg_ParseTuple(start_point_obj, "II", &self->range.start_point.row,
-                                             &self->range.start_point.column)) {
-        PyErr_SetString(PyExc_TypeError, "Invalid start_point to Range()");
-        return NULL;
-    }
-
-    if (end_point_obj && !PyArg_ParseTuple(end_point_obj, "II", &self->range.end_point.row,
-                                           &self->range.end_point.column)) {
-        PyErr_SetString(PyExc_TypeError, "Invalid end_point to Range()");
-        return NULL;
-    }
-
+    self->range.start_point.row = start_row;
+    self->range.start_point.column = start_col;
+    self->range.end_point.row = end_row;
+    self->range.end_point.column = end_col;
     self->range.start_byte = start_byte;
     self->range.end_byte = end_byte;
 
@@ -57,9 +33,12 @@ PyObject *range_repr(Range *self) {
 
 Py_hash_t range_hash(Range *self) {
     // FIXME: replace with an efficient integer hashing algorithm
-    PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_point.row), PyLong_FromLong(self->range.end_point.row));
-    PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_point.column), PyLong_FromLong(self->range.end_point.column));
-    PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_byte), PyLong_FromLong(self->range.end_byte));
+    PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_point.row),
+                                       PyLong_FromLong(self->range.end_point.row));
+    PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_point.column),
+                                       PyLong_FromLong(self->range.end_point.column));
+    PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_byte),
+                                         PyLong_FromLong(self->range.end_byte));
     PyObject *range_tuple = PyTuple_Pack(3, row_tuple, col_tuple, bytes_tuple);
     Py_hash_t hash = PyObject_Hash(range_tuple);
 
@@ -70,46 +49,35 @@ Py_hash_t range_hash(Range *self) {
     return hash;
 }
 
-static inline bool range_is_instance(PyObject *self) {
-    ModuleState *state = PyType_GetModuleState(Py_TYPE(self));
-    return PyObject_IsInstance(self, (PyObject *)state->range_type);
-}
-
-PyObject *range_compare(Range *self, Range *other, int op) {
-    if (range_is_instance((PyObject *)other)) {
-        bool result = ((self->range.start_point.row == other->range.start_point.row) &&
-                       (self->range.start_point.column == other->range.start_point.column) &&
-                       (self->range.start_byte == other->range.start_byte) &&
-                       (self->range.end_point.row == other->range.end_point.row) &&
-                       (self->range.end_point.column == other->range.end_point.column) &&
-                       (self->range.end_byte == other->range.end_byte));
-        switch (op) {
-        case Py_EQ:
-            return PyBool_FromLong(result);
-        case Py_NE:
-            return PyBool_FromLong(!result);
-        default:
-            Py_RETURN_FALSE;
-        }
-    } else {
-        Py_RETURN_FALSE;
+PyObject *range_compare(Range *self, PyObject *other, int op) {
+    if ((op != Py_EQ && op != Py_NE) || !IS_INSTANCE(other, range_type)) {
+        Py_RETURN_NOTIMPLEMENTED;
     }
+
+    Range *range = (Range *)other;
+    bool result = ((self->range.start_point.row == range->range.start_point.row) &&
+                   (self->range.start_point.column == range->range.start_point.column) &&
+                   (self->range.start_byte == range->range.start_byte) &&
+                   (self->range.end_point.row == range->range.end_point.row) &&
+                   (self->range.end_point.column == range->range.end_point.column) &&
+                   (self->range.end_byte == range->range.end_byte));
+    return PyBool_FromLong(result & (op == Py_EQ));
 }
 
-PyObject *range_get_start_point(Range *self, void *payload) {
-    return POINT_NEW(GET_MODULE_STATE(Py_TYPE(self)), self->range.start_point);
+PyObject *range_get_start_point(Range *self, void *Py_UNUSED(payload)) {
+    return POINT_NEW(GET_MODULE_STATE(self), self->range.start_point);
 }
 
-PyObject *range_get_end_point(Range *self, void *payload) {
-    return POINT_NEW(GET_MODULE_STATE(Py_TYPE(self)), self->range.end_point);
+PyObject *range_get_end_point(Range *self, void *Py_UNUSED(payload)) {
+    return POINT_NEW(GET_MODULE_STATE(self), self->range.end_point);
 }
 
-PyObject *range_get_start_byte(Range *self, void *payload) {
-    return PyLong_FromSize_t((size_t)(self->range.start_byte));
+PyObject *range_get_start_byte(Range *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromUnsignedLong(self->range.start_byte);
 }
 
-PyObject *range_get_end_byte(Range *self, void *payload) {
-    return PyLong_FromSize_t((size_t)(self->range.end_byte));
+PyObject *range_get_end_byte(Range *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromUnsignedLong(self->range.end_byte);
 }
 
 static PyGetSetDef range_accessors[] = {

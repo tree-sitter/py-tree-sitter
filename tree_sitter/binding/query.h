@@ -2,7 +2,7 @@
 
 #include "types.h"
 
-PyObject *query_new_internal(ModuleState *state, TSLanguage *language, char *source, int length);
+PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *kwargs);
 
 void query_dealloc(Query *self);
 
