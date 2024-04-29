@@ -23,7 +23,7 @@ PyObject *lookahead_names_iterator_next(LookaheadNamesIterator *self) {
 }
 
 static PyType_Slot lookahead_names_iterator_type_slots[] = {
-    {Py_tp_doc, "An iterator over the possible syntax nodes that could come next."},
+    {Py_tp_doc, PyDoc_STR("An iterator over the names of syntax nodes that could come next.")},
     {Py_tp_new, NULL},
     {Py_tp_dealloc, lookahead_names_iterator_dealloc},
     {Py_tp_repr, lookahead_names_iterator_repr},

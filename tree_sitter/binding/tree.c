@@ -134,51 +134,74 @@ PyObject *tree_get_included_ranges(Tree *self, PyObject *Py_UNUSED(args)) {
     return result;
 }
 
+PyDoc_STRVAR(tree_root_node_with_offset_doc,
+             "root_node_with_offset(self, offset_bytes, offset_extent, /)\n--\n\n"
+             "Get the root node of the syntax tree, but with its position shifted "
+             "forward by the given offset.");
+PyDoc_STRVAR(tree_walk_doc, "walk(self, /)\n--\n\n"
+                            "Create a new :class:`TreeCursor` starting from the root of the tree.");
+PyDoc_STRVAR(tree_edit_doc,
+             "edit(self, start_byte, old_end_byte, new_end_byte, start_point, old_end_point, "
+             "new_end_point)\n--\n\n"
+             "Edit the syntax tree to keep it in sync with source code that has been edited.\n\n"
+             "You must describe the edit both in terms of byte offsets and of row/column points.");
+PyDoc_STRVAR(
+    tree_changed_ranges_doc,
+    "changed_ranges(self, /, new_tree)\n--\n\n"
+    "Compare this old edited syntax tree to a new syntax tree representing the same document, "
+    "returning a sequence of ranges whose syntactic structure has changed." DOC_TIP
+    "For this to work correctly, this syntax tree must have been edited such that its "
+    "ranges match up to the new tree.\n\nGenerally, you'll want to call this method "
+    "right after calling the :meth:`Parser.parse` method. Call it on the old tree that "
+    "was passed to the method, and pass the new tree that was returned from it.");
+
 static PyMethodDef tree_methods[] = {
     {
         .ml_name = "root_node_with_offset",
         .ml_meth = (PyCFunction)tree_root_node_with_offset,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "root_node_with_offset(offset_bytes, offset_extent)\n--\n\n\
-			   Get the root node of the syntax tree, but with its position shifted forward by the given offset.",
+        .ml_doc = tree_root_node_with_offset_doc,
     },
     {
         .ml_name = "walk",
         .ml_meth = (PyCFunction)tree_walk,
         .ml_flags = METH_NOARGS,
-        .ml_doc = "walk()\n--\n\n\
-               Get a tree cursor for walking this tree.",
+        .ml_doc = tree_walk_doc,
     },
     {
         .ml_name = "edit",
         .ml_meth = (PyCFunction)tree_edit,
         .ml_flags = METH_KEYWORDS | METH_VARARGS,
-        .ml_doc = "edit(start_byte, old_end_byte, new_end_byte,\
-               start_point, old_end_point, new_end_point)\n--\n\n\
-               Edit the syntax tree.",
+        .ml_doc = tree_edit_doc,
     },
     {
         .ml_name = "changed_ranges",
         .ml_meth = (PyCFunction)tree_changed_ranges,
         .ml_flags = METH_KEYWORDS | METH_VARARGS,
-        .ml_doc = "changed_ranges(new_tree)\n--\n\n\
-               Compare old edited tree to new tree and return changed ranges.",
+        .ml_doc = tree_changed_ranges_doc,
     },
     {NULL},
 };
 
 static PyGetSetDef tree_accessors[] = {
-    {"root_node", (getter)tree_get_root_node, NULL, "The root node of this tree.", NULL},
-    {"text", (getter)tree_get_text, NULL, "The source text for this tree, if unedited.", NULL},
+    {"root_node", (getter)tree_get_root_node, NULL, PyDoc_STR("The root node of the syntax tree."),
+     NULL},
+    {"text", (getter)tree_get_text, NULL,
+     PyDoc_STR("The source text of this tree, if unedited.\n\n"
+               ".. deprecated:: 0.22.0\n   Use ``root_node.text`` instead."),
+     NULL},
     {"included_ranges", (getter)tree_get_included_ranges, NULL,
-     "Get the included ranges that were used to parse the syntax tree.", NULL},
+     PyDoc_STR("The included ranges that were used to parse the syntax tree."), NULL},
     {NULL},
 };
 
 static PyType_Slot tree_type_slots[] = {
-    {Py_tp_doc, "A syntax tree"},   {Py_tp_new, NULL},
-    {Py_tp_dealloc, tree_dealloc},  {Py_tp_methods, tree_methods},
-    {Py_tp_getset, tree_accessors}, {0, NULL},
+    {Py_tp_doc, PyDoc_STR("A tree that represents the syntactic structure of a source code file.")},
+    {Py_tp_new, NULL},
+    {Py_tp_dealloc, tree_dealloc},
+    {Py_tp_methods, tree_methods},
+    {Py_tp_getset, tree_accessors},
+    {0, NULL},
 };
 
 PyType_Spec tree_type_spec = {

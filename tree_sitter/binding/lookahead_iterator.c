@@ -97,7 +97,7 @@ PyObject *lookahead_iterator_next(LookaheadIterator *self) {
     return PyLong_FromUnsignedLong(symbol);
 }
 
-PyObject *lookahead_iterator_names_iterator(LookaheadIterator *self) {
+PyObject *lookahead_iterator_iter_names(LookaheadIterator *self) {
     ModuleState *state = GET_MODULE_STATE(self);
     LookaheadNamesIterator *iter =
         PyObject_New(LookaheadNamesIterator, state->lookahead_names_iterator_type);
@@ -108,47 +108,66 @@ PyObject *lookahead_iterator_names_iterator(LookaheadIterator *self) {
     return PyObject_Init((PyObject *)iter, state->lookahead_names_iterator_type);
 }
 
-static PyGetSetDef lookahead_iterator_accessors[] = {
-    {"language", (getter)lookahead_iterator_get_language, NULL, "Get the language.", NULL},
-    {"current_symbol", (getter)lookahead_iterator_get_current_symbol, NULL,
-     "Get the current symbol.", NULL},
-    {"current_symbol_name", (getter)lookahead_iterator_get_current_symbol_name, NULL,
-     "Get the current symbol name.", NULL},
-    {NULL},
-};
+PyDoc_STRVAR(lookahead_iterator_reset_doc,
+             "reset(self, language, state, /)\n--\n\n"
+             "Reset the lookahead iterator.\n\n"
+             ".. deprecated:: 0.22.0\n\n   Use :meth:`reset_state` instead." DOC_RETURNS
+             "``True`` if it was reset successfully or ``False`` if it failed.");
+PyDoc_STRVAR(lookahead_iterator_reset_state_doc,
+             "reset_state(self, state, language=None)\n--\n\n"
+             "Reset the lookahead iterator." DOC_RETURNS
+             "``True`` if it was reset successfully or ``False`` if it failed.");
+PyDoc_STRVAR(lookahead_iterator_iter_names_doc, "iter_names(self, /)\n--\n\n"
+                                                "Iterate symbol names.");
 
 static PyMethodDef lookahead_iterator_methods[] = {
-    {.ml_name = "reset",
-     .ml_meth = (PyCFunction)lookahead_iterator_reset,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "reset(language, state)\n--\n\n\
-			  Reset the lookahead iterator to a new language and parse state.\n\
-        	  This returns `True` if the language was set successfully, and `False` otherwise."},
-    {.ml_name = "reset_state",
-     .ml_meth = (PyCFunction)lookahead_iterator_reset_state,
-     .ml_flags = METH_VARARGS | METH_KEYWORDS,
-     .ml_doc = "reset_state(state, language=None)\n--\n\n\
-			  Reset the lookahead iterator to a new parse state and optional language.\n\
-			  This returns `True` if the state was set successfully, and `False` otherwise."},
+    {
+        .ml_name = "reset",
+        .ml_meth = (PyCFunction)lookahead_iterator_reset,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = lookahead_iterator_reset_doc,
+    },
+    {
+        .ml_name = "reset_state",
+        .ml_meth = (PyCFunction)lookahead_iterator_reset_state,
+        .ml_flags = METH_VARARGS | METH_KEYWORDS,
+        .ml_doc = lookahead_iterator_reset_state_doc,
+    },
     {
         .ml_name = "iter_names",
-        .ml_meth = (PyCFunction)lookahead_iterator_names_iterator,
+        .ml_meth = (PyCFunction)lookahead_iterator_iter_names,
         .ml_flags = METH_NOARGS,
-        .ml_doc = "iter_names()\n--\n\n\
-			  Get an iterator of the names of possible syntax nodes that could come next.",
+        .ml_doc = lookahead_iterator_iter_names_doc,
     },
     {NULL},
 };
 
+static PyGetSetDef lookahead_iterator_accessors[] = {
+    {"language", (getter)lookahead_iterator_get_language, NULL, PyDoc_STR("The current language."),
+     NULL},
+    {"current_symbol", (getter)lookahead_iterator_get_current_symbol, NULL,
+     PyDoc_STR("The current symbol.\n\nNewly created iterators will return the ``ERROR`` symbol."),
+     NULL},
+    {"current_symbol_name", (getter)lookahead_iterator_get_current_symbol_name, NULL,
+     PyDoc_STR("The current symbol name."), NULL},
+    {NULL},
+};
+
 static PyType_Slot lookahead_iterator_type_slots[] = {
-    {Py_tp_doc, "An iterator over the possible syntax nodes that could come next."},
+    {Py_tp_doc,
+     PyDoc_STR(
+         "A class that is used to look up symbols valid in a specific parse state." DOC_TIP
+         "Lookahead iterators can be useful to generate suggestions and improve syntax error "
+         "diagnostics.\n\nTo get symbols valid in an ``ERROR`` node, use the lookahead iterator "
+         "on its first leaf node state.\nFor ``MISSING`` nodes, a lookahead iterator created "
+         "on the previous non-extra leaf node may be appropriate.")},
     {Py_tp_new, NULL},
     {Py_tp_dealloc, lookahead_iterator_dealloc},
     {Py_tp_repr, lookahead_iterator_repr},
-    {Py_tp_getset, lookahead_iterator_accessors},
-    {Py_tp_methods, lookahead_iterator_methods},
     {Py_tp_iter, lookahead_iterator_iter},
     {Py_tp_iternext, lookahead_iterator_next},
+    {Py_tp_methods, lookahead_iterator_methods},
+    {Py_tp_getset, lookahead_iterator_accessors},
     {0, NULL},
 };
 

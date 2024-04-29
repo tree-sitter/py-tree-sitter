@@ -32,7 +32,7 @@ TSLanguage *language_check_pointer(void *ptr) {
         (void)ts_language_version(ptr);
     } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER
                                                                  : EXCEPTION_CONTINUE_SEARCH) {
-        PyErr_SetString(PyExc_RuntimeError, "Invalid TSLanguage pointer.");
+        PyErr_SetString(PyExc_RuntimeError, "Invalid TSLanguage pointer");
     }
     return PyErr_Occurred() ? NULL : (TSLanguage *)ptr;
 }
@@ -220,76 +220,112 @@ PyObject *language_query(Language *self, PyObject *args) {
     return PyObject_CallFunction((PyObject *)state->query_type, "Os#", self, source, length);
 }
 
+PyDoc_STRVAR(language_node_kind_for_id_doc,
+             "node_kind_for_id(self, id, /)\n--\n\n"
+             "Get the name of the node kind for the given numerical id.");
+PyDoc_STRVAR(language_id_for_node_kind_doc, "id_for_node_kind(self, kind, named, /)\n--\n\n"
+                                            "Get the numerical id for the given node kind.");
+PyDoc_STRVAR(language_node_kind_is_named_doc, "node_kind_is_named(self, id, /)\n--\n\n"
+                                              "Check if the node type for the given numerical id "
+                                              "is named (as opposed to an anonymous node type).");
+PyDoc_STRVAR(language_node_kind_is_visible_doc,
+             "node_kind_is_visible(self, id, /)\n--\n\n"
+             "Check if the node type for the given numerical id "
+             "is visible (as opposed to an auxiliary node type).");
+PyDoc_STRVAR(language_field_name_for_id_doc, "field_name_for_id(self, field_id, /)\n--\n\n"
+                                             "Get the field name for the given numerical id.");
+PyDoc_STRVAR(language_field_id_for_name_doc, "field_id_for_name(self, name, /)\n--\n\n"
+                                             "Get the numerical id for the given field name.");
+PyDoc_STRVAR(language_next_state_doc,
+             "next_state(self, state, id, /)\n--\n\n"
+             "Get the next parse state." DOC_TIP "Combine this with ``lookahead_iterator`` to "
+             "generate completion suggestions or valid symbols in error nodes." DOC_EXAMPLES
+             ">>> state = language.next_state(node.parse_state, node.grammar_id)");
+PyDoc_STRVAR(language_lookahead_iterator_doc,
+             "lookahead_iterator(self, state, /)\n--\n\n"
+             "Create a new :class:`LookaheadIterator` for this language and parse state.");
+PyDoc_STRVAR(
+    language_query_doc,
+    "query(self, source, /)\n--\n\n"
+    "Create a new :class:`Query` from a string containing one or more S-expression patterns.");
+
 static PyMethodDef language_methods[] = {
-    {.ml_name = "node_kind_for_id",
-     .ml_meth = (PyCFunction)language_node_kind_for_id,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Get the name of the node kind for the given numerical id."},
-    {.ml_name = "id_for_node_kind",
-     .ml_meth = (PyCFunction)language_id_for_node_kind,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Get the numerical id for the given node kind."},
-    {.ml_name = "node_kind_is_named",
-     .ml_meth = (PyCFunction)language_node_kind_is_named,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Check if the node type for the given numerical id is named"
-               " (as opposed to an anonymous node type)."},
-    {.ml_name = "node_kind_is_visible",
-     .ml_meth = (PyCFunction)language_node_kind_is_visible,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Check if the node type for the given numerical id is visible"
-               " (as opposed to an auxiliary node type)."},
-    {.ml_name = "field_name_for_id",
-     .ml_meth = (PyCFunction)language_field_name_for_id,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Get the name of the field for the given numerical id."},
-    {.ml_name = "field_id_for_name",
-     .ml_meth = (PyCFunction)language_field_id_for_name,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Return the field id for a field name."},
-    {.ml_name = "next_state",
-     .ml_meth = (PyCFunction)language_next_state,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Get the next parse state. Combine this with `lookahead_iterator` "
-               "to generate completion suggestions or valid symbols in error nodes."},
-    {.ml_name = "lookahead_iterator",
-     .ml_meth = (PyCFunction)language_lookahead_iterator,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Create a new lookahead iterator for this language and parse state. "
-               "Returns `None` if state is invalid for this language.\n\n"
-               "Iterating `LookaheadIterator` will yield valid symbols in the "
-               "given parse state. Newly created lookahead iterators will return "
-               "the `ERROR` symbol from `LookaheadIterator.current_symbol`.\n\n"
-               "Lookahead iterators can be useful to generate suggestions and improve syntax "
-               "error diagnostics. To get symbols valid in an `ERROR` node, use the lookahead "
-               "iterator on its first leaf node state. For `MISSING` nodes, a lookahead "
-               "iterator created on the previous non-extra leaf node may be appropriate."},
-    {.ml_name = "query",
-     .ml_meth = (PyCFunction)language_query,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "Create a Query with the given source code."},
+    {
+        .ml_name = "node_kind_for_id",
+        .ml_meth = (PyCFunction)language_node_kind_for_id,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_node_kind_for_id_doc,
+    },
+    {
+        .ml_name = "id_for_node_kind",
+        .ml_meth = (PyCFunction)language_id_for_node_kind,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_id_for_node_kind_doc,
+    },
+    {
+        .ml_name = "node_kind_is_named",
+        .ml_meth = (PyCFunction)language_node_kind_is_named,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_node_kind_is_named_doc,
+    },
+    {
+        .ml_name = "node_kind_is_visible",
+        .ml_meth = (PyCFunction)language_node_kind_is_visible,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_node_kind_is_visible_doc,
+    },
+    {
+        .ml_name = "field_name_for_id",
+        .ml_meth = (PyCFunction)language_field_name_for_id,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_field_name_for_id_doc,
+    },
+    {
+        .ml_name = "field_id_for_name",
+        .ml_meth = (PyCFunction)language_field_id_for_name,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_field_id_for_name_doc,
+    },
+    {
+        .ml_name = "next_state",
+        .ml_meth = (PyCFunction)language_next_state,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_next_state_doc,
+    },
+    {
+        .ml_name = "lookahead_iterator",
+        .ml_meth = (PyCFunction)language_lookahead_iterator,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_lookahead_iterator_doc,
+    },
+    {
+        .ml_name = "query",
+        .ml_meth = (PyCFunction)language_query,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_query_doc,
+    },
     {NULL},
 };
 
 static PyGetSetDef language_accessors[] = {
 #if HAS_LANGUAGE_NAMES
-    {"name", (getter)language_get_name, NULL, "The name of the language.", NULL},
+    {"name", (getter)language_get_name, NULL, PyDoc_STR("The name of the language."), NULL},
 #endif
     {"version", (getter)language_get_version, NULL,
-     "Get the ABI version number that indicates which version of "
-     "the Tree-sitter CLI was used to generate this Language.",
+     PyDoc_STR("The ABI version number that indicates which version of "
+               "the Tree-sitter CLI was used to generate this Language."),
      NULL},
     {"node_kind_count", (getter)language_get_node_kind_count, NULL,
-     "Get the number of distinct node types in this language.", NULL},
+     PyDoc_STR("The number of distinct node types in this language."), NULL},
     {"parse_state_count", (getter)language_get_parse_state_count, NULL,
-     "Get the number of valid states in this language.", NULL},
+     PyDoc_STR("The number of valid states in this language."), NULL},
     {"field_count", (getter)language_get_field_count, NULL,
-     "Get the number of fields in this language.", NULL},
+     PyDoc_STR("The number of distinct field names in this language."), NULL},
     {NULL},
 };
 
 static PyType_Slot language_type_slots[] = {
-    {Py_tp_doc, "A tree-sitter language."},
+    {Py_tp_doc, PyDoc_STR("A class that defines how to parse a particular language.")},
     {Py_tp_init, language_init},
     {Py_tp_repr, language_repr},
     {Py_tp_hash, language_hash},

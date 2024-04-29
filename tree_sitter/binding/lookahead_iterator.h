@@ -20,4 +20,4 @@ PyObject *lookahead_iterator_iter(LookaheadIterator *self);
 
 PyObject *lookahead_iterator_next(LookaheadIterator *self);
 
-PyObject *lookahead_iterator_names_iterator(LookaheadIterator *self);
+PyObject *lookahead_iterator_iter_names(LookaheadIterator *self);

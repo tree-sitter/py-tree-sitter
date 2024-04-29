@@ -1,5 +1,6 @@
 #pragma once
 
+#include "docs.h"
 #include "tree_sitter/api.h"
 
 #include <Python.h>

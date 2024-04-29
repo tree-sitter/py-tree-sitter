@@ -622,24 +622,36 @@ error:
     return NULL;
 }
 
+#define QUERY_METHOD_SIGNATURE                                                                     \
+    "(self, node, *, start_point=None, end_point=None, start_byte=None, end_byte=None)\n--\n\n"
+
+PyDoc_STRVAR(query_matches_doc,
+             "matches" QUERY_METHOD_SIGNATURE "Get a list of *matches* within the given node.\n\n"
+             "You can optionally limit the matches to a range of row/column points or of bytes.");
+PyDoc_STRVAR(
+    query_captures_doc,
+    "captures" QUERY_METHOD_SIGNATURE "Get a list of *captures* within the given node.\n\n"
+    "You can optionally limit the captures to a range of row/column points or of bytes." DOC_HINT
+    "This method returns all of the captures while :meth:`matches` only returns the last match.");
+
 static PyMethodDef query_methods[] = {
-    {.ml_name = "matches",
-     .ml_meth = (PyCFunction)query_matches,
-     .ml_flags = METH_KEYWORDS | METH_VARARGS,
-     .ml_doc = "matches(node)\n--\n\n\
-               Get a list of all of the matches within the given node."},
+    {
+        .ml_name = "matches",
+        .ml_meth = (PyCFunction)query_matches,
+        .ml_flags = METH_KEYWORDS | METH_VARARGS,
+        .ml_doc = query_matches_doc,
+    },
     {
         .ml_name = "captures",
         .ml_meth = (PyCFunction)query_captures,
         .ml_flags = METH_KEYWORDS | METH_VARARGS,
-        .ml_doc = "captures(node)\n--\n\n\
-               Get a list of all of the captures within the given node.",
+        .ml_doc = query_captures_doc,
     },
     {NULL},
 };
 
 static PyType_Slot query_type_slots[] = {
-    {Py_tp_doc, "A set of patterns to search for in a syntax tree."},
+    {Py_tp_doc, PyDoc_STR("A set of patterns that match nodes in a syntax tree.")},
     {Py_tp_new, query_new},
     {Py_tp_dealloc, query_dealloc},
     {Py_tp_methods, query_methods},

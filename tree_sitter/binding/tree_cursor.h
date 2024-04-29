@@ -6,13 +6,13 @@ void tree_cursor_dealloc(TreeCursor *self);
 
 PyObject *tree_cursor_get_node(TreeCursor *self, void *payload);
 
-PyObject *tree_cursor_get_current_field_id(TreeCursor *self, void *payload);
+PyObject *tree_cursor_get_field_id(TreeCursor *self, void *payload);
 
-PyObject *tree_cursor_get_current_field_name(TreeCursor *self, void *payload);
+PyObject *tree_cursor_get_field_name(TreeCursor *self, void *payload);
 
-PyObject *tree_cursor_get_current_depth(TreeCursor *self, void *payload);
+PyObject *tree_cursor_get_depth(TreeCursor *self, void *payload);
 
-PyObject *tree_cursor_get_current_descendant_index(TreeCursor *self, void *payload);
+PyObject *tree_cursor_get_descendant_index(TreeCursor *self, void *payload);
 
 PyObject *tree_cursor_goto_first_child(TreeCursor *self, PyObject *args);
 

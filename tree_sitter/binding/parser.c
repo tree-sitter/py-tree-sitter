@@ -335,58 +335,82 @@ PyObject *parser_set_language_old(Parser *self, PyObject *arg) {
     Py_RETURN_NONE;
 }
 
-static PyGetSetDef parser_accessors[] = {
-    {"language", (getter)parser_get_language, (setter)parser_set_language,
-     "The parser's current language.", NULL},
-    {"included_ranges", (getter)parser_get_included_ranges, (setter)parser_set_included_ranges,
-     "The ranges of text that the parser should include when parsing.", NULL},
-    {"timeout_micros", (getter)parser_get_timeout_micros, (setter)parser_set_timeout_micros,
-     "The duration in microseconds that parsing is allowed to take.", NULL},
-    {NULL},
-};
+PyDoc_STRVAR(
+    parser_parse_doc,
+    "parse(self, source, /, old_tree=None, keep_text=True)\n--\n\n"
+    "Parse a slice of a bytestring or bytes provided in chunks by a callback.\n\n"
+    "The callback function takes a byte offset and position and returns a bytestring starting "
+    "at that offset and position. The slices can be of any length. If the given position "
+    "is at the end of the text, the callback should return an empty slice." DOC_RETURNS
+    "A :class:`Tree` if parsing succeeded or ``None`` if the parser does not have an "
+    "assigned language or the timeout expired.");
+PyDoc_STRVAR(
+    parser_reset_doc,
+    "reset(self, /)\n--\n\n"
+    "Instruct the parser to start the next parse from the beginning." DOC_NOTE
+    "If the parser previously failed because of a timeout, then by default, it will resume where "
+    "it left off on the next call to :meth:`parse`.\nIf you don't want to resume, and instead "
+    "intend to use this parser to parse some other document, you must call :meth:`reset` first.");
+PyDoc_STRVAR(parser_set_language_doc,
+             "set_language(self, language, /)\n--\n\n"
+             "Set the language that will be used for parsing.\n\n"
+             ".. deprecated:: 0.22.0\n\n   Use the :attr:`language` setter instead.");
+PyDoc_STRVAR(parser_set_included_ranges_doc,
+             "set_included_ranges(self, ranges, /)\n--\n\n"
+             "Set the ranges of text that the parser will include when parsing.\n\n"
+             ".. deprecated:: 0.22.0\n\n   Use the :attr:`included_ranges` setter instead.");
+PyDoc_STRVAR(parser_set_timeout_micros_doc,
+             "set_timeout_micros(self, timeout, /)\n--\n\n"
+             "Set the duration in microseconds that parsing is allowed to take.\n\n"
+             ".. deprecated:: 0.22.0\n\n   Use the :attr:`timeout_micros` setter instead.");
 
 static PyMethodDef parser_methods[] = {
     {
         .ml_name = "parse",
         .ml_meth = (PyCFunction)parser_parse,
         .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc = "parse(bytes, old_tree=None, keep_text=True)\n--\n\n\
-               Parse source code, creating a syntax tree.",
+        .ml_doc = parser_parse_doc,
     },
     {
         .ml_name = "reset",
         .ml_meth = (PyCFunction)parser_reset,
         .ml_flags = METH_NOARGS,
-        .ml_doc = "reset()\n--\n\n\
-			   Instruct the parser to start the next parse from the beginning.",
+        .ml_doc = parser_reset_doc,
     },
     {
         .ml_name = "set_timeout_micros",
         .ml_meth = (PyCFunction)parser_set_timeout_micros_old,
         .ml_flags = METH_O,
-        .ml_doc = "set_timeout_micros(timeout_micros)\n--\n\n\
-			  Set the maximum duration in microseconds that parsing should be allowed to\
-              take before halting.",
+        .ml_doc = parser_set_timeout_micros_doc,
     },
     {
         .ml_name = "set_included_ranges",
         .ml_meth = (PyCFunction)parser_set_included_ranges_old,
         .ml_flags = METH_O,
-        .ml_doc = "set_included_ranges(ranges)\n--\n\n\
-			   Set the ranges of text that the parser should include when parsing.",
+        .ml_doc = parser_set_included_ranges_doc,
     },
     {
         .ml_name = "set_language",
         .ml_meth = (PyCFunction)parser_set_language_old,
         .ml_flags = METH_O,
-        .ml_doc = "set_language(language)\n--\n\n\
-               Set the parser language.",
+        .ml_doc = parser_set_language_doc,
     },
     {NULL},
 };
 
+static PyGetSetDef parser_accessors[] = {
+    {"language", (getter)parser_get_language, (setter)parser_set_language,
+     PyDoc_STR("The language that will be used for parsing."), NULL},
+    {"included_ranges", (getter)parser_get_included_ranges, (setter)parser_set_included_ranges,
+     PyDoc_STR("The ranges of text that the parser will include when parsing."), NULL},
+    {"timeout_micros", (getter)parser_get_timeout_micros, (setter)parser_set_timeout_micros,
+     PyDoc_STR("The duration in microseconds that parsing is allowed to take."), NULL},
+    {NULL},
+};
+
 static PyType_Slot parser_type_slots[] = {
-    {Py_tp_doc, "A parser"},
+    {Py_tp_doc,
+     PyDoc_STR("A class that is used to produce a :class:`Tree` based on some source code.")},
     {Py_tp_new, parser_new},
     {Py_tp_init, parser_init},
     {Py_tp_dealloc, parser_dealloc},

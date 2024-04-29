@@ -553,156 +553,237 @@ Py_hash_t node_hash(Node *self) {
     return id == tree ? id : id ^ tree;
 }
 
+PyDoc_STRVAR(node_walk_doc, "walk(self, /)\n--\n\n"
+                            "Create a new :class:`TreeCursor` starting from this node.");
+PyDoc_STRVAR(node_edit_doc,
+             "edit(self, /, start_byte, old_end_byte, new_end_byte, start_point, "
+             "old_end_point, new_end_point)\n--\n\n"
+             "Edit this node to keep it in-sync with source code that has been edited." DOC_NOTE
+             "This method is only rarely needed. When you edit a syntax tree via "
+             ":meth:`Tree.edit`, all of the nodes that you retrieve from the tree afterwards "
+             "will already reflect the edit. You only need to use this when you have a specific "
+             ":class:`Node` instance that you want to keep and continue to use after an edit.");
+PyDoc_STRVAR(node_sexp_doc, "sexp(self, /)\n--\n\n"
+                            "Get an S-expression representing the node.\n\n"
+                            ".. deprecated:: 0.22.0\n\n   Use :obj:`str` instead.");
+PyDoc_STRVAR(node_child_doc,
+             "child(self, index, /)\n--\n\n"
+             "Get this node's child at the given index, where ``0`` represents the first "
+             "child." DOC_CAUTION "This method is fairly fast, but its cost is technically "
+             "``log(i)``, so if you might be iterating over a long list of children, "
+             "you should use :attr:`children` or :meth:`walk` instead.");
+PyDoc_STRVAR(node_named_child_doc,
+             "named_child(self, index, /)\n--\n\n"
+             "Get this node's *named* child at the given index, where ``0`` represents the first "
+             "child." DOC_CAUTION "This method is fairly fast, but its cost is technically "
+             "``log(i)``, so if you might be iterating over a long list of children, "
+             "you should use :attr:`children` or :meth:`walk` instead.");
+PyDoc_STRVAR(node_child_by_field_id_doc,
+             "child_by_field_id(self, id, /)\n--\n\n"
+             "Get the first child with the given numerical field id." DOC_HINT
+             "You can convert a field name to an id using :meth:`Language.field_id_for_name`."
+             DOC_SEE_ALSO ":meth:`child_by_field_name`");
+PyDoc_STRVAR(node_children_by_field_id_doc,
+             "children_by_field_id(self, id, /)\n--\n\n"
+             "Get a list of children with the given numerical field id."
+             DOC_SEE_ALSO ":meth:`children_by_field_name`" );
+PyDoc_STRVAR(node_child_by_field_name_doc, "child_by_field_name(self, name, /)\n--\n\n"
+                                           "Get the first child with the given field name.");
+PyDoc_STRVAR(node_children_by_field_name_doc, "children_by_field_name(self, name, /)\n--\n\n"
+                                              "Get a list of children with the given field name.");
+PyDoc_STRVAR(node_field_name_for_child_doc,
+             "field_name_for_child(self, child_index, /)\n--\n\n"
+             "Get the field name of this node's child at the given index.");
+PyDoc_STRVAR(node_descendant_for_byte_range_doc,
+             "descendant_for_byte_range(self, start_byte, end_byte, /)\n--\n\n"
+             "Get the smallest node within this node that spans the given byte range.");
+PyDoc_STRVAR(node_named_descendant_for_byte_range_doc,
+             "named_descendant_for_byte_range(self, start_byte, end_byte, /)\n--\n\n"
+             "Get the smallest *named* node within this node that spans the given byte range.");
+PyDoc_STRVAR(node_descendant_for_point_range_doc,
+             "descendant_for_point_range(self, start_point, end_point, /)\n--\n\n"
+             "Get the smallest node within this node that spans the given point range.");
+PyDoc_STRVAR(node_named_descendant_for_point_range_doc,
+             "named_descendant_for_point_range(self, start_point, end_point, /)\n--\n\n"
+             "Get the smallest *named* node within this node that spans the given point range.");
+
 static PyMethodDef node_methods[] = {
     {
         .ml_name = "walk",
         .ml_meth = (PyCFunction)node_walk,
         .ml_flags = METH_NOARGS,
-        .ml_doc = "walk()\n--\n\n\
-               Get a tree cursor for walking the tree starting at this node.",
+        .ml_doc = node_walk_doc,
     },
     {
         .ml_name = "edit",
         .ml_meth = (PyCFunction)node_edit,
         .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc =
-            "edit(start_byte, old_end_byte, new_end_byte, start_point, old_end_point, new_end_point)\n--\n\n\
-			   Edit this node to keep it in-sync with source code that has been edited.",
+        .ml_doc = node_edit_doc,
     },
     {
         .ml_name = "sexp",
         .ml_meth = (PyCFunction)node_sexp,
         .ml_flags = METH_NOARGS,
-        .ml_doc = "sexp()\n--\n\n\
-               Get an S-expression representing the node.",
+        .ml_doc = node_sexp_doc,
     },
     {
         .ml_name = "child",
         .ml_meth = (PyCFunction)node_child,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "child(index)\n--\n\n\
-			   Get child at the given index.",
+        .ml_doc = node_child_doc,
     },
     {
         .ml_name = "named_child",
         .ml_meth = (PyCFunction)node_named_child,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "named_child(index)\n--\n\n\
-			   Get named child by index.",
+        .ml_doc = node_named_child_doc,
     },
     {
         .ml_name = "child_by_field_id",
         .ml_meth = (PyCFunction)node_child_by_field_id,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "child_by_field_id(id)\n--\n\n\
-               Get child for the given field id.",
+        .ml_doc = node_child_by_field_id_doc,
     },
     {
         .ml_name = "child_by_field_name",
         .ml_meth = (PyCFunction)node_child_by_field_name,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "child_by_field_name(name)\n--\n\n\
-               Get child for the given field name.",
+        .ml_doc = node_child_by_field_name_doc,
     },
     {
         .ml_name = "children_by_field_id",
         .ml_meth = (PyCFunction)node_children_by_field_id,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "children_by_field_id(id)\n--\n\n\
-               Get a list of child nodes for the given field id.",
+        .ml_doc = node_children_by_field_id_doc,
     },
     {
         .ml_name = "children_by_field_name",
         .ml_meth = (PyCFunction)node_children_by_field_name,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "children_by_field_name(name)\n--\n\n\
-               Get a list of child nodes for the given field name.",
+        .ml_doc = node_children_by_field_name_doc,
     },
-    {.ml_name = "field_name_for_child",
-     .ml_meth = (PyCFunction)node_field_name_for_child,
-     .ml_flags = METH_VARARGS,
-     .ml_doc = "field_name_for_child(index)\n-\n\n\
-               Get the field name of a child node by the index of child."},
+    {
+        .ml_name = "field_name_for_child",
+        .ml_meth = (PyCFunction)node_field_name_for_child,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = node_field_name_for_child_doc,
+    },
     {
         .ml_name = "descendant_for_byte_range",
         .ml_meth = (PyCFunction)node_descendant_for_byte_range,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "descendant_for_byte_range(start_byte, end_byte)\n--\n\n\
-			   Get the smallest node within this node that spans the given byte range.",
+        .ml_doc = node_descendant_for_byte_range_doc,
     },
     {
         .ml_name = "named_descendant_for_byte_range",
         .ml_meth = (PyCFunction)node_named_descendant_for_byte_range,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "named_descendant_for_byte_range(start_byte, end_byte)\n--\n\n\
-			   Get the smallest named node within this node that spans the given byte range.",
+        .ml_doc = node_named_descendant_for_byte_range_doc,
     },
     {
         .ml_name = "descendant_for_point_range",
         .ml_meth = (PyCFunction)node_descendant_for_point_range,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "descendant_for_point_range(start_point, end_point)\n--\n\n\
-			   Get the smallest node within this node that spans the given point range.",
+        .ml_doc = node_descendant_for_point_range_doc,
     },
     {
         .ml_name = "named_descendant_for_point_range",
         .ml_meth = (PyCFunction)node_named_descendant_for_point_range,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "named_descendant_for_point_range(start_point, end_point)\n--\n\n\
-			   Get the smallest named node within this node that spans the given point range.",
+        .ml_doc = node_named_descendant_for_point_range_doc,
     },
     {NULL},
 };
 
 static PyGetSetDef node_accessors[] = {
-    {"id", (getter)node_get_id, NULL, "The node's numeric id", NULL},
-    {"kind_id", (getter)node_get_kind_id, NULL, "The node's type as a numerical id", NULL},
-    {"grammar_id", (getter)node_get_grammar_id, NULL, "The node's grammar type as a numerical id",
+    {"id", (getter)node_get_id, NULL,
+     PyDoc_STR("This node's numerical id." DOC_NOTE
+               "Within a given syntax tree, no two nodes have the same id. However, if a new tree "
+               "is created based on an older tree, and a node from the old tree is reused in the "
+               "process, then that node will have the same id in both trees."),
      NULL},
-    {"grammar_name", (getter)node_get_grammar_name, NULL, "The node's grammar name as a string",
+    {"kind_id", (getter)node_get_kind_id, NULL, PyDoc_STR("This node's type as a numerical id."),
      NULL},
-    {"type", (getter)node_get_type, NULL, "The node's type", NULL},
-    {"is_named", (getter)node_get_is_named, NULL, "Is this a named node", NULL},
-    {"is_extra", (getter)node_get_is_extra, NULL, "Is this an extra node", NULL},
+    {"grammar_id", (getter)node_get_grammar_id, NULL,
+     PyDoc_STR("This node's type as a numerical id as it appears in the grammar ignoring aliases."),
+     NULL},
+    {"grammar_name", (getter)node_get_grammar_name, NULL,
+     PyDoc_STR("This node's symbol name as it appears in the grammar ignoring aliases."), NULL},
+    {"type", (getter)node_get_type, NULL, PyDoc_STR("This node's type as a string."), NULL},
+    {"is_named", (getter)node_get_is_named, NULL,
+     PyDoc_STR("Check if this node is _named_.\n\nNamed nodes correspond to named rules in the "
+               "grammar, whereas *anonymous* nodes correspond to string literals in the grammar."),
+     NULL},
+    {"is_extra", (getter)node_get_is_extra, NULL,
+     PyDoc_STR("Check if this node is _extra_.\n\nExtra nodes represent things which are not "
+               "required the grammar but can appear anywhere (e.g. whitespace)."),
+     NULL},
     {"has_changes", (getter)node_get_has_changes, NULL,
-     "Does this node have text changes since it was parsed", NULL},
-    {"has_error", (getter)node_get_has_error, NULL, "Does this node contain any errors", NULL},
-    {"is_error", (getter)node_get_is_error, NULL, "Is this node an error", NULL},
-    {"parse_state", (getter)node_get_parse_state, NULL, "The node's parse state", NULL},
-    {"next_parse_state", (getter)node_get_next_parse_state, NULL,
-     "The parse state after this node's", NULL},
-    {"is_missing", (getter)node_get_is_missing, NULL, "Is this a node inserted by the parser",
+     PyDoc_STR("Check if this node has been edited."), NULL},
+    {"has_error", (getter)node_get_has_error, NULL,
+     PyDoc_STR("Check if this node represents a syntax error or contains any syntax errors "
+               "anywhere within it."),
      NULL},
-    {"start_byte", (getter)node_get_start_byte, NULL, "The node's start byte", NULL},
-    {"end_byte", (getter)node_get_end_byte, NULL, "The node's end byte", NULL},
-    {"byte_range", (getter)node_get_byte_range, NULL, "The node's byte range", NULL},
-    {"range", (getter)node_get_range, NULL, "The node's range", NULL},
-    {"start_point", (getter)node_get_start_point, NULL, "The node's start point", NULL},
-    {"end_point", (getter)node_get_end_point, NULL, "The node's end point", NULL},
-    {"children", (getter)node_get_children, NULL, "The node's children", NULL},
-    {"child_count", (getter)node_get_child_count, NULL, "The number of children for a node", NULL},
-    {"named_children", (getter)node_get_named_children, NULL, "The node's named children", NULL},
+    {"is_error", (getter)node_get_is_error, NULL,
+     PyDoc_STR("Check if this node represents a syntax error.\n\nSyntax errors represent parts of "
+               "the code that could not be incorporated into a valid syntax tree."),
+     NULL},
+    {"parse_state", (getter)node_get_parse_state, NULL, PyDoc_STR("This node's parse state."),
+     NULL},
+    {"next_parse_state", (getter)node_get_next_parse_state, NULL,
+     PyDoc_STR("The parse state after this node."), NULL},
+    {"is_missing", (getter)node_get_is_missing, NULL,
+     PyDoc_STR("Check if this node is _missing_.\n\nMissing nodes are inserted by the parser in "
+               "order to recover from certain kinds of syntax errors."),
+     NULL},
+    {"start_byte", (getter)node_get_start_byte, NULL,
+     PyDoc_STR("The byte offset where this node starts."), NULL},
+    {"end_byte", (getter)node_get_end_byte, NULL,
+     PyDoc_STR("The byte offset where this node ends."), NULL},
+    {"byte_range", (getter)node_get_byte_range, NULL,
+     PyDoc_STR("The byte range of source code that this node represents, in terms of bytes."),
+     NULL},
+    {"range", (getter)node_get_range, NULL,
+     PyDoc_STR("The range of source code that this node represents."), NULL},
+    {"start_point", (getter)node_get_start_point, NULL, PyDoc_STR("This node's start point"), NULL},
+    {"end_point", (getter)node_get_end_point, NULL, PyDoc_STR("This node's end point."), NULL},
+    {"children", (getter)node_get_children, NULL,
+     PyDoc_STR("This node's children." DOC_NOTE
+               "If you're walking the tree recursively, you may want to use :meth:`walk` instead."),
+     NULL},
+    {"child_count", (getter)node_get_child_count, NULL,
+     PyDoc_STR("This node's number of children."), NULL},
+    {"named_children", (getter)node_get_named_children, NULL,
+     PyDoc_STR("This node's _named_ children."), NULL},
     {"named_child_count", (getter)node_get_named_child_count, NULL,
-     "The number of named children for a node", NULL},
-    {"parent", (getter)node_get_parent, NULL, "The node's parent", NULL},
-    {"next_sibling", (getter)node_get_next_sibling, NULL, "The node's next sibling", NULL},
-    {"prev_sibling", (getter)node_get_prev_sibling, NULL, "The node's previous sibling", NULL},
+     PyDoc_STR("This node's number of _named_ children."), NULL},
+    {"parent", (getter)node_get_parent, NULL, PyDoc_STR("This node's immediate parent."), NULL},
+    {"next_sibling", (getter)node_get_next_sibling, NULL, PyDoc_STR("This node's next sibling."),
+     NULL},
+    {"prev_sibling", (getter)node_get_prev_sibling, NULL,
+     PyDoc_STR("This node's previous sibling."), NULL},
     {"next_named_sibling", (getter)node_get_next_named_sibling, NULL,
-     "The node's next named sibling", NULL},
+     PyDoc_STR("This node's next named sibling."), NULL},
     {"prev_named_sibling", (getter)node_get_prev_named_sibling, NULL,
-     "The node's previous named sibling", NULL},
+     PyDoc_STR("This node's previous named sibling."), NULL},
     {"descendant_count", (getter)node_get_descendant_count, NULL,
-     "The number of descendants for a node, including itself", NULL},
-    {"text", (getter)node_get_text, NULL, "The node's text, if tree has not been edited", NULL},
+     PyDoc_STR("This node's number of descendants, including the node itself."), NULL},
+    {"text", (getter)node_get_text, NULL,
+     PyDoc_STR("The text of the node, if the tree has not been edited"), NULL},
     {NULL},
 };
 
 static PyType_Slot node_type_slots[] = {
-    {Py_tp_doc, "A syntax node"},   {Py_tp_new, NULL},
-    {Py_tp_dealloc, node_dealloc},  {Py_tp_repr, node_repr},
-    {Py_tp_str, node_str},          {Py_tp_richcompare, node_compare},
-    {Py_tp_hash, node_hash},        {Py_tp_methods, node_methods},
-    {Py_tp_getset, node_accessors}, {0, NULL},
+    {Py_tp_doc, PyDoc_STR("A single node within a syntax ``Tree``.")},
+    {Py_tp_new, NULL},
+    {Py_tp_dealloc, node_dealloc},
+    {Py_tp_repr, node_repr},
+    {Py_tp_str, node_str},
+    {Py_tp_richcompare, node_compare},
+    {Py_tp_hash, node_hash},
+    {Py_tp_methods, node_methods},
+    {Py_tp_getset, node_accessors},
+    {0, NULL},
 };
 
 PyType_Spec node_type_spec = {

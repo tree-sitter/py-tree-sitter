@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tree-sitter"
 version = "0.21.3"
-description = "Python bindings for the Tree-Sitter parsing library"
+description = "Python bindings to the Tree-sitter parsing library"
 keywords = ["incremental", "parsing", "tree-sitter"]
 classifiers = [
     "Intended Audience :: Developers",
@@ -23,10 +23,14 @@ readme = "README.md"
 [project.urls]
 Homepage = "https://tree-sitter.github.io/tree-sitter/"
 Source = "https://github.com/tree-sitter/py-tree-sitter"
+Documentation = "https://tree-sitter.github.io/py-tree-sitter/"
 
 [[project.authors]]
 name = "Max Brunsfeld"
 email = "maxbrunsfeld@gmail.com"
+
+[project.optional-dependencies]
+docs = ["sphinx~=7.3", "sphinx-book-theme"]
 
 [tool.ruff]
 target-version = "py39"

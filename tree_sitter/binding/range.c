@@ -81,15 +81,16 @@ PyObject *range_get_end_byte(Range *self, void *Py_UNUSED(payload)) {
 }
 
 static PyGetSetDef range_accessors[] = {
-    {"start_point", (getter)range_get_start_point, NULL, "The start point of this range", NULL},
-    {"start_byte", (getter)range_get_start_byte, NULL, "The start byte of this range", NULL},
-    {"end_point", (getter)range_get_end_point, NULL, "The end point of this range", NULL},
-    {"end_byte", (getter)range_get_end_byte, NULL, "The end byte of this range", NULL},
+    {"start_point", (getter)range_get_start_point, NULL, PyDoc_STR("The start point."), NULL},
+    {"start_byte", (getter)range_get_start_byte, NULL, PyDoc_STR("The start byte."), NULL},
+    {"end_point", (getter)range_get_end_point, NULL, PyDoc_STR("The end point."), NULL},
+    {"end_byte", (getter)range_get_end_byte, NULL, PyDoc_STR("The end byte."), NULL},
     {NULL},
 };
 
 static PyType_Slot range_type_slots[] = {
-    {Py_tp_doc, "A range within a document."},
+    {Py_tp_doc, PyDoc_STR("A range of positions in a multi-line text document, "
+                          "both in terms of bytes and of rows and columns.")},
     {Py_tp_init, range_init},
     {Py_tp_dealloc, range_dealloc},
     {Py_tp_repr, range_repr},
