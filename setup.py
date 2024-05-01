@@ -1,14 +1,12 @@
-"""Py-Tree-sitter"""
-
 from platform import system
 
-from setuptools import Extension, setup
+from setuptools import Extension, setup  # type: ignore
 
 setup(
     packages=["tree_sitter"],
     include_package_data=False,
     package_data={
-        "tree_sitter": ["py.typed", "*.pyi"]
+        "tree_sitter": ["py.typed", "*.pyi"],
     },
     ext_modules=[
         Extension(
@@ -41,8 +39,12 @@ setup(
             extra_compile_args=[
                 "-std=c11",
                 "-fvisibility=hidden",
+                "-Wno-cast-function-type",
                 "-Werror=implicit-function-declaration",
-            ] if system() != "Windows" else None
+            ] if system() != "Windows" else [
+                "/std:c11",
+                "/wd4244",
+            ],
         )
-    ]
+    ],
 )

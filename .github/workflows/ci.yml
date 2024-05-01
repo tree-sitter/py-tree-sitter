@@ -34,16 +34,11 @@ jobs:
         with:
           python-version: ${{matrix.python}}
       - name: Lint
-        run: pipx run ruff check .
+        continue-on-error: true
+        run: pipx run ruff check . --output-format=github
       - name: Build
-        run: pip install -e .
+        run: pip install -v -e .[tests]
         env:
-          CFLAGS: "-O0 -g"
+          CFLAGS: -Wextra -Og -g -fno-omit-frame-pointer
       - name: Test
-        shell: python
-        # run: python -Wignore:::tree_sitter -munittest
-        run: |-
-          try: __import__('tree_sitter').Language(1048576)
-          except RuntimeError as err: print(err)
-        env:
-          PYTHONFAULTHANDLER: 1
+        run: python -munittest -v

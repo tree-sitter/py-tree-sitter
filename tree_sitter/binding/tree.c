@@ -45,9 +45,11 @@ PyObject *tree_walk(Tree *self, PyObject *Py_UNUSED(args)) {
     if (tree_cursor == NULL) {
         return NULL;
     }
-    tree_cursor->cursor = ts_tree_cursor_new(ts_tree_root_node(self->tree));
+
     Py_INCREF(self);
     tree_cursor->tree = (PyObject *)self;
+    tree_cursor->node = NULL;
+    tree_cursor->cursor = ts_tree_cursor_new(ts_tree_root_node(self->tree));
     return PyObject_Init((PyObject *)tree_cursor, state->tree_cursor_type);
 }
 

@@ -1,4 +1,4 @@
-﻿Language
+Language
 ========
 
 .. autoclass:: tree_sitter.Language
@@ -44,7 +44,7 @@
       .. versionadded:: 0.22.0
 
 
-   Properties
+   Attributes
    ----------
 
    .. autoattribute:: field_count

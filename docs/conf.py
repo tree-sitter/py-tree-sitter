@@ -54,30 +54,30 @@ html_logo = "_static/logo.png"
 html_favicon = "_static/favicon.png"
 
 
-special_doc = regex('\S*self[^.]+')
+special_doc = regex("\S*self[^.]+")
 
 
 def process_signature(_app, _what, name, _obj, _options, _signature, return_annotation):
-    if name == 'tree_sitter.Language':
-        return '(ptr)', return_annotation
-    if name == 'tree_sitter.Query':
-        return '(language, source)', return_annotation
-    if name == 'tree_sitter.Parser':
-        return '(language, *, included_ranges=None, timeout_micros=None)', return_annotation
-    if name == 'tree_sitter.Range':
-        return '(start_point, end_point, start_byte, end_byte)', return_annotation
+    if name == "tree_sitter.Language":
+        return "(ptr)", return_annotation
+    if name == "tree_sitter.Query":
+        return "(language, source)", return_annotation
+    if name == "tree_sitter.Parser":
+        return "(language, *, included_ranges=None, timeout_micros=None)", return_annotation
+    if name == "tree_sitter.Range":
+        return "(start_point, end_point, start_byte, end_byte)", return_annotation
 
 
 def process_docstring(_app, what, name, _obj, _options, lines):
-    if what == 'data':
+    if what == "data":
         lines.clear()
-    elif what == 'method':
-        if name.endswith('__index__'):
-            lines[0] = 'Converts ``self`` to an integer for use as an index.'
-        elif name.endswith('__') and lines and 'self' in lines[0]:
-            lines[0] = f'Implements ``{special_doc.search(lines[0]).group(0)}``.'
+    elif what == "method":
+        if name.endswith("__index__"):
+            lines[0] = "Converts ``self`` to an integer for use as an index."
+        elif name.endswith("__") and lines and "self" in lines[0]:
+            lines[0] = f"Implements ``{special_doc.search(lines[0]).group(0)}``."
 
 
 def setup(app):
-    app.connect('autodoc-process-signature', process_signature)
-    app.connect('autodoc-process-docstring', process_docstring)
+    app.connect("autodoc-process-signature", process_signature)
+    app.connect("autodoc-process-docstring", process_docstring)

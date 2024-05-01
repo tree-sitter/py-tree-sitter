@@ -490,10 +490,10 @@ PyObject *query_matches(Query *self, PyObject *args, PyObject *kwargs) {
         "node", "start_point", "end_point", "start_byte", "end_byte", NULL,
     };
     PyObject *node_obj;
-    TSPoint start_point = {.row = 0, .column = 0};
-    TSPoint end_point = {.row = UINT32_MAX, .column = UINT32_MAX};
-    unsigned start_byte = 0, end_byte = UINT32_MAX;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|$(II)(II)II:matches", keywords,
+    TSPoint start_point = {0, 0};
+    TSPoint end_point = {UINT32_MAX, UINT32_MAX};
+    uint32_t start_byte = 0, end_byte = UINT32_MAX;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!|$(II)(II)II:matches", keywords,
                                      state->node_type, &node_obj, &start_point.row,
                                      &start_point.column, &end_point.row, &end_point.column,
                                      &start_byte, &end_byte)) {

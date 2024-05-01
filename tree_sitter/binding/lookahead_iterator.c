@@ -24,11 +24,9 @@ PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *Py_UNUS
         }
         language->language = language_id;
         language->version = ts_language_version(language->language);
-        PyObject *obj = PyObject_Init((PyObject *)language, state->language_type);
-        Py_XSETREF(self->language, obj);
-    } else {
-        Py_INCREF(self->language);
+        self->language = PyObject_Init((PyObject *)language, state->language_type);
     }
+    Py_INCREF(self->language);
     return self->language;
 }
 
@@ -65,7 +63,7 @@ PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args) {
 PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args,
                                          PyObject *kwargs) {
     uint16_t state_id;
-    PyObject *language_obj;
+    PyObject *language_obj = NULL;
     ModuleState *state = GET_MODULE_STATE(self);
     char *keywords[] = {"state", "language", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "H|O!:reset_state", keywords, &state_id,

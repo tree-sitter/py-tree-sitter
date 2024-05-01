@@ -43,7 +43,7 @@ PyObject *node_compare(Node *self, PyObject *other, int op) {
     }
 
     bool result = ts_node_eq(self->node, ((Node *)other)->node);
-    return PyBool_FromLong(result & (op == Py_EQ));
+    return PyBool_FromLong(result ^ (op == Py_NE));
 }
 
 PyObject *node_sexp(Node *self, PyObject *Py_UNUSED(args)) {
@@ -59,9 +59,11 @@ PyObject *node_walk(Node *self, PyObject *Py_UNUSED(args)) {
     if (tree_cursor == NULL) {
         return NULL;
     }
-    tree_cursor->cursor = ts_tree_cursor_new(self->node);
+
     Py_INCREF(self->tree);
     tree_cursor->tree = self->tree;
+    tree_cursor->node = NULL;
+    tree_cursor->cursor = ts_tree_cursor_new(self->node);
     return PyObject_Init((PyObject *)tree_cursor, state->tree_cursor_type);
 }
 
@@ -436,7 +438,7 @@ PyObject *node_get_named_children(Node *self, void *payload) {
         PyObject *child = PyList_GetItem(self->children, i);
         if (ts_node_is_named(((Node *)child)->node)) {
             Py_INCREF(child);
-            if (PyList_SetItem(result, ++j, child)) {
+            if (PyList_SetItem(result, j++, child)) {
                 Py_DECREF(result);
                 return NULL;
             }

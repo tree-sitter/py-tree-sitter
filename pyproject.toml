@@ -31,6 +31,13 @@ email = "maxbrunsfeld@gmail.com"
 
 [project.optional-dependencies]
 docs = ["sphinx~=7.3", "sphinx-book-theme"]
+tests = [
+    "tree-sitter-html",
+    "tree-sitter-javascript",
+    "tree-sitter-json",
+    "tree-sitter-python",
+    "tree-sitter-rust",
+]
 
 [tool.ruff]
 target-version = "py39"
@@ -39,7 +46,7 @@ indent-width = 4
 extend-exclude = [
     ".github",
     "__pycache__",
-    "tests/fixtures",
+    "setup.py",
     "tree_sitter/core",
 ]
 
@@ -49,10 +56,8 @@ indent-style = "space"
 
 [tool.cibuildwheel]
 build-frontend = "build"
+test-extras = ["tests"]
 test-command = "python -munittest discover -s {project}/tests"
-
-[tool.cibuildwheel.environment]
-PYTHONWARNINGS = "ignore:::tree_sitter"
 
 [tool.mypy]
 exclude = ["tree_sitter/core"]

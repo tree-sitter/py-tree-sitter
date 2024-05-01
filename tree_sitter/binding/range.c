@@ -33,13 +33,35 @@ PyObject *range_repr(Range *self) {
 
 Py_hash_t range_hash(Range *self) {
     // FIXME: replace with an efficient integer hashing algorithm
-    PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_point.row),
+    PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromSize_t(self->range.start_point.row),
                                        PyLong_FromLong(self->range.end_point.row));
-    PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_point.column),
-                                       PyLong_FromLong(self->range.end_point.column));
-    PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromLong(self->range.start_byte),
-                                         PyLong_FromLong(self->range.end_byte));
+    if (!row_tuple) {
+        return -1;
+    }
+
+    PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromSize_t(self->range.start_point.column),
+                                       PyLong_FromSize_t(self->range.end_point.column));
+    if (!col_tuple) {
+        Py_DECREF(row_tuple);
+        return -1;
+    }
+
+    PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromSize_t(self->range.start_byte),
+                                         PyLong_FromSize_t(self->range.end_byte));
+    if (!bytes_tuple) {
+        Py_DECREF(row_tuple);
+        Py_DECREF(col_tuple);
+        return -1;
+    }
+
     PyObject *range_tuple = PyTuple_Pack(3, row_tuple, col_tuple, bytes_tuple);
+    if (!range_tuple) {
+        Py_DECREF(row_tuple);
+        Py_DECREF(col_tuple);
+        Py_DECREF(bytes_tuple);
+        return -1;
+    }
+
     Py_hash_t hash = PyObject_Hash(range_tuple);
 
     Py_DECREF(range_tuple);
@@ -61,7 +83,7 @@ PyObject *range_compare(Range *self, PyObject *other, int op) {
                    (self->range.end_point.row == range->range.end_point.row) &&
                    (self->range.end_point.column == range->range.end_point.column) &&
                    (self->range.end_byte == range->range.end_byte));
-    return PyBool_FromLong(result & (op == Py_EQ));
+    return PyBool_FromLong(result ^ (op == Py_NE));
 }
 
 PyObject *range_get_start_point(Range *self, void *Py_UNUSED(payload)) {

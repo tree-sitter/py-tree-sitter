@@ -16,7 +16,7 @@ static void segfault_handler(int signal) {
 TSLanguage *language_check_pointer(void *ptr) {
     PyOS_setsig(SIGSEGV, segfault_handler);
     if (!setjmp(segv_jmp)) {
-        (void)ts_language_version(ptr);
+        __attribute__((unused)) volatile uint32_t version = ts_language_version((TSLanguage *)ptr);
     } else {
         PyErr_SetString(PyExc_RuntimeError, "Invalid TSLanguage pointer");
     }
@@ -29,7 +29,7 @@ TSLanguage *language_check_pointer(void *ptr) {
 // HACK: recover from invalid pointer using SEH (Windows)
 TSLanguage *language_check_pointer(void *ptr) {
     __try {
-        (void)ts_language_version(ptr);
+        volatile uint32_t version = ts_language_version((TSLanguage *)ptr);
     } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER
                                                                  : EXCEPTION_CONTINUE_SEARCH) {
         PyErr_SetString(PyExc_RuntimeError, "Invalid TSLanguage pointer");
@@ -43,7 +43,7 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     if (!PyArg_ParseTuple(args, "O:__init__", &language)) {
         return -1;
     }
-    if (PyLong_AsLong(language) < 1) {
+    if (PyLong_AsSsize_t(language) < 1) {
         if (!PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError, "language ID must be positive");
         }
@@ -61,7 +61,10 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     return 0;
 }
 
-void language_dealloc(Language *self) { Py_TYPE(self)->tp_free(self); }
+void language_dealloc(Language *self) {
+    ts_language_delete(self->language);
+    Py_TYPE(self)->tp_free(self);
+}
 
 PyObject *language_repr(Language *self) {
 #if HAS_LANGUAGE_NAMES
@@ -88,7 +91,7 @@ PyObject *language_compare(Language *self, PyObject *other, int op) {
 
     Language *lang = (Language *)other;
     bool result = (Py_uintptr_t)self->language == (Py_uintptr_t)lang->language;
-    return PyBool_FromLong(result & (op == Py_EQ));
+    return PyBool_FromLong(result ^ (op == Py_NE));
 }
 
 #if HAS_LANGUAGE_NAMES
@@ -128,7 +131,7 @@ PyObject *language_node_kind_for_id(Language *self, PyObject *args) {
 PyObject *language_id_for_node_kind(Language *self, PyObject *args) {
     char *kind;
     Py_ssize_t length;
-    bool named;
+    int named;
     if (!PyArg_ParseTuple(args, "s#p:id_for_node_kind", &kind, &length, &named)) {
         return NULL;
     }
@@ -205,8 +208,9 @@ PyObject *language_lookahead_iterator(Language *self, PyObject *args) {
     if (iter == NULL) {
         return NULL;
     }
-    iter->lookahead_iterator = lookahead_iterator;
+    Py_INCREF(self);
     iter->language = (PyObject *)self;
+    iter->lookahead_iterator = lookahead_iterator;
     return PyObject_Init((PyObject *)iter, state->lookahead_iterator_type);
 }
 

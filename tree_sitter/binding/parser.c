@@ -92,7 +92,7 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
     // Store return value in payload so its reference count can be decremented and
     // return string representation of bytes.
     wrapper_payload->previous_return_value = rv;
-    *bytes_read = PyBytes_Size(rv);
+    *bytes_read = (uint32_t)PyBytes_Size(rv);
     return PyBytes_AsString(rv);
 }
 
@@ -100,7 +100,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *source_or_callback;
     PyObject *old_tree_obj = NULL;
-    bool keep_text = true;
+    int keep_text = 1;
     char *keywords[] = {"", "old_tree", "keep_text", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O!p:parse", keywords, &source_or_callback,
                                      state->tree_type, &old_tree_obj, &keep_text)) {
@@ -114,7 +114,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     if (PyObject_GetBuffer(source_or_callback, &source_view, PyBUF_SIMPLE) > -1) {
         // parse a buffer
         const char *source_bytes = (const char *)source_view.buf;
-        size_t length = source_view.len;
+        uint32_t length = (uint32_t)source_view.len;
         new_tree = ts_parser_parse_string(self->parser, old_tree, source_bytes, length);
         PyBuffer_Release(&source_view);
     } else if (PyCallable_Check(source_or_callback)) {
@@ -137,7 +137,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         source_or_callback = Py_None;
         keep_text = 0;
     } else {
-        PyErr_SetString(PyExc_TypeError, "source must be a byte buffer or a callable");
+        PyErr_SetString(PyExc_TypeError, "source must be a bytestring or a callable");
         return NULL;
     }
 
@@ -172,27 +172,20 @@ int parser_set_timeout_micros(Parser *self, PyObject *arg, void *Py_UNUSED(paylo
         ts_parser_set_timeout_micros(self->parser, 0);
         return 0;
     }
-    if (!PyLong_CheckExact(arg)) {
+    if (!PyLong_Check(arg)) {
         PyErr_Format(PyExc_TypeError, "'timeout_micros' must be assigned an int, not %s",
                      arg->ob_type->tp_name);
         return -1;
     }
 
-    long timeout = PyLong_AsLong(arg);
-    if (timeout < 0) {
-        PyErr_SetString(PyExc_ValueError, "'timeout_micros' must be a positive integer");
-        return -1;
-    }
-
-    ts_parser_set_timeout_micros(self->parser, timeout);
+    ts_parser_set_timeout_micros(self->parser, PyLong_AsUnsignedLong(arg));
     return 0;
 }
 
 PyObject *parser_set_timeout_micros_old(Parser *self, PyObject *arg) {
-    if (PyLong_AsLong(arg) < 0) {
-        if (!PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError, "'timeout_micros' must be a positive integer");
-        }
+    if (!PyLong_Check(arg)) {
+        PyErr_Format(PyExc_TypeError, "'timeout_micros' must be assigned an int, not %s",
+                     arg->ob_type->tp_name);
         return NULL;
     }
     if (REPLACE("Parser.set_timeout_micros()", "the timeout_micros setter") < 0) {
@@ -235,7 +228,7 @@ int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payl
         return -1;
     }
 
-    uint32_t length = PyList_Size(arg);
+    uint32_t length = (uint32_t)PyList_Size(arg);
     TSRange *ranges = PyMem_Calloc(length, sizeof(TSRange));
     if (!ranges) {
         PyErr_Format(PyExc_MemoryError, "Failed to allocate memory for ranges of length %u",
@@ -315,8 +308,8 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
         return -1;
     }
 
-    self->language = (PyObject *)language;
-    Py_INCREF(self->language);
+    Py_INCREF(language);
+    Py_XSETREF(self->language, (PyObject *)language);
     return 0;
 }
 
