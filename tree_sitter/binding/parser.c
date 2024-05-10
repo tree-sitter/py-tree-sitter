@@ -1,5 +1,7 @@
 #include "parser.h"
 
+#include <string.h>
+
 #define SET_ATTRIBUTE_ERROR(name)                                                                  \
     (name != NULL && name != Py_None && parser_set_##name(self, name, NULL) < 0)
 
@@ -75,7 +77,7 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
     Py_XDECREF(args);
 
     // If error or None returned, we're done parsing.
-    if (!rv || (rv == Py_None)) {
+    if (rv == NULL || rv == Py_None) {
         Py_XDECREF(rv);
         *bytes_read = 0;
         return NULL;
@@ -84,7 +86,7 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
     // If something other than None is returned, it must be a bytes object.
     if (!PyBytes_Check(rv)) {
         Py_XDECREF(rv);
-        PyErr_SetString(PyExc_TypeError, "Read callable must return byte buffer");
+        PyErr_SetString(PyExc_TypeError, "read callable must return a bytestring");
         *bytes_read = 0;
         return NULL;
     }
@@ -101,13 +103,53 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     PyObject *source_or_callback;
     PyObject *old_tree_obj = NULL;
     int keep_text = 1;
-    char *keywords[] = {"", "old_tree", "keep_text", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O!p:parse", keywords, &source_or_callback,
-                                     state->tree_type, &old_tree_obj, &keep_text)) {
+    const char *encoding = "utf8";
+    char *keywords[] = {"", "old_tree", "encoding", "keep_text", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O!sp:parse", keywords, &source_or_callback,
+                                     state->tree_type, &old_tree_obj, &encoding, &keep_text)) {
         return NULL;
     }
 
     const TSTree *old_tree = old_tree_obj ? ((Tree *)old_tree_obj)->tree : NULL;
+
+    TSInputEncoding input_encoding;
+    if (strcmp(encoding, "utf8") == 0) {
+        input_encoding = TSInputEncodingUTF8;
+    } else if (strcmp(encoding, "utf16") == 0) {
+        input_encoding = TSInputEncodingUTF16;
+    } else {
+        // try to normalize the encoding and check again
+        PyObject *encodings = PyImport_ImportModule("encodings");
+        if (encodings == NULL) {
+            goto encoding_error;
+        }
+        PyObject *normalize_encoding = PyObject_GetAttrString(encodings, "normalize_encoding");
+        Py_DECREF(encodings);
+        if (normalize_encoding == NULL) {
+            goto encoding_error;
+        }
+        PyObject *arg = PyUnicode_DecodeASCII(encoding, strlen(encoding), NULL);
+        if (arg == NULL) {
+            goto encoding_error;
+        }
+        PyObject *normalized_obj = PyObject_CallOneArg(normalize_encoding, arg);
+        Py_DECREF(arg);
+        Py_DECREF(normalize_encoding);
+        if (normalized_obj == NULL) {
+            goto encoding_error;
+        }
+        const char *normalized_str = PyUnicode_AsUTF8(normalized_obj);
+        if (strcmp(normalized_str, "utf8") == 0 || strcmp(normalized_str, "utf_8") == 0) {
+            Py_DECREF(normalized_obj);
+            input_encoding = TSInputEncodingUTF8;
+        } else if (strcmp(normalized_str, "utf16") == 0 || strcmp(normalized_str, "utf_16") == 0) {
+            Py_DECREF(normalized_obj);
+            input_encoding = TSInputEncodingUTF16;
+        } else {
+            Py_DECREF(normalized_obj);
+            goto encoding_error;
+        }
+    }
 
     TSTree *new_tree = NULL;
     Py_buffer source_view;
@@ -115,7 +157,8 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         // parse a buffer
         const char *source_bytes = (const char *)source_view.buf;
         uint32_t length = (uint32_t)source_view.len;
-        new_tree = ts_parser_parse_string(self->parser, old_tree, source_bytes, length);
+        new_tree = ts_parser_parse_string_encoding(self->parser, old_tree, source_bytes, length,
+                                                   input_encoding);
         PyBuffer_Release(&source_view);
     } else if (PyCallable_Check(source_or_callback)) {
         // clear the GetBuffer error
@@ -129,7 +172,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         TSInput input = {
             .payload = &payload,
             .read = parser_read_wrapper,
-            .encoding = TSInputEncodingUTF8,
+            .encoding = input_encoding,
         };
         new_tree = ts_parser_parse(self->parser, old_tree, input);
         Py_XDECREF(payload.previous_return_value);
@@ -156,6 +199,10 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     tree->source = keep_text ? source_or_callback : Py_None;
     Py_INCREF(tree->source);
     return PyObject_Init((PyObject *)tree, state->tree_type);
+
+encoding_error:
+    PyErr_Format(PyExc_ValueError, "encoding must be 'utf8' or 'utf16', not '%s'", encoding);
+    return NULL;
 }
 
 PyObject *parser_reset(Parser *self, void *Py_UNUSED(payload)) {
@@ -330,7 +377,7 @@ PyObject *parser_set_language_old(Parser *self, PyObject *arg) {
 
 PyDoc_STRVAR(
     parser_parse_doc,
-    "parse(self, source, /, old_tree=None, keep_text=True)\n--\n\n"
+    "parse(self, source, /, old_tree=None, encoding=\"utf8\", keep_text=True)\n--\n\n"
     "Parse a slice of a bytestring or bytes provided in chunks by a callback.\n\n"
     "The callback function takes a byte offset and position and returns a bytestring starting "
     "at that offset and position. The slices can be of any length. If the given position "

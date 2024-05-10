@@ -1,10 +1,12 @@
 from collections.abc import ByteString, Callable, Iterator, Sequence
-from typing import Annotated, Any, Final, NamedTuple, final, overload
+from typing import Annotated, Any, Final, Literal, NamedTuple, final, overload
 from typing_extensions import deprecated
 
 _Ptr = Annotated[int, "TSLanguage *"]
 
 _ParseCB = Callable[[int, Point | tuple[int, int]], bytes]
+
+_Encoding = Literal["utf8", "utf16"]
 
 _UINT32_MAX = 0xFFFFFFFF
 
@@ -247,6 +249,7 @@ class Parser:
         source: ByteString | _ParseCB | None,
         /,
         old_tree: Tree | None = None,
+        encoding: _Encoding = "utf8",
     ) -> Tree: ...
     @overload
     @deprecated("`keep_text` will be removed")
@@ -255,6 +258,7 @@ class Parser:
         source: ByteString | _ParseCB | None,
         /,
         old_tree: Tree | None = None,
+        encoding: _Encoding = "utf8",
         keep_text: bool = True,
     ) -> Tree: ...
     def reset(self) -> None: ...
