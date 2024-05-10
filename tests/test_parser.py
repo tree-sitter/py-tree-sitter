@@ -131,6 +131,28 @@ class TestParser(TestCase):
             + " arguments: (argument_list))))))",
         )
 
+    def test_parse_utf16_encoding(self):
+        source_code = bytes("'😎' && '🐍'", "utf16")
+        parser = Parser(self.javascript)
+
+        def read(byte_position, _):
+            return source_code[byte_position: byte_position + 2]
+
+        tree = parser.parse(read, encoding="utf-16")
+        root_node = tree.root_node
+        snake_node = root_node.children[0].children[0].children[2]
+        snake = source_code[snake_node.start_byte + 2:snake_node.end_byte - 2]
+
+        self.assertEqual(snake_node.type, "string")
+        self.assertEqual(snake.decode("utf16"), "🐍")
+
+
+    def test_parse_invalid_encoding(self):
+        parser = Parser(self.python)
+        with self.assertRaises(ValueError):
+            parser.parse(b"foo", encoding="ascii")
+
+
     def test_parse_with_one_included_range(self):
         source_code = b"<span>hi</span><script>console.log('sup');</script>"
         parser = Parser(self.html)
