@@ -1,56 +1,19 @@
 #include "language.h"
 
-#ifndef _MSC_VER
-#include <setjmp.h>
-#include <signal.h>
-
-static jmp_buf segv_jmp;
-
-static void segfault_handler(int signal) {
-    if (signal == SIGSEGV) {
-        longjmp(segv_jmp, true);
-    }
-}
-
-// HACK: recover from invalid pointer using a signal handler (Unix)
-TSLanguage *language_check_pointer(void *ptr) {
-    PyOS_setsig(SIGSEGV, segfault_handler);
-    if (!setjmp(segv_jmp)) {
-        __attribute__((unused)) volatile uint32_t version = ts_language_version((TSLanguage *)ptr);
-    } else {
-        PyErr_SetString(PyExc_RuntimeError, "Invalid TSLanguage pointer");
-    }
-    PyOS_setsig(SIGSEGV, SIG_DFL);
-    return PyErr_Occurred() ? NULL : (TSLanguage *)ptr;
-}
-#else
-#include <windows.h>
-
-// HACK: recover from invalid pointer using SEH (Windows)
-TSLanguage *language_check_pointer(void *ptr) {
-    __try {
-        volatile uint32_t version = ts_language_version((TSLanguage *)ptr);
-    } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER
-                                                                 : EXCEPTION_CONTINUE_SEARCH) {
-        PyErr_SetString(PyExc_RuntimeError, "Invalid TSLanguage pointer");
-    }
-    return PyErr_Occurred() ? NULL : (TSLanguage *)ptr;
-}
-#endif
-
 int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     PyObject *language;
     if (!PyArg_ParseTuple(args, "O:__init__", &language)) {
         return -1;
     }
-    if (PyLong_AsSsize_t(language) < 1) {
+    Py_ssize_t language_id = PyLong_AsSsize_t(language);
+    if (language_id < 1 || (language_id % sizeof(TSLanguage *)) != 0) {
         if (!PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError, "language ID must be positive");
+            PyErr_SetString(PyExc_ValueError, "invalid language ID");
         }
         return -1;
     }
 
-    self->language = language_check_pointer(PyLong_AsVoidPtr(language));
+    self->language = PyLong_AsVoidPtr(language);
     if (self->language == NULL) {
         return -1;
     }

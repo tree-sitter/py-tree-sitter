@@ -43,15 +43,24 @@ PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self,
 
 PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args) {
     TSLanguage *language;
-    PyObject *language_id;
+    PyObject *language_obj;
     uint16_t state_id;
-    if (!PyArg_ParseTuple(args, "OH:reset", &language_id, &state_id)) {
+    if (!PyArg_ParseTuple(args, "OH:reset", &language_obj, &state_id)) {
         return NULL;
     }
     if (REPLACE("reset()", "reset_state()") < 0) {
         return NULL;
     }
-    language = language_check_pointer(PyLong_AsVoidPtr(language_id));
+
+    Py_ssize_t language_id = PyLong_AsSsize_t(language_obj);
+    if (language_id < 1 || (language_id % sizeof(TSLanguage *)) != 0) {
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError, "invalid language ID");
+        }
+        return NULL;
+    }
+
+    language = PyLong_AsVoidPtr(language_obj);
     if (language == NULL) {
         return NULL;
     }

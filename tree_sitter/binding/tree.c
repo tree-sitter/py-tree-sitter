@@ -190,7 +190,7 @@ static PyGetSetDef tree_accessors[] = {
      NULL},
     {"text", (getter)tree_get_text, NULL,
      PyDoc_STR("The source text of this tree, if unedited.\n\n"
-               ".. deprecated:: 0.22.0\n   Use ``root_node.text`` instead."),
+               ".. deprecated:: 0.22.0\n\n   Use ``root_node.text`` instead."),
      NULL},
     {"included_ranges", (getter)tree_get_included_ranges, NULL,
      PyDoc_STR("The included ranges that were used to parse the syntax tree."), NULL},

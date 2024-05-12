@@ -17,11 +17,9 @@ class TestLanguage(TestCase):
         self.python = tree_sitter_python.language()
         self.rust = tree_sitter_rust.language()
 
-    def test_init_not_positive(self):
+    def test_init_invalid(self):
         self.assertRaises(ValueError, Language, -1)
-
-    def test_init_segv(self):
-        self.assertRaises(RuntimeError, Language, 1024)
+        self.assertRaises(ValueError, Language, 42)
 
     def test_properties(self):
         lang = Language(self.python)
