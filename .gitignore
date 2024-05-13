@@ -7,3 +7,4 @@ dist
 *.so
 __pycache__
 wheelhouse
+docs/_build

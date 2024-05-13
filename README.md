@@ -2,6 +2,7 @@
 
 [![CI][ci]](https://github.com/tree-sitter/py-tree-sitter/actions/workflows/ci.yml)
 [![pypi][pypi]](https://pypi.org/project/tree-sitter/)
+[![docs][docs]](https://tree-sitter.github.io/py-tree-sitter/)
 
 This module provides Python bindings to the [tree-sitter] parsing library.
 
@@ -35,45 +36,7 @@ Then, you can load it as a `Language` object:
 import tree_sitter_python as tspython
 from tree_sitter import Language, Parser
 
-PY_LANGUAGE = Language(tspython.language(), "python")
-```
-
-#### Build from source
-
-> [!WARNING]
-> This method of loading languages is deprecated and will be removed in `v0.22.0`.
-> You should only use it if you need languages that have not updated their bindings.
-> Keep in mind that you will need a C compiler in this case.
-
-First you'll need a Tree-sitter language implementation for each language that you want to parse.
-
-```sh
-git clone https://github.com/tree-sitter/tree-sitter-go
-git clone https://github.com/tree-sitter/tree-sitter-javascript
-git clone https://github.com/tree-sitter/tree-sitter-python
-```
-
-Use the `Language.build_library` method to compile these into a library that's
-usable from Python. This function will return immediately if the library has
-already been compiled since the last time its source code was modified:
-
-```python
-from tree_sitter import Language, Parser
-
-Language.build_library(
-    # Store the library in the `build` directory
-    "build/my-languages.so",
-    # Include one or more languages
-    ["vendor/tree-sitter-go", "vendor/tree-sitter-javascript", "vendor/tree-sitter-python"],
-)
-```
-
-Load the languages into your app as `Language` objects:
-
-```python
-GO_LANGUAGE = Language("build/my-languages.so", "go")
-JS_LANGUAGE = Language("build/my-languages.so", "javascript")
-PY_LANGUAGE = Language("build/my-languages.so", "python")
+PY_LANGUAGE = Language(tspython.language())
 ```
 
 ### Basic parsing
@@ -324,5 +287,6 @@ To try out and explore the code referenced in this README, check out [examples/u
 [tree query]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
 [ci]: https://img.shields.io/github/actions/workflow/status/tree-sitter/py-tree-sitter/ci.yml?logo=github&label=CI
 [pypi]: https://img.shields.io/pypi/v/tree-sitter?logo=pypi&logoColor=ffd242&label=PyPI
+[docs]: https://img.shields.io/github/deployments/tree-sitter/py-tree-sitter/github-pages?logo=sphinx&label=Docs
 [examples/walk_tree.py]: https://github.com/tree-sitter/py-tree-sitter/blob/master/examples/walk_tree.py
 [examples/usage.py]: https://github.com/tree-sitter/py-tree-sitter/blob/master/examples/usage.py

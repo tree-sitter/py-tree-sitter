@@ -17,51 +17,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_asan:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    env:
-      PYTHON_VERSION: "3.8"
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-      - name: Set Python path
-        run: echo "PYTHON_PATH=$RUNNER_TOOL_CACHE/Python/ASAN" >> "$GITHUB_ENV"
-      - name: Cache Python
-        uses: actions/cache@v4
-        id: python-cache
-        with:
-          path: ${{env.PYTHON_PATH}}
-          key: python-${{env.PYTHON_VERSION}}
-      - name: Build Python+ASAN
-        if: steps.python-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone --depth=1 -b $PYTHON_VERSION \
-            https://github.com/python/cpython "$RUNNER_TEMP/cpython"
-          cd "$RUNNER_TEMP/cpython"
-          ./configure \
-              --with-pydebug \
-              --with-assertions \
-              --with-address-sanitizer \
-              --with-undefined-behavior-sanitizer \
-              --disable-shared \
-              --prefix="$PYTHON_PATH"
-          make -j2 && make install
-          "$PYTHON_PATH/bin/python3" -mensurepip
-      - name: Sanitize
-        run: |-
-          "$PYTHON_PATH/bin/pip3" install -e .
-          "$PYTHON_PATH/bin/python3" -c 'import tree_sitter'
-        env:
-          CFLAGS: "-O0 -g"
-
   build:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11"]
+        python: ["3.9", "3.10", "3.11", "3.12"]
         os: [ubuntu-latest, macos-13, windows-latest]
     runs-on: ${{matrix.os}}
     steps:
@@ -74,10 +34,11 @@ jobs:
         with:
           python-version: ${{matrix.python}}
       - name: Lint
-        run: pipx run ruff check .
+        continue-on-error: true
+        run: pipx run ruff check . --output-format=github
       - name: Build
-        run: pip install -e .
+        run: pip install -v -e .[tests]
         env:
-          CFLAGS: "-O0 -g"
+          CFLAGS: -Wextra -Og -g -fno-omit-frame-pointer
       - name: Test
-        run: python -Wignore:::tree_sitter -munittest
+        run: python -munittest -v

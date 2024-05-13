@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tree-sitter"
 version = "0.21.3"
-description = "Python bindings for the Tree-Sitter parsing library"
+description = "Python bindings to the Tree-sitter parsing library"
 keywords = ["incremental", "parsing", "tree-sitter"]
 classifiers = [
     "Intended Audience :: Developers",
@@ -17,25 +17,36 @@ classifiers = [
     "Topic :: Text Processing :: Linguistic",
     "Typing :: Typed",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 readme = "README.md"
 
 [project.urls]
 Homepage = "https://tree-sitter.github.io/tree-sitter/"
 Source = "https://github.com/tree-sitter/py-tree-sitter"
+Documentation = "https://tree-sitter.github.io/py-tree-sitter/"
 
 [[project.authors]]
 name = "Max Brunsfeld"
 email = "maxbrunsfeld@gmail.com"
 
+[project.optional-dependencies]
+docs = ["sphinx~=7.3", "sphinx-book-theme"]
+tests = [
+    "tree-sitter-html",
+    "tree-sitter-javascript",
+    "tree-sitter-json",
+    "tree-sitter-python",
+    "tree-sitter-rust",
+]
+
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 line-length = 100
 indent-width = 4
 extend-exclude = [
     ".github",
     "__pycache__",
-    "tests/fixtures",
+    "setup.py",
     "tree_sitter/core",
 ]
 
@@ -45,7 +56,8 @@ indent-style = "space"
 
 [tool.cibuildwheel]
 build-frontend = "build"
+test-extras = ["tests"]
 test-command = "python -munittest discover -s {project}/tests"
 
-[tool.cibuildwheel.environment]
-PYTHONWARNINGS = "ignore:::tree_sitter"
+[tool.mypy]
+exclude = ["tree_sitter/core"]
