@@ -33,11 +33,11 @@ jobs:
       - name: Install
         run: pip install -e .[docs]
         env:
-          CFLAGS: "-O0 -g"
+          CFLAGS: -O0
       - name: Build docs
         run: sphinx-build -M html docs docs/_build
       - name: Upload docs artifact
-        uses: actions/deploy-pages@v3
+        uses: actions/upload-pages-artifact@v3
         with:
           path: docs/_build/html
       - name: Deploy to GitHub Pages
