@@ -4,6 +4,7 @@ on:
   push:
     branches: [master]
     paths:
+      - pyproject.toml
       - tree_sitter/**
       - docs/**
 
