@@ -1,4 +1,4 @@
-﻿Point
+Point
 =====
 
 .. autoclass:: tree_sitter.Point

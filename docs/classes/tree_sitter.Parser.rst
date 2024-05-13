@@ -1,4 +1,4 @@
-﻿Parser
+Parser
 ======
 
 .. autoclass:: tree_sitter.Parser
@@ -12,6 +12,10 @@
 
 
    .. automethod:: parse
+
+      .. versionchanged:: 0.22.0
+
+         Now accepts an ``encoding`` parameter.
    .. automethod:: reset
    .. automethod:: set_included_ranges
    .. automethod:: set_language
