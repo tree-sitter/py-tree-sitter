@@ -46,13 +46,6 @@ PyObject *node_compare(Node *self, PyObject *other, int op) {
     return PyBool_FromLong(result ^ (op == Py_NE));
 }
 
-PyObject *node_sexp(Node *self, PyObject *Py_UNUSED(args)) {
-    if (REPLACE("Node.sexp()", "str()") < 0) {
-        return NULL;
-    }
-    return node_str(self);
-}
-
 PyObject *node_walk(Node *self, PyObject *Py_UNUSED(args)) {
     ModuleState *state = GET_MODULE_STATE(self);
     TreeCursor *tree_cursor = PyObject_New(TreeCursor, state->tree_cursor_type);
@@ -565,9 +558,6 @@ PyDoc_STRVAR(node_edit_doc,
              ":meth:`Tree.edit`, all of the nodes that you retrieve from the tree afterwards "
              "will already reflect the edit. You only need to use this when you have a specific "
              ":class:`Node` instance that you want to keep and continue to use after an edit.");
-PyDoc_STRVAR(node_sexp_doc, "sexp(self, /)\n--\n\n"
-                            "Get an S-expression representing the node.\n\n"
-                            ".. deprecated:: 0.22.0\n\n   Use :obj:`str` instead.");
 PyDoc_STRVAR(node_child_doc,
              "child(self, index, /)\n--\n\n"
              "Get this node's child at the given index, where ``0`` represents the first "
@@ -621,12 +611,6 @@ static PyMethodDef node_methods[] = {
         .ml_meth = (PyCFunction)node_edit,
         .ml_flags = METH_VARARGS | METH_KEYWORDS,
         .ml_doc = node_edit_doc,
-    },
-    {
-        .ml_name = "sexp",
-        .ml_meth = (PyCFunction)node_sexp,
-        .ml_flags = METH_NOARGS,
-        .ml_doc = node_sexp_doc,
     },
     {
         .ml_name = "child",

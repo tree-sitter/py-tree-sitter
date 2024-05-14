@@ -1,4 +1,4 @@
-﻿LookaheadIterator
+LookaheadIterator
 =================
 
 .. autoclass:: tree_sitter.LookaheadIterator
@@ -7,7 +7,6 @@
    -------
 
    .. automethod:: iter_names
-   .. automethod:: reset
    .. automethod:: reset_state
 
    Special methods

@@ -16,10 +16,10 @@ Parser
       .. versionchanged:: 0.22.0
 
          Now accepts an ``encoding`` parameter.
+      .. versionchanged:: 0.23.0
+
+         No longer accepts a ``keep_text`` parameter.
    .. automethod:: reset
-   .. automethod:: set_included_ranges
-   .. automethod:: set_language
-   .. automethod:: set_timeout_micros
 
    Attributes
    ----------

@@ -1,4 +1,4 @@
-﻿Node
+Node
 ====
 
 .. autoclass:: tree_sitter.Node
@@ -18,7 +18,6 @@
    .. automethod:: named_child
    .. automethod:: named_descendant_for_byte_range
    .. automethod:: named_descendant_for_point_range
-   .. automethod:: sexp
    .. automethod:: walk
 
    Special Methods
