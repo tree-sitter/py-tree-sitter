@@ -5,15 +5,20 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     if (!PyArg_ParseTuple(args, "O:__init__", &language)) {
         return -1;
     }
-    Py_uintptr_t language_id = PyLong_AsSize_t(language);
-    if (language_id == 0 || (language_id % sizeof(TSLanguage *)) != 0) {
-        if (!PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError, "invalid language ID");
+
+    if (PyCapsule_CheckExact(language)) {
+        self->language = PyCapsule_GetPointer(language, "tree_sitter.Language");
+    } else {
+        Py_uintptr_t language_id = PyLong_AsSize_t(language);
+        if (language_id == 0 || (language_id % sizeof(TSLanguage *)) != 0) {
+            if (!PyErr_Occurred()) {
+                PyErr_SetString(PyExc_ValueError, "invalid language ID");
+            }
+            return -1;
         }
-        return -1;
+        self->language = PyLong_AsVoidPtr(language);
     }
 
-    self->language = PyLong_AsVoidPtr(language);
     if (self->language == NULL) {
         return -1;
     }

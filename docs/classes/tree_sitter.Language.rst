@@ -3,6 +3,10 @@ Language
 
 .. autoclass:: tree_sitter.Language
 
+   .. versionchanged:: 0.23.0
+
+      The argument can now be a `capsule <https://docs.python.org/3/c-api/capsule.html>`_.
+
 
    Methods
    -------
