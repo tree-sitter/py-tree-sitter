@@ -1,9 +1,9 @@
 from collections.abc import ByteString, Callable, Iterator, Sequence
 from typing import Annotated, Any, Final, Literal, NamedTuple, final
 
-_Ptr = Annotated[int, "TSLanguage *"]
+_Ptr = Annotated[int | object, "TSLanguage *"]
 
-_ParseCB = Callable[[int, Point | tuple[int, int]], bytes]
+_ParseCB = Callable[[int, Point | tuple[int, int]], bytes | None]
 
 _Encoding = Literal["utf8", "utf16"]
 
