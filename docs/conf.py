@@ -76,8 +76,6 @@ def process_docstring(_app, what, name, _obj, _options, lines):
             lines[0] = "Converts ``self`` to an integer for use as an index."
         elif name.endswith("__") and lines and "self" in lines[0]:
             lines[0] = f"Implements ``{special_doc.search(lines[0]).group(0)}``."
-    elif name == "tree_sitter.Point":
-        lines.append(".. versionadded:: 0.22.0")
 
 
 def setup(app):

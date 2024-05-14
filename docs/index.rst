@@ -17,13 +17,9 @@ Constants
       The Tree-sitter library is generally backwards-compatible with languages
       generated using older CLI versions, but is not forwards-compatible.
 
-   .. versionadded:: 0.22.0
-
 .. autodata:: tree_sitter.MIN_COMPATIBLE_LANGUAGE_VERSION
 
    The earliest ABI version that is supported by the current version of the library.
-
-   .. versionadded:: 0.22.0
 
 
 Classes
