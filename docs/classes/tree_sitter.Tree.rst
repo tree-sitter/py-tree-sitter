@@ -1,4 +1,4 @@
-﻿Tree
+Tree
 ====
 
 .. autoclass:: tree_sitter.Tree
@@ -16,4 +16,3 @@
 
    .. autoattribute:: included_ranges
    .. autoattribute:: root_node
-   .. autoattribute:: text

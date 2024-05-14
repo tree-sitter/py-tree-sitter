@@ -122,15 +122,7 @@ PyObject *tree_cursor_goto_first_child_for_byte(TreeCursor *self, PyObject *args
 PyObject *tree_cursor_goto_first_child_for_point(TreeCursor *self, PyObject *args) {
     TSPoint point;
     if (!PyArg_ParseTuple(args, "(II):goto_first_child_for_point", &point.row, &point.column)) {
-        if (PyArg_ParseTuple(args, "II:goto_first_child_for_point", &point.row, &point.column)) {
-            PyErr_Clear();
-            if (REPLACE("TreeCursor.goto_first_child_for_point(row, col)",
-                        "TreeCursor.goto_first_child_for_point(point)") < 0) {
-                return NULL;
-            }
-        } else {
-            return NULL;
-        }
+        return NULL;
     }
 
     int64_t result = ts_tree_cursor_goto_first_child_for_point(&self->cursor, point);
@@ -223,11 +215,9 @@ PyDoc_STRVAR(tree_cursor_goto_first_child_for_byte_doc,
              "given byte offset." DOC_RETURNS
              "``True`` if the child node was found, ``False`` otherwise.");
 PyDoc_STRVAR(tree_cursor_goto_first_child_for_point_doc,
-             "goto_first_child_for_point(self, *args)\n--\n\n"
+             "goto_first_child_for_point(self, point, /)\n--\n\n"
              "Move this cursor to the first child of its current node that extends beyond the "
-             "given row/column point.\n\n"
-             ".. versionchanged:: 0.22.0\n   Use ``goto_first_child_for_point(point)`` "
-             "instead of ``goto_first_child_for_point(row, column)``" DOC_RETURNS
+             "given row/column point.\n\n" DOC_RETURNS
              "``True`` if the child node was found, ``False`` otherwise.");
 PyDoc_STRVAR(tree_cursor_reset_doc, "reset(self, node, /)\n--\n\n"
                                     "Re-initialize the cursor to start at the original node "

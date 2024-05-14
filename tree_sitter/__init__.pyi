@@ -1,6 +1,5 @@
 from collections.abc import ByteString, Callable, Iterator, Sequence
-from typing import Annotated, Any, Final, Literal, NamedTuple, final, overload
-from typing_extensions import deprecated
+from typing import Annotated, Any, Final, Literal, NamedTuple, final
 
 _Ptr = Annotated[int, "TSLanguage *"]
 
@@ -147,8 +146,6 @@ class Node:
         end_point: Point | tuple[int, int],
         /,
     ) -> Node | None: ...
-    @deprecated("Use `str()` instead")
-    def sexp(self) -> str: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
     def __eq__(self, other: Any, /) -> bool: ...
@@ -161,9 +158,6 @@ class Tree:
     def root_node(self) -> Node: ...
     @property
     def included_ranges(self) -> list[Range]: ...
-    @property
-    @deprecated("Use `root_node.text` instead")
-    def text(self) -> bytes | None: ...
     def root_node_with_offset(
         self,
         offset_bytes: int,
@@ -204,11 +198,7 @@ class TreeCursor:
     def goto_previous_sibling(self) -> bool: ...
     def goto_descendant(self, index: int, /) -> None: ...
     def goto_first_child_for_byte(self, byte: int, /) -> bool: ...
-    @overload
     def goto_first_child_for_point(self, point: Point | tuple[int, int], /) -> bool: ...
-    @overload
-    @deprecated("Use `goto_first_child_for_point(point)` instead")
-    def goto_first_child_for_point(self, row: int, column: int, /) -> bool: ...
     def __copy__(self) -> TreeCursor: ...
 
 @final
@@ -241,31 +231,14 @@ class Parser:
 
     # TODO(0.24): implement logger
 
-    @overload
     def parse(
         self,
-        source: ByteString | _ParseCB | None,
+        source: ByteString | _ParseCB,
         /,
         old_tree: Tree | None = None,
         encoding: _Encoding = "utf8",
-    ) -> Tree: ...
-    @overload
-    @deprecated("`keep_text` will be removed")
-    def parse(
-        self,
-        source: ByteString | _ParseCB | None,
-        /,
-        old_tree: Tree | None = None,
-        encoding: _Encoding = "utf8",
-        keep_text: bool = True,
     ) -> Tree: ...
     def reset(self) -> None: ...
-    @deprecated("Use the `language` setter instead")
-    def set_language(self, language: Language, /) -> None: ...
-    @deprecated("Use the `included_ranges` setter instead")
-    def set_included_ranges(self, ranges: Sequence[Range], /) -> None: ...
-    @deprecated("Use the `timeout_micros` setter instead")
-    def set_timeout_micros(self, timeout: int, /) -> None: ...
 
 @final
 class Query:
@@ -301,8 +274,6 @@ class LookaheadIterator(Iterator[int]):
     def current_symbol(self) -> int: ...
     @property
     def current_symbol_name(self) -> str: ...
-    @deprecated("Use `reset_state()` instead")
-    def reset(self, language: _Ptr, state: int, /) -> bool: ...
 
     # TODO(0.24): rename to reset
     def reset_state(self, state: int, language: Language | None = None) -> bool: ...

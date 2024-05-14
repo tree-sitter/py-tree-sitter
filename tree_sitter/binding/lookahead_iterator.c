@@ -40,34 +40,6 @@ PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self,
     return PyUnicode_FromString(name);
 }
 
-PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args) {
-    TSLanguage *language;
-    PyObject *language_obj;
-    uint16_t state_id;
-    if (!PyArg_ParseTuple(args, "OH:reset", &language_obj, &state_id)) {
-        return NULL;
-    }
-    if (REPLACE("reset()", "reset_state()") < 0) {
-        return NULL;
-    }
-
-    Py_uintptr_t language_id = PyLong_AsSize_t(language_obj);
-    if (language_id == 0 || (language_id % sizeof(TSLanguage *)) != 0) {
-        if (!PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError, "invalid language ID");
-        }
-        return NULL;
-    }
-
-    language = PyLong_AsVoidPtr(language_obj);
-    if (language == NULL) {
-        return NULL;
-    }
-
-    bool result = ts_lookahead_iterator_reset(self->lookahead_iterator, language, state_id);
-    return PyBool_FromLong(result);
-}
-
 PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args,
                                          PyObject *kwargs) {
     uint16_t state_id;
@@ -114,11 +86,6 @@ PyObject *lookahead_iterator_iter_names(LookaheadIterator *self) {
     return PyObject_Init((PyObject *)iter, state->lookahead_names_iterator_type);
 }
 
-PyDoc_STRVAR(lookahead_iterator_reset_doc,
-             "reset(self, language, state, /)\n--\n\n"
-             "Reset the lookahead iterator.\n\n"
-             ".. deprecated:: 0.22.0\n\n   Use :meth:`reset_state` instead." DOC_RETURNS
-             "``True`` if it was reset successfully or ``False`` if it failed.");
 PyDoc_STRVAR(lookahead_iterator_reset_state_doc,
              "reset_state(self, state, language=None)\n--\n\n"
              "Reset the lookahead iterator." DOC_RETURNS
@@ -127,12 +94,6 @@ PyDoc_STRVAR(lookahead_iterator_iter_names_doc, "iter_names(self, /)\n--\n\n"
                                                 "Iterate symbol names.");
 
 static PyMethodDef lookahead_iterator_methods[] = {
-    {
-        .ml_name = "reset",
-        .ml_meth = (PyCFunction)lookahead_iterator_reset,
-        .ml_flags = METH_VARARGS,
-        .ml_doc = lookahead_iterator_reset_doc,
-    },
     {
         .ml_name = "reset_state",
         .ml_meth = (PyCFunction)lookahead_iterator_reset_state,

@@ -79,11 +79,12 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *source_or_callback;
     PyObject *old_tree_obj = NULL;
-    int keep_text = 1;
+    bool keep_text = true;
     const char *encoding = "utf8";
-    char *keywords[] = {"", "old_tree", "encoding", "keep_text", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O!sp:parse", keywords, &source_or_callback,
-                                     state->tree_type, &old_tree_obj, &encoding, &keep_text)) {
+    Py_ssize_t encoding_len = 4;
+    char *keywords[] = {"", "old_tree", "encoding", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O!s#:parse", keywords, &source_or_callback,
+                                     state->tree_type, &old_tree_obj, &encoding, &encoding_len)) {
         return NULL;
     }
 
@@ -105,7 +106,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         if (normalize_encoding == NULL) {
             goto encoding_error;
         }
-        PyObject *arg = PyUnicode_DecodeASCII(encoding, strlen(encoding), NULL);
+        PyObject *arg = PyUnicode_DecodeASCII(encoding, encoding_len, NULL);
         if (arg == NULL) {
             goto encoding_error;
         }
@@ -155,7 +156,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         Py_XDECREF(payload.previous_return_value);
 
         source_or_callback = Py_None;
-        keep_text = 0;
+        keep_text = false;
     } else {
         PyErr_SetString(PyExc_TypeError, "source must be a bytestring or a callable");
         return NULL;
@@ -205,21 +206,6 @@ int parser_set_timeout_micros(Parser *self, PyObject *arg, void *Py_UNUSED(paylo
 
     ts_parser_set_timeout_micros(self->parser, PyLong_AsUnsignedLong(arg));
     return 0;
-}
-
-PyObject *parser_set_timeout_micros_old(Parser *self, PyObject *arg) {
-    if (!PyLong_Check(arg)) {
-        PyErr_Format(PyExc_TypeError, "'timeout_micros' must be assigned an int, not %s",
-                     arg->ob_type->tp_name);
-        return NULL;
-    }
-    if (REPLACE("Parser.set_timeout_micros()", "the timeout_micros setter") < 0) {
-        return NULL;
-    }
-    if (parser_set_timeout_micros(self, arg, NULL) < 0) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
 }
 
 PyObject *parser_get_included_ranges(Parser *self, void *Py_UNUSED(payload)) {
@@ -282,21 +268,6 @@ int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payl
     return 0;
 }
 
-PyObject *parser_set_included_ranges_old(Parser *self, PyObject *arg) {
-    if (!PyList_Check(arg)) {
-        PyErr_Format(PyExc_TypeError, "'included_ranges' must be assigned a list, not %s",
-                     arg->ob_type->tp_name);
-        return NULL;
-    }
-    if (REPLACE("Parser.set_included_ranges()", "the included_ranges setter") < 0) {
-        return NULL;
-    }
-    if (parser_set_included_ranges(self, arg, NULL) < 0) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
-
 PyObject *parser_get_language(Parser *self, void *Py_UNUSED(payload)) {
     if (!self->language) {
         Py_RETURN_NONE;
@@ -337,21 +308,6 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
     return 0;
 }
 
-PyObject *parser_set_language_old(Parser *self, PyObject *arg) {
-    if (!IS_INSTANCE(arg, language_type)) {
-        PyErr_Format(PyExc_TypeError, "set_language() argument must tree_sitter.Language, not %s",
-                     arg->ob_type->tp_name);
-        return NULL;
-    }
-    if (REPLACE("Parser.set_language()", "the language setter") < 0) {
-        return NULL;
-    }
-    if (parser_set_language(self, arg, NULL) < 0) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
-
 int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *language = NULL, *included_ranges = NULL, *timeout_micros = NULL;
@@ -381,7 +337,7 @@ int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
 
 PyDoc_STRVAR(
     parser_parse_doc,
-    "parse(self, source, /, old_tree=None, encoding=\"utf8\", keep_text=True)\n--\n\n"
+    "parse(self, source, /, old_tree=None, encoding=\"utf8\")\n--\n\n"
     "Parse a slice of a bytestring or bytes provided in chunks by a callback.\n\n"
     "The callback function takes a byte offset and position and returns a bytestring starting "
     "at that offset and position. The slices can be of any length. If the given position "
@@ -395,18 +351,6 @@ PyDoc_STRVAR(
     "If the parser previously failed because of a timeout, then by default, it will resume where "
     "it left off on the next call to :meth:`parse`.\nIf you don't want to resume, and instead "
     "intend to use this parser to parse some other document, you must call :meth:`reset` first.");
-PyDoc_STRVAR(parser_set_language_doc,
-             "set_language(self, language, /)\n--\n\n"
-             "Set the language that will be used for parsing.\n\n"
-             ".. deprecated:: 0.22.0\n\n   Use the :attr:`language` setter instead.");
-PyDoc_STRVAR(parser_set_included_ranges_doc,
-             "set_included_ranges(self, ranges, /)\n--\n\n"
-             "Set the ranges of text that the parser will include when parsing.\n\n"
-             ".. deprecated:: 0.22.0\n\n   Use the :attr:`included_ranges` setter instead.");
-PyDoc_STRVAR(parser_set_timeout_micros_doc,
-             "set_timeout_micros(self, timeout, /)\n--\n\n"
-             "Set the duration in microseconds that parsing is allowed to take.\n\n"
-             ".. deprecated:: 0.22.0\n\n   Use the :attr:`timeout_micros` setter instead.");
 
 static PyMethodDef parser_methods[] = {
     {
@@ -420,24 +364,6 @@ static PyMethodDef parser_methods[] = {
         .ml_meth = (PyCFunction)parser_reset,
         .ml_flags = METH_NOARGS,
         .ml_doc = parser_reset_doc,
-    },
-    {
-        .ml_name = "set_timeout_micros",
-        .ml_meth = (PyCFunction)parser_set_timeout_micros_old,
-        .ml_flags = METH_O,
-        .ml_doc = parser_set_timeout_micros_doc,
-    },
-    {
-        .ml_name = "set_included_ranges",
-        .ml_meth = (PyCFunction)parser_set_included_ranges_old,
-        .ml_flags = METH_O,
-        .ml_doc = parser_set_included_ranges_doc,
-    },
-    {
-        .ml_name = "set_language",
-        .ml_meth = (PyCFunction)parser_set_language_old,
-        .ml_flags = METH_O,
-        .ml_doc = parser_set_language_doc,
     },
     {NULL},
 };
