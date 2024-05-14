@@ -3,10 +3,6 @@ Language
 
 .. autoclass:: tree_sitter.Language
 
-   .. versionchanged:: 0.22.0
-
-      No longer accepts a ``name`` parameter.
-
 
    Methods
    -------
@@ -25,21 +21,13 @@ Language
    ---------------
 
    .. automethod:: __eq__
-
-      .. versionadded:: 0.22.0
    .. automethod:: __hash__
 
       .. important::
 
          On 32-bit platforms, you must use ``hash(self) & 0xFFFFFFFF`` to get the actual hash.
-
-      .. versionadded:: 0.22.0
    .. automethod:: __ne__
-
-      .. versionadded:: 0.22.0
    .. automethod:: __repr__
-
-      .. versionadded:: 0.22.0
 
 
    Attributes
