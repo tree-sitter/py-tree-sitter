@@ -108,18 +108,20 @@ PyObject *tree_cursor_goto_first_child_for_byte(TreeCursor *self, PyObject *args
     if (!PyArg_ParseTuple(args, "I:goto_first_child_for_byte", &byte)) {
         return NULL;
     }
+
     int64_t result = ts_tree_cursor_goto_first_child_for_byte(&self->cursor, byte);
-    if (result) {
-        Py_XDECREF(self->node);
-        self->node = NULL;
+    if (result == -1) {
+        Py_RETURN_FALSE;
     }
-    return PyBool_FromLong(result);
+    Py_XDECREF(self->node);
+    self->node = NULL;
+    Py_RETURN_TRUE;
 }
 
 PyObject *tree_cursor_goto_first_child_for_point(TreeCursor *self, PyObject *args) {
-    uint32_t row, column;
-    if (!PyArg_ParseTuple(args, "(II):goto_first_child_for_point", &row, &column)) {
-        if (PyArg_ParseTuple(args, "II:goto_first_child_for_point", &row, &column)) {
+    TSPoint point;
+    if (!PyArg_ParseTuple(args, "(II):goto_first_child_for_point", &point.row, &point.column)) {
+        if (PyArg_ParseTuple(args, "II:goto_first_child_for_point", &point.row, &point.column)) {
             PyErr_Clear();
             if (REPLACE("TreeCursor.goto_first_child_for_point(row, col)",
                         "TreeCursor.goto_first_child_for_point(point)") < 0) {
@@ -129,13 +131,14 @@ PyObject *tree_cursor_goto_first_child_for_point(TreeCursor *self, PyObject *arg
             return NULL;
         }
     }
-    int64_t result =
-        ts_tree_cursor_goto_first_child_for_point(&self->cursor, (TSPoint){row, column});
-    if (result) {
-        Py_XDECREF(self->node);
-        self->node = NULL;
+
+    int64_t result = ts_tree_cursor_goto_first_child_for_point(&self->cursor, point);
+    if (result == -1) {
+        Py_RETURN_FALSE;
     }
-    return PyBool_FromLong(result);
+    Py_XDECREF(self->node);
+    self->node = NULL;
+    Py_RETURN_TRUE;
 }
 
 PyObject *tree_cursor_reset(TreeCursor *self, PyObject *args) {
