@@ -30,12 +30,6 @@ Language
    .. automethod:: __hash__
 
       .. versionadded:: 0.22.0
-   .. automethod:: __index__
-
-      .. versionadded:: 0.22.0
-   .. automethod:: __int__
-
-      .. versionadded:: 0.22.0
    .. automethod:: __ne__
 
       .. versionadded:: 0.22.0

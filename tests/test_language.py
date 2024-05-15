@@ -75,10 +75,9 @@ class TestLanguage(TestCase):
         self.assertEqual(Language(self.json), Language(self.json))
         self.assertNotEqual(Language(self.rust), Language(self.html))
 
-    def test_int(self):
+    def test_hash(self):
         for name in ["html", "javascript", "json", "python", "rust"]:
             with self.subTest(language=name):
                 ptr = getattr(self, name)
                 lang = Language(ptr)
-                self.assertEqual(int(lang), ptr)
                 self.assertEqual(hash(lang), ptr)

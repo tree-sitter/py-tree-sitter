@@ -43,8 +43,6 @@ PyObject *language_repr(Language *self) {
 #endif
 }
 
-PyObject *language_int(Language *self) { return PyLong_FromVoidPtr(self->language); }
-
 Py_hash_t language_hash(Language *self) { return (Py_hash_t)self->language; }
 
 PyObject *language_compare(Language *self, PyObject *other, int op) {
@@ -300,8 +298,6 @@ static PyType_Slot language_type_slots[] = {
     {Py_tp_dealloc, language_dealloc},
     {Py_tp_methods, language_methods},
     {Py_tp_getset, language_accessors},
-    {Py_nb_int, language_int},
-    {Py_nb_index, language_int},
     {0, NULL},
 };
 
