@@ -36,6 +36,9 @@ PyObject *tree_root_node_with_offset(Tree *self, PyObject *args) {
 
     ModuleState *state = GET_MODULE_STATE(self);
     TSNode node = ts_tree_root_node_with_offset(self->tree, offset_bytes, offset_extent);
+    if (ts_node_is_null(node)) {
+        Py_RETURN_NONE;
+    }
     return node_new_internal(state, node, (PyObject *)self);
 }
 
