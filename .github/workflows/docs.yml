@@ -5,7 +5,8 @@ on:
     branches: [master]
     paths:
       - pyproject.toml
-      - tree_sitter/**
+      - tree_sitter/__init__.py
+      - tree_sitter/binding/*
       - docs/**
 
 concurrency:
