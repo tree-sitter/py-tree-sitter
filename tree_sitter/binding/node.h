@@ -26,8 +26,6 @@ PyObject *node_child_by_field_id(Node *self, PyObject *args);
 
 PyObject *node_child_by_field_name(Node *self, PyObject *args);
 
-PyObject *node_children_by_field_id_internal(Node *self, TSFieldId field_id);
-
 PyObject *node_children_by_field_id(Node *self, PyObject *args);
 
 PyObject *node_children_by_field_name(Node *self, PyObject *args);

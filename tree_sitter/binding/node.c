@@ -165,7 +165,7 @@ PyObject *node_child_by_field_name(Node *self, PyObject *args) {
     return node_new_internal(state, child, self->tree);
 }
 
-PyObject *node_children_by_field_id_internal(Node *self, TSFieldId field_id) {
+static PyObject *node_children_by_field_id_internal(Node *self, TSFieldId field_id) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *result = PyList_New(0);
 
