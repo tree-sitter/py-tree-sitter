@@ -1,10 +1,9 @@
 from tree_sitter import Language, Parser
 import tree_sitter_python
 
-PY_LANGUAGE = Language(tree_sitter_python.language(), "python")
+PY_LANGUAGE = Language(tree_sitter_python.language())
 
-parser = Parser()
-parser.set_language(PY_LANGUAGE)
+parser = Parser(PY_LANGUAGE)
 
 # parsing a string of code
 tree = parser.parse(
@@ -29,7 +28,7 @@ def foo():
 )
 
 
-def read_callable_byte_offset(byte_offset, point):
+def read_callable_byte_offset(byte_offset, _):
     return src[byte_offset : byte_offset + 1]
 
 
@@ -40,7 +39,7 @@ tree = parser.parse(read_callable_byte_offset)
 src_lines = ["\n", "def foo():\n", "    if bar:\n", "        baz()\n"]
 
 
-def read_callable_point(byte_offset, point):
+def read_callable_point(_, point):
     row, column = point
     if row >= len(src_lines) or column >= len(src_lines[row]):
         return None
@@ -80,7 +79,7 @@ assert function_call_args_node.type == "argument_list"
 
 
 # getting the sexp representation of the tree
-assert root_node.sexp() == (
+assert str(root_node) == (
     "(module "
     "(function_definition "
     "name: (identifier) "

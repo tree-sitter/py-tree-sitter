@@ -44,8 +44,7 @@ PY_LANGUAGE = Language(tspython.language())
 Create a `Parser` and configure it to use a language:
 
 ```python
-parser = Parser()
-parser.set_language(PY_LANGUAGE)
+parser = Parser(PY_LANGUAGE)
 ```
 
 Parse some source code:
@@ -138,7 +137,7 @@ function_call_args_node = function_call_node.child_by_field_name("arguments")
 assert function_call_args_node.type == "argument_list"
 
 
-assert root_node.sexp() == (
+assert str(root_node) == (
     "(module "
         "(function_definition "
             "name: (identifier) "
@@ -156,7 +155,7 @@ assert root_node.sexp() == (
 Or, to use the byte offset with UTF-16 encoding:
 
 ```python
-parser.set_language(JAVASCRIPT)
+parser.language = JAVASCRIPT
 source_code = bytes("'😎' && '🐍'", "utf16")
 
 def read(byte_position, _):
