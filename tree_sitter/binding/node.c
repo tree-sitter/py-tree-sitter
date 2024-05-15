@@ -218,7 +218,7 @@ PyObject *node_field_name_for_child(Node *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "child index must be positive");
         return NULL;
     }
-    if ((uint32_t)index >= ts_node_named_child_count(self->node)) {
+    if ((uint32_t)index >= ts_node_child_count(self->node)) {
         PyErr_SetString(PyExc_IndexError, "child index out of range");
         return NULL;
     }
