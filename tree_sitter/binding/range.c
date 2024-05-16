@@ -10,6 +10,17 @@ int range_init(Range *self, PyObject *args, PyObject *kwargs) {
         return -1;
     }
 
+    if (start_row > end_row || (start_row == end_row && start_col > end_col)) {
+        PyErr_Format(PyExc_ValueError, "Invalid point range: (%u, %u) to (%u, %u)", start_row,
+                     start_col, end_row, end_col);
+        return -1;
+    }
+
+    if (start_byte > end_byte) {
+        PyErr_Format(PyExc_ValueError, "Invalid byte range: %u to %u", start_byte, end_byte);
+        return -1;
+    }
+
     self->range.start_point.row = start_row;
     self->range.start_point.column = start_col;
     self->range.end_point.row = end_row;

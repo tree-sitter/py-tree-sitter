@@ -295,8 +295,7 @@ int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payl
     }
 
     if (!ts_parser_set_included_ranges(self->parser, ranges, length)) {
-        PyErr_SetString(PyExc_ValueError,
-                        "Included ranges must not overlap or end before it starts");
+        PyErr_SetString(PyExc_ValueError, "Included ranges cannot overlap");
         PyMem_Free(ranges);
         return -1;
     }
