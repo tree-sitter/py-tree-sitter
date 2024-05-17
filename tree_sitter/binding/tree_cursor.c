@@ -112,11 +112,11 @@ PyObject *tree_cursor_goto_first_child_for_byte(TreeCursor *self, PyObject *args
 
     int64_t result = ts_tree_cursor_goto_first_child_for_byte(&self->cursor, byte);
     if (result == -1) {
-        Py_RETURN_FALSE;
+        Py_RETURN_NONE;
     }
     Py_XDECREF(self->node);
     self->node = NULL;
-    Py_RETURN_TRUE;
+    return PyLong_FromUnsignedLong((uint32_t)result);
 }
 
 PyObject *tree_cursor_goto_first_child_for_point(TreeCursor *self, PyObject *args) {
@@ -127,11 +127,11 @@ PyObject *tree_cursor_goto_first_child_for_point(TreeCursor *self, PyObject *arg
 
     int64_t result = ts_tree_cursor_goto_first_child_for_point(&self->cursor, point);
     if (result == -1) {
-        Py_RETURN_FALSE;
+        Py_RETURN_NONE;
     }
     Py_XDECREF(self->node);
     self->node = NULL;
-    Py_RETURN_TRUE;
+    return PyLong_FromUnsignedLong((uint32_t)result);
 }
 
 PyObject *tree_cursor_reset(TreeCursor *self, PyObject *args) {
@@ -213,12 +213,12 @@ PyDoc_STRVAR(tree_cursor_goto_first_child_for_byte_doc,
              "goto_first_child_for_byte(self, byte, /)\n--\n\n"
              "Move this cursor to the first child of its current node that extends beyond the "
              "given byte offset." DOC_RETURNS
-             "``True`` if the child node was found, ``False`` otherwise.");
+             "The index of the child node if it was found, ``None`` otherwise.");
 PyDoc_STRVAR(tree_cursor_goto_first_child_for_point_doc,
              "goto_first_child_for_point(self, point, /)\n--\n\n"
              "Move this cursor to the first child of its current node that extends beyond the "
              "given row/column point.\n\n" DOC_RETURNS
-             "``True`` if the child node was found, ``False`` otherwise.");
+             "The index of the child node if it was found, ``None`` otherwise.");
 PyDoc_STRVAR(tree_cursor_reset_doc, "reset(self, node, /)\n--\n\n"
                                     "Re-initialize the cursor to start at the original node "
                                     "that it was constructed with.");
