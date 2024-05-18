@@ -1,5 +1,4 @@
-#include "lookahead_iterator.h"
-#include "language.h"
+#include "types.h"
 
 void lookahead_iterator_dealloc(LookaheadIterator *self) {
     if (self->lookahead_iterator) {

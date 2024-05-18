@@ -1,4 +1,4 @@
-#include "range.h"
+#include "types.h"
 
 int range_init(Range *self, PyObject *args, PyObject *kwargs) {
     uint32_t start_row, start_col, end_row, end_col, start_byte, end_byte;

@@ -1,5 +1,6 @@
-#include "tree.h"
-#include "node.h"
+#include "types.h"
+
+PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree);
 
 void tree_dealloc(Tree *self) {
     ts_tree_delete(self->tree);

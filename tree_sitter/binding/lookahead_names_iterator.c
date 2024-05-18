@@ -1,4 +1,4 @@
-#include "lookahead_names_iterator.h"
+#include "types.h"
 
 PyObject *lookahead_names_iterator_repr(LookaheadNamesIterator *self) {
     return PyUnicode_FromFormat("<LookaheadNamesIterator %p>", self->lookahead_iterator);

@@ -1,4 +1,4 @@
-#include "node.h"
+#include "types.h"
 
 PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree) {
     Node *self = PyObject_New(Node, state->node_type);

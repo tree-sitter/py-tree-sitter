@@ -1,5 +1,6 @@
-#include "tree_cursor.h"
-#include "node.h"
+#include "types.h"
+
+PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree);
 
 void tree_cursor_dealloc(TreeCursor *self) {
     ts_tree_cursor_delete(&self->cursor);

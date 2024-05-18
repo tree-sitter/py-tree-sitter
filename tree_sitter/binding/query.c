@@ -1,5 +1,8 @@
-#include "query.h"
-#include "node.h"
+#include "types.h"
+
+PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree);
+
+PyObject *node_get_text(Node *self, void *payload);
 
 // QueryCapture {{{
 
@@ -298,6 +301,15 @@ static inline bool is_list_capture(TSQuery *query, TSQueryMatch *match,
     return quantifier == TSQuantifierZeroOrMore || quantifier == TSQuantifierOneOrMore;
 }
 
+void query_dealloc(Query *self) {
+    if (self->query) {
+        ts_query_delete(self->query);
+    }
+    Py_XDECREF(self->capture_names);
+    Py_XDECREF(self->text_predicates);
+    Py_TYPE(self)->tp_free(self);
+}
+
 PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     Query *query = (Query *)cls->tp_alloc(cls, 0);
     if (query == NULL) {
@@ -473,15 +485,6 @@ error:
     query_dealloc(query);
     Py_XDECREF(pattern_text_predicates);
     return NULL;
-}
-
-void query_dealloc(Query *self) {
-    if (self->query) {
-        ts_query_delete(self->query);
-    }
-    Py_XDECREF(self->capture_names);
-    Py_XDECREF(self->text_predicates);
-    Py_TYPE(self)->tp_free(self);
 }
 
 PyObject *query_matches(Query *self, PyObject *args, PyObject *kwargs) {

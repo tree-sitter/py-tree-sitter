@@ -1,4 +1,4 @@
-include tree_sitter/binding/*.h
+include tree_sitter/binding/types.h
 
 prune tree_sitter/core
 graft tree_sitter/core/lib/src

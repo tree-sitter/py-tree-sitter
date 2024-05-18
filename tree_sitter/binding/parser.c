@@ -1,9 +1,13 @@
-#include "parser.h"
-
-#include <string.h>
+#include "types.h"
 
 #define SET_ATTRIBUTE_ERROR(name)                                                                  \
     (name != NULL && name != Py_None && parser_set_##name(self, name, NULL) < 0)
+
+typedef struct {
+    PyObject *read_cb;
+    PyObject *previous_return_value;
+    ModuleState *state;
+} ReadWrapperPayload;
 
 PyObject *parser_new(PyTypeObject *cls, PyObject *Py_UNUSED(args), PyObject *Py_UNUSED(kwargs)) {
     Parser *self = (Parser *)cls->tp_alloc(cls, 0);
@@ -12,33 +16,6 @@ PyObject *parser_new(PyTypeObject *cls, PyObject *Py_UNUSED(args), PyObject *Py_
         self->language = NULL;
     }
     return (PyObject *)self;
-}
-
-int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
-    ModuleState *state = GET_MODULE_STATE(self);
-    PyObject *language = NULL, *included_ranges = NULL, *timeout_micros = NULL;
-    char *keywords[] = {
-        "language",
-        "included_ranges",
-        "timeout_micros",
-        NULL,
-    };
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!$OO:__init__", keywords,
-                                     state->language_type, &language, &included_ranges,
-                                     &timeout_micros)) {
-        return -1;
-    }
-
-    if (SET_ATTRIBUTE_ERROR(language)) {
-        return -1;
-    }
-    if (SET_ATTRIBUTE_ERROR(included_ranges)) {
-        return -1;
-    }
-    if (SET_ATTRIBUTE_ERROR(timeout_micros)) {
-        return -1;
-    }
-    return 0;
 }
 
 void parser_dealloc(Parser *self) {
@@ -372,6 +349,33 @@ PyObject *parser_set_language_old(Parser *self, PyObject *arg) {
         return NULL;
     }
     Py_RETURN_NONE;
+}
+
+int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    PyObject *language = NULL, *included_ranges = NULL, *timeout_micros = NULL;
+    char *keywords[] = {
+        "language",
+        "included_ranges",
+        "timeout_micros",
+        NULL,
+    };
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!$OO:__init__", keywords,
+                                     state->language_type, &language, &included_ranges,
+                                     &timeout_micros)) {
+        return -1;
+    }
+
+    if (SET_ATTRIBUTE_ERROR(language)) {
+        return -1;
+    }
+    if (SET_ATTRIBUTE_ERROR(included_ranges)) {
+        return -1;
+    }
+    if (SET_ATTRIBUTE_ERROR(timeout_micros)) {
+        return -1;
+    }
+    return 0;
 }
 
 PyDoc_STRVAR(
