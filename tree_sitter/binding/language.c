@@ -5,8 +5,8 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     if (!PyArg_ParseTuple(args, "O:__init__", &language)) {
         return -1;
     }
-    Py_ssize_t language_id = PyLong_AsSsize_t(language);
-    if (language_id < 1 || (language_id % sizeof(TSLanguage *)) != 0) {
+    Py_uintptr_t language_id = PyLong_AsSize_t(language);
+    if (language_id == 0 || (language_id % sizeof(TSLanguage *)) != 0) {
         if (!PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError, "invalid language ID");
         }
