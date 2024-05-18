@@ -52,8 +52,8 @@ PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args) {
         return NULL;
     }
 
-    Py_ssize_t language_id = PyLong_AsSsize_t(language_obj);
-    if (language_id < 1 || (language_id % sizeof(TSLanguage *)) != 0) {
+    Py_uintptr_t language_id = PyLong_AsSize_t(language_obj);
+    if (language_id == 0 || (language_id % sizeof(TSLanguage *)) != 0) {
         if (!PyErr_Occurred()) {
             PyErr_SetString(PyExc_ValueError, "invalid language ID");
         }

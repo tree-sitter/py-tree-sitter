@@ -1,3 +1,4 @@
+from sys import maxsize
 from unittest import TestCase
 
 from tree_sitter import Language, Query
@@ -79,4 +80,5 @@ class TestLanguage(TestCase):
             with self.subTest(language=name):
                 ptr = getattr(self, name)
                 lang = Language(ptr)
-                self.assertEqual(hash(lang), ptr)
+                hash_ = hash(lang) & maxsize << 1
+                self.assertEqual(hash_, ptr)
