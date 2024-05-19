@@ -161,10 +161,11 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         return NULL;
     }
 
+    if (PyErr_Occurred()) {
+        return NULL;
+    }
     if (!new_tree) {
-        if (!PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError, "Parsing failed");
-        }
+        PyErr_SetString(PyExc_ValueError, "Parsing failed");
         return NULL;
     }
 
