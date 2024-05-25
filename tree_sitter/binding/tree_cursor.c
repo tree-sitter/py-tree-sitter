@@ -162,17 +162,16 @@ PyObject *tree_cursor_reset_to(TreeCursor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PyObject *tree_cursor_copy(PyObject *self, PyObject *Py_UNUSED(args)) {
+PyObject *tree_cursor_copy(TreeCursor *self, PyObject *Py_UNUSED(args)) {
     ModuleState *state = GET_MODULE_STATE(self);
-    TreeCursor *origin = (TreeCursor *)self;
     TreeCursor *copied = PyObject_New(TreeCursor, state->tree_cursor_type);
     if (copied == NULL) {
         return NULL;
     }
 
-    Py_INCREF(origin->tree);
-    copied->tree = origin->tree;
-    copied->cursor = ts_tree_cursor_copy(&origin->cursor);
+    Py_INCREF(self->tree);
+    copied->tree = self->tree;
+    copied->cursor = ts_tree_cursor_copy(&self->cursor);
     return PyObject_Init((PyObject *)copied, state->tree_cursor_type);
 }
 

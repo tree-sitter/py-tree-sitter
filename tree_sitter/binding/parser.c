@@ -175,6 +175,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         return NULL;
     }
     tree->tree = new_tree;
+    tree->language = self->language;
     tree->source = keep_text ? source_or_callback : Py_None;
     Py_INCREF(tree->source);
     return PyObject_Init((PyObject *)tree, state->tree_type);

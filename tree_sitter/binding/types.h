@@ -24,6 +24,7 @@ typedef struct {
     PyObject_HEAD
     TSTree *tree;
     PyObject *source;
+    PyObject *language;
 } Tree;
 
 typedef struct {

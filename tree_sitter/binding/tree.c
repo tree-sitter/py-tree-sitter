@@ -127,6 +127,11 @@ PyObject *tree_get_included_ranges(Tree *self, PyObject *Py_UNUSED(args)) {
     return result;
 }
 
+PyObject *tree_get_language(Tree *self, PyObject *Py_UNUSED(args)) {
+    Py_INCREF(self->language);
+    return self->language;
+}
+
 PyDoc_STRVAR(tree_root_node_with_offset_doc,
              "root_node_with_offset(self, offset_bytes, offset_extent, /)\n--\n\n"
              "Get the root node of the syntax tree, but with its position shifted "
