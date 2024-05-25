@@ -15,4 +15,7 @@ Tree
    ----------
 
    .. autoattribute:: included_ranges
+   .. autoattribute:: language
+
+      .. versionadded:: 0.23.0
    .. autoattribute:: root_node
