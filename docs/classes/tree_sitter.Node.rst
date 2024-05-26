@@ -9,6 +9,9 @@ Node
    .. automethod:: child
    .. automethod:: child_by_field_id
    .. automethod:: child_by_field_name
+   .. automethod:: child_containing_descendant
+
+      .. versionadded:: 0.23.0
    .. automethod:: children_by_field_id
    .. automethod:: children_by_field_name
    .. automethod:: descendant_for_byte_range
