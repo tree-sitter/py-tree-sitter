@@ -2,6 +2,7 @@ Point
 =====
 
 .. autoclass:: tree_sitter.Point
+   :show-inheritance:
 
    Attributes
    ----------

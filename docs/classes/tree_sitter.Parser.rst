@@ -6,7 +6,6 @@ Parser
    Methods
    -------
 
-
    .. automethod:: parse
 
       .. versionchanged:: 0.23.0

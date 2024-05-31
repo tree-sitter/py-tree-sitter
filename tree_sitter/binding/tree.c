@@ -186,6 +186,8 @@ static PyGetSetDef tree_accessors[] = {
      NULL},
     {"included_ranges", (getter)tree_get_included_ranges, NULL,
      PyDoc_STR("The included ranges that were used to parse the syntax tree."), NULL},
+    {"language", (getter)tree_get_language, NULL,
+     PyDoc_STR("The language that was used to parse the syntax tree."), NULL},
     {NULL},
 };
 

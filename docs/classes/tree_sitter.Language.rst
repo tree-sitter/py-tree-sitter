@@ -7,7 +7,6 @@ Language
 
       The argument can now be a `capsule <https://docs.python.org/3/c-api/capsule.html>`_.
 
-
    Methods
    -------
 
@@ -32,7 +31,6 @@ Language
          On 32-bit platforms, you must use ``hash(self) & 0xFFFFFFFF`` to get the actual hash.
    .. automethod:: __ne__
    .. automethod:: __repr__
-
 
    Attributes
    ----------
