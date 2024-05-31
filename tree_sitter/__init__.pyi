@@ -1,13 +1,5 @@
 from collections.abc import ByteString, Callable, Iterator, Sequence
-from typing import Annotated, Any, Final, Literal, NamedTuple, final
-
-_Ptr = Annotated[int | object, "TSLanguage *"]
-
-_ParseCB = Callable[[int, Point | tuple[int, int]], bytes | None]
-
-_Encoding = Literal["utf8", "utf16"]
-
-_UINT32_MAX = 0xFFFFFFFF
+from typing import Annotated, Any, Final, Literal, NamedTuple, Protocol, Self, final, overload
 
 class Point(NamedTuple):
     row: int
@@ -15,11 +7,11 @@ class Point(NamedTuple):
 
 @final
 class Language:
-    def __init__(self, ptr: _Ptr, /) -> None: ...
+    def __init__(self, ptr: Annotated[int | object, "TSLanguage *"], /) -> None: ...
 
-    # TODO(?): add when ABI 15 is available
+    # TODO(0.24): implement name
     # @property
-    # def name(self) -> str: ...
+    # def name(self) -> str | None: ...
 
     @property
     def version(self) -> int: ...
@@ -178,6 +170,7 @@ class Tree:
     ) -> None: ...
     def walk(self) -> TreeCursor: ...
     def changed_ranges(self, new_tree: Tree) -> list[Range]: ...
+    # TODO(0.24): add print_dot_graph
     # TODO(0.24): add copy methods
 
 @final
@@ -232,43 +225,75 @@ class Parser:
     def timeout_micros(self, timeout: int) -> None: ...
     @timeout_micros.deleter
     def timeout_micros(self) -> None: ...
-
-    # TODO(0.24): implement logger
-
+    @overload
     def parse(
         self,
-        source: ByteString | _ParseCB,
+        source: ByteString,
         /,
         old_tree: Tree | None = None,
-        encoding: _Encoding = "utf8",
+        encoding: Literal["utf8", "utf16"] = "utf8",
+    ) -> Tree: ...
+    @overload
+    def parse(
+        self,
+        callback: Callable[[int, Point], bytes | None],
+        /,
+        old_tree: Tree | None = None,
+        encoding: Literal["utf8", "utf16"] = "utf8",
     ) -> Tree: ...
     def reset(self) -> None: ...
+    # TODO(0.24): add set_logger
+    # TODO(0.24): add print_dot_graphs
+
+class QueryError(ValueError): ...
+
+class QueryPredicate(Protocol):
+    def __call__(
+        self,
+        predicate: str,
+        args: list[tuple[str, Literal["capture", "string"]]],
+        pattern_index: int,
+        captures: dict[str, list[Node]]
+    ) -> bool: ...
 
 @final
 class Query:
     def __init__(self, language: Language, source: str) -> None: ...
-
-    # TODO(0.23): implement more Query methods
-
-    # TODO(0.23): return `dict[str, Node]`
+    @property
+    def pattern_count(self) -> int: ...
+    @property
+    def capture_count(self) -> int: ...
+    @property
+    def match_limit(self) -> int: ...
+    @property
+    def did_exceed_match_limit(self) -> bool: ...
+    def set_match_limit(self, match_limit: int | None) -> Self: ...
+    def set_max_start_depth(self, max_start_depth: int | None) -> Self: ...
+    def set_byte_range(self, byte_range: tuple[int, int] | None) -> Self: ...
+    def set_point_range(
+        self,
+        point_range: tuple[Point | tuple[int, int], Point | tuple[int, int]] | None
+    ) -> Self: ...
+    def disable_pattern(self, index: int) -> Self: ...
+    def disable_capture(self, capture: str) -> Self: ...
     def captures(
         self,
         node: Node,
-        *,
-        start_point: Point | tuple[int, int] = Point(0, 0),
-        end_point: Point | tuple[int, int] = Point(_UINT32_MAX, _UINT32_MAX),
-        start_byte: int = 0,
-        end_byte: int = _UINT32_MAX,
-    ) -> list[tuple[Node, str]]: ...
+        /,
+        predicate: QueryPredicate | None = None
+    ) -> dict[str, list[Node]]: ...
     def matches(
         self,
         node: Node,
-        *,
-        start_point: Point | tuple[int, int] = Point(0, 0),
-        end_point: Point | tuple[int, int] = Point(_UINT32_MAX, _UINT32_MAX),
-        start_byte: int = 0,
-        end_byte: int = _UINT32_MAX,
-    ) -> list[tuple[int, dict[str, Node | list[Node]]]]: ...
+        /,
+        predicate: QueryPredicate | None = None
+    ) -> list[tuple[int, dict[str, list[Node]]]]: ...
+    def pattern_settings(self, index: int) -> dict[str, str | None]: ...
+    def pattern_assertions(self, index: int) -> dict[str, tuple[str | None, bool]]: ...
+    def start_byte_for_pattern(self, index: int) -> int: ...
+    def is_pattern_rooted(self, index: int) -> bool: ...
+    def is_pattern_non_local(self, index: int) -> bool: ...
+    def is_pattern_guaranteed_at_step(self, offset: int) -> bool: ...
 
 @final
 class LookaheadIterator(Iterator[int]):
@@ -282,6 +307,11 @@ class LookaheadIterator(Iterator[int]):
     # TODO(0.24): rename to reset
     def reset_state(self, state: int, language: Language | None = None) -> bool: ...
     def iter_names(self) -> Iterator[str]: ...
+
+    # TODO(0.24): implement iter_symbols
+    # def iter_symbols(self) -> Iterator[int]: ...
+
+    # TODO(0.24): return tuple[int, str]
     def __next__(self) -> int: ...
 
 @final

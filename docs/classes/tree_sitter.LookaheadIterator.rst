@@ -2,6 +2,7 @@ LookaheadIterator
 =================
 
 .. autoclass:: tree_sitter.LookaheadIterator
+   :show-inheritance:
 
    Methods
    -------
@@ -9,7 +10,7 @@ LookaheadIterator
    .. automethod:: iter_names
    .. automethod:: reset_state
 
-   Special methods
+   Special Methods
    ---------------
 
    .. automethod:: __iter__

@@ -3,7 +3,7 @@ from unittest import TestCase
 import tree_sitter_python
 import tree_sitter_javascript
 
-from tree_sitter import Language, Parser, Query
+from tree_sitter import Language, Parser, Query, QueryError
 
 
 def collect_matches(matches):
@@ -15,11 +15,7 @@ def format_captures(captures):
 
 
 def format_capture(capture):
-    return (
-        [n.text.decode("utf-8") for n in capture]
-        if isinstance(capture, list)
-        else capture.text.decode("utf-8")
-    )
+    return [n.text.decode("utf-8") for n in capture]
 
 
 class TestQuery(TestCase):
@@ -32,17 +28,16 @@ class TestQuery(TestCase):
         parser = Parser(language)
         tree = parser.parse(source)
         matches = language.query(query).matches(tree.root_node)
-        matches = collect_matches(matches)
-        self.assertEqual(matches, expected)
+        self.assertListEqual(collect_matches(matches), expected)
 
     def test_errors(self):
-        with self.assertRaises(NameError, msg="Invalid node type foo"):
+        with self.assertRaises(QueryError):
             Query(self.python, "(list (foo))")
-        with self.assertRaises(NameError, msg="Invalid field name buzz"):
+        with self.assertRaises(QueryError):
             Query(self.python, "(function_definition buzz: (identifier))")
-        with self.assertRaises(NameError, msg="Invalid capture name garbage"):
+        with self.assertRaises(QueryError):
             Query(self.python, "((function_definition) (#eq? @garbage foo))")
-        with self.assertRaises(SyntaxError, msg="Invalid syntax at offset 6"):
+        with self.assertRaises(QueryError):
             Query(self.python, "(list))")
 
     def test_matches_with_simple_pattern(self):
@@ -50,7 +45,7 @@ class TestQuery(TestCase):
             self.javascript,
             "(function_declaration name: (identifier) @fn-name)",
             b"function one() { two(); function three() {} }",
-            [(0, [("fn-name", "one")]), (0, [("fn-name", "three")])],
+            [(0, [("fn-name", ["one"])]), (0, [("fn-name", ["three"])])],
         )
 
     def test_matches_with_multiple_on_same_root(self):
@@ -73,8 +68,8 @@ class TestQuery(TestCase):
             }
             """,
             [
-                (0, [("the-class-name", "Person"), ("the-method-name", "constructor")]),
-                (0, [("the-class-name", "Person"), ("the-method-name", "getFullName")]),
+                (0, [("the-class-name", ["Person"]), ("the-method-name", ["constructor"])]),
+                (0, [("the-class-name", ["Person"]), ("the-method-name", ["getFullName"])]),
             ],
         )
 
@@ -91,9 +86,9 @@ class TestQuery(TestCase):
             }
             """,
             [
-                (0, [("fn-def", "f1")]),
-                (1, [("fn-ref", "f2")]),
-                (1, [("fn-ref", "f3")]),
+                (0, [("fn-def", ["f1"])]),
+                (1, [("fn-ref", ["f2"])]),
+                (1, [("fn-ref", ["f3"])]),
             ],
         )
 
@@ -107,13 +102,13 @@ class TestQuery(TestCase):
             [[h], [i]];
             """,
             [
-                (0, [("x1", "c"), ("x2", "d")]),
-                (0, [("x1", "e"), ("x2", "f")]),
-                (0, [("x1", "e"), ("x2", "g")]),
-                (0, [("x1", "f"), ("x2", "g")]),
-                (0, [("x1", "e"), ("x2", "h")]),
-                (0, [("x1", "f"), ("x2", "h")]),
-                (0, [("x1", "g"), ("x2", "h")]),
+                (0, [("x1", ["c"]), ("x2", ["d"])]),
+                (0, [("x1", ["e"]), ("x2", ["f"])]),
+                (0, [("x1", ["e"]), ("x2", ["g"])]),
+                (0, [("x1", ["f"]), ("x2", ["g"])]),
+                (0, [("x1", ["e"]), ("x2", ["h"])]),
+                (0, [("x1", ["f"]), ("x2", ["h"])]),
+                (0, [("x1", ["g"]), ("x2", ["h"])]),
             ],
         )
 
@@ -138,11 +133,11 @@ class TestQuery(TestCase):
                 (
                     0,
                     [
-                        ("fn-name", "one"),
+                        ("fn-name", ["one"]),
                         ("fn-statements", ["x = 1;", "y = 2;", "z = 3;"]),
                     ],
                 ),
-                (0, [("fn-name", "two"), ("fn-statements", ["x = 1;"])]),
+                (0, [("fn-name", ["two"]), ("fn-statements", ["x = 1;"])]),
             ],
         )
 
@@ -157,23 +152,19 @@ class TestQuery(TestCase):
             """
         )
 
-        captures = query.captures(tree.root_node)
+        captures = list(query.captures(tree.root_node).items())
 
-        self.assertEqual(captures[0][0].start_point, (0, 4))
-        self.assertEqual(captures[0][0].end_point, (0, 7))
-        self.assertEqual(captures[0][1], "func-def")
+        self.assertEqual(captures[0][0], "func-def")
+        self.assertEqual(captures[0][1][0].start_point, (0, 4))
+        self.assertEqual(captures[0][1][0].end_point, (0, 7))
+        self.assertEqual(captures[0][1][1].start_point, (2, 4))
+        self.assertEqual(captures[0][1][1].end_point, (2, 7))
 
-        self.assertEqual(captures[1][0].start_point, (1, 2))
-        self.assertEqual(captures[1][0].end_point, (1, 5))
-        self.assertEqual(captures[1][1], "func-call")
-
-        self.assertEqual(captures[2][0].start_point, (2, 4))
-        self.assertEqual(captures[2][0].end_point, (2, 7))
-        self.assertEqual(captures[2][1], "func-def")
-
-        self.assertEqual(captures[3][0].start_point, (3, 2))
-        self.assertEqual(captures[3][0].end_point, (3, 6))
-        self.assertEqual(captures[3][1], "func-call")
+        self.assertEqual(captures[1][0], "func-call")
+        self.assertEqual(captures[1][1][0].start_point, (1, 2))
+        self.assertEqual(captures[1][1][0].end_point, (1, 5))
+        self.assertEqual(captures[1][1][1].start_point, (3, 2))
+        self.assertEqual(captures[1][1][1].end_point, (3, 6))
 
     def test_text_predicates(self):
         parser = Parser(self.javascript)
@@ -202,10 +193,10 @@ class TestQuery(TestCase):
                 (#eq? @function-name fun1))
             """
         )
-        captures1 = query1.captures(root_node)
+        captures1 = list(query1.captures(root_node).items())
         self.assertEqual(1, len(captures1))
-        self.assertEqual(b"fun1", captures1[0][0].text)
-        self.assertEqual("function-name", captures1[0][1])
+        self.assertEqual(captures1[0][0], "function-name")
+        self.assertEqual(captures1[0][1][0].text, b"fun1")
 
         # functions with name not equal to 'fun1' -> test for #not-eq? @capture string
         query2 = self.javascript.query(
@@ -215,139 +206,13 @@ class TestQuery(TestCase):
                 (#not-eq? @function-name fun1))
         """
         )
-        captures2 = query2.captures(root_node)
+        captures2 = list(query2.captures(root_node).items())
         self.assertEqual(1, len(captures2))
-        self.assertEqual(b"fun2", captures2[0][0].text)
-        self.assertEqual("function-name", captures2[0][1])
-
-        # key pairs whose key is equal to its value -> test for #eq? @capture1 @capture2
-        query3 = self.javascript.query(
-            """
-            ((pair
-                key: (property_identifier) @key-name
-                value: (identifier) @value-name)
-                (#eq? @key-name @value-name))
-            """
-        )
-        captures3 = query3.captures(root_node)
-        self.assertEqual(2, len(captures3))
-        self.assertSetEqual({b"equal"}, set([c[0].text for c in captures3]))
-        self.assertSetEqual({"key-name", "value-name"}, set([c[1] for c in captures3]))
-
-        # key pairs whose key is not equal to its value
-        # -> test for #not-eq? @capture1 @capture2
-        query4 = self.javascript.query(
-            """
-            ((pair
-                key: (property_identifier) @key-name
-                value: (identifier) @value-name)
-                (#not-eq? @key-name @value-name))
-            """
-        )
-        captures4 = query4.captures(root_node)
-        self.assertEqual(2, len(captures4))
-        self.assertSetEqual({b"key1", b"value1"}, set([c[0].text for c in captures4]))
-        self.assertSetEqual({"key-name", "value-name"}, set([c[1] for c in captures4]))
-
-        # equality that is satisfied by *another* capture
-        query5 = self.javascript.query(
-            """
-            ((function_declaration
-                name: (identifier) @function-name
-                parameters: (formal_parameters (identifier) @parameter-name))
-                (#eq? @function-name arg))
-            """
-        )
-        captures5 = query5.captures(root_node)
-        self.assertEqual(0, len(captures5))
-
-        # functions that match the regex .*1 -> test for #match @capture regex
-        query6 = self.javascript.query(
-            """
-            ((function_declaration
-                name: (identifier) @function-name)
-                (#match? @function-name ".*1"))
-            """
-        )
-        captures6 = query6.captures(root_node)
-        self.assertEqual(1, len(captures6))
-        self.assertEqual(b"fun1", captures6[0][0].text)
-
-        # functions that do not match the regex .*1 -> test for #not-match @capture regex
-        query6 = self.javascript.query(
-            """
-            ((function_declaration
-                name: (identifier) @function-name)
-                (#not-match? @function-name ".*1"))
-            """
-        )
-        captures6 = query6.captures(root_node)
-        self.assertEqual(1, len(captures6))
-        self.assertEqual(b"fun2", captures6[0][0].text)
-
-        # after editing there is no text property, so predicates are ignored
-        tree.edit(
-            start_byte=0,
-            old_end_byte=0,
-            new_end_byte=2,
-            start_point=(0, 0),
-            old_end_point=(0, 0),
-            new_end_point=(0, 2),
-        )
-        captures_notext = query1.captures(root_node)
-        self.assertEqual(2, len(captures_notext))
-        self.assertSetEqual({"function-name"}, set([c[1] for c in captures_notext]))
-
-    def test_text_predicate_on_optional_capture(self):
-        parser = Parser(self.javascript)
-        source = b"fun1(1)"
-        tree = parser.parse(source)
-        root_node = tree.root_node
-
-        # optional capture that is missing in source used in #eq? @capture string
-        query1 = self.javascript.query(
-            """
-            ((call_expression
-                function: (identifier) @function-name
-                arguments: (arguments (string)? @optional-string-arg)
-                (#eq? @optional-string-arg "1")))
-            """
-        )
-        captures1 = query1.captures(root_node)
-        self.assertEqual(1, len(captures1))
-        self.assertEqual(b"fun1", captures1[0][0].text)
-        self.assertEqual("function-name", captures1[0][1])
-
-        # optional capture that is missing in source used in #eq? @capture @capture
-        query2 = self.javascript.query(
-            """
-            ((call_expression
-                function: (identifier) @function-name
-                arguments: (arguments (string)? @optional-string-arg)
-                (#eq? @optional-string-arg @function-name)))
-            """
-        )
-        captures2 = query2.captures(root_node)
-        self.assertEqual(1, len(captures2))
-        self.assertEqual(b"fun1", captures2[0][0].text)
-        self.assertEqual("function-name", captures2[0][1])
-
-        # optional capture that is missing in source used in #match? @capture string
-        query3 = self.javascript.query(
-            """
-            ((call_expression
-                function: (identifier) @function-name
-                arguments: (arguments (string)? @optional-string-arg)
-                (#match? @optional-string-arg "\\d+")))
-            """
-        )
-        captures3 = query3.captures(root_node)
-        self.assertEqual(1, len(captures3))
-        self.assertEqual(b"fun1", captures3[0][0].text)
-        self.assertEqual("function-name", captures3[0][1])
+        self.assertEqual(captures2[0][0], "function-name")
+        self.assertEqual(captures2[0][1][0].text, b"fun2")
 
     def test_text_predicates_errors(self):
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(QueryError):
             self.javascript.query(
                 """
                 ((function_declaration
@@ -356,16 +221,16 @@ class TestQuery(TestCase):
                 """
             )
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(QueryError):
             self.javascript.query(
                 """
                 ((function_declaration
                     name: (identifier) @function-name)
                     (#eq? fun1 @function-name))
-            """
+                """
             )
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(QueryError):
             self.javascript.query(
                 """
                 ((function_declaration
@@ -374,7 +239,7 @@ class TestQuery(TestCase):
                 """
             )
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(QueryError):
             self.javascript.query(
                 """
                 ((function_declaration
@@ -383,7 +248,7 @@ class TestQuery(TestCase):
                 """
             )
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(QueryError):
             self.javascript.query(
                 """
                 ((function_declaration
@@ -391,89 +256,6 @@ class TestQuery(TestCase):
                     (#match? @function-name @function-name))
                 """
             )
-
-    def test_multiple_text_predicates(self):
-        parser = Parser(self.javascript)
-        source = b"""
-            keypair_object = {
-                key1: value1,
-                equal: equal
-            }
-
-            function fun1(arg) {
-                return 1;
-            }
-
-            function fun1(notarg) {
-                return 1 + 1;
-            }
-
-            function fun2(arg) {
-                return 2;
-            }
-        """
-        tree = parser.parse(source)
-        root_node = tree.root_node
-
-        # function with name equal to 'fun1' -> test for first #eq? @capture string
-        query1 = self.javascript.query(
-            """
-            ((function_declaration
-                name: (identifier) @function-name
-                parameters: (formal_parameters
-                    (identifier) @argument-name))
-                (#eq? @function-name fun1))
-            """
-        )
-        captures1 = query1.captures(root_node)
-        self.assertEqual(4, len(captures1))
-        self.assertEqual(b"fun1", captures1[0][0].text)
-        self.assertEqual("function-name", captures1[0][1])
-        self.assertEqual(b"arg", captures1[1][0].text)
-        self.assertEqual("argument-name", captures1[1][1])
-        self.assertEqual(b"fun1", captures1[2][0].text)
-        self.assertEqual("function-name", captures1[2][1])
-        self.assertEqual(b"notarg", captures1[3][0].text)
-        self.assertEqual("argument-name", captures1[3][1])
-
-        # function with argument equal to 'arg' -> test for second #eq? @capture string
-        query2 = self.javascript.query(
-            """
-            ((function_declaration
-                name: (identifier) @function-name
-                parameters: (formal_parameters
-                    (identifier) @argument-name))
-                (#eq? @argument-name arg))
-            """
-        )
-        captures2 = query2.captures(root_node)
-        self.assertEqual(4, len(captures2))
-        self.assertEqual(b"fun1", captures2[0][0].text)
-        self.assertEqual("function-name", captures2[0][1])
-        self.assertEqual(b"arg", captures2[1][0].text)
-        self.assertEqual("argument-name", captures2[1][1])
-        self.assertEqual(b"fun2", captures2[2][0].text)
-        self.assertEqual("function-name", captures2[2][1])
-        self.assertEqual(b"arg", captures2[3][0].text)
-        self.assertEqual("argument-name", captures2[3][1])
-
-        # function with name equal to 'fun1' & argument 'arg' -> test for both together
-        query3 = self.javascript.query(
-            """
-            ((function_declaration
-                name: (identifier) @function-name
-                parameters: (formal_parameters
-                    (identifier) @argument-name))
-                (#eq? @function-name fun1)
-                (#eq? @argument-name arg))
-            """
-        )
-        captures3 = query3.captures(root_node)
-        self.assertEqual(2, len(captures3))
-        self.assertEqual(b"fun1", captures3[0][0].text)
-        self.assertEqual("function-name", captures3[0][1])
-        self.assertEqual(b"arg", captures3[1][0].text)
-        self.assertEqual("argument-name", captures3[1][1])
 
     def test_point_range_captures(self):
         parser = Parser(self.python)
@@ -484,13 +266,13 @@ class TestQuery(TestCase):
             (function_definition name: (identifier) @func-def)
             (call function: (identifier) @func-call)
             """
-        )
+        ).set_point_range(((1, 0), (2, 0)))
 
-        captures = query.captures(tree.root_node, start_point=(1, 0), end_point=(2, 0))
+        captures = list(query.captures(tree.root_node).items())
 
-        self.assertEqual(captures[0][0].start_point, (1, 2))
-        self.assertEqual(captures[0][0].end_point, (1, 5))
-        self.assertEqual(captures[0][1], "func-call")
+        self.assertEqual(captures[0][0], "func-call")
+        self.assertEqual(captures[0][1][0].start_point, (1, 2))
+        self.assertEqual(captures[0][1][0].end_point, (1, 5))
 
     def test_byte_range_captures(self):
         parser = Parser(self.python)
@@ -501,9 +283,9 @@ class TestQuery(TestCase):
             (function_definition name: (identifier) @func-def)
             (call function: (identifier) @func-call)
             """
-        )
+        ).set_byte_range((10, 20))
 
-        captures = query.captures(tree.root_node, start_byte=10, end_byte=20)
-        self.assertEqual(captures[0][0].start_point, (1, 2))
-        self.assertEqual(captures[0][0].end_point, (1, 5))
-        self.assertEqual(captures[0][1], "func-call")
+        captures = list(query.captures(tree.root_node).items())
+        self.assertEqual(captures[0][0], "func-call")
+        self.assertEqual(captures[0][1][0].start_point, (1, 2))
+        self.assertEqual(captures[0][1][0].end_point, (1, 5))

@@ -51,43 +51,50 @@ typedef struct {
 
 typedef struct {
     PyObject_HEAD
-    uint32_t capture1_value_id;
-    uint32_t capture2_value_id;
-    int is_positive;
-} CaptureEqCapture;
+    uint32_t capture1_id;
+    uint32_t capture2_id;
+    bool is_positive;
+    bool is_any;
+} QueryPredicateEqCapture;
 
 typedef struct {
     PyObject_HEAD
-    uint32_t capture_value_id;
+    uint32_t capture_id;
     PyObject *string_value;
-    int is_positive;
-} CaptureEqString;
+    bool is_positive;
+    bool is_any;
+} QueryPredicateEqString;
 
 typedef struct {
     PyObject_HEAD
-    uint32_t capture_value_id;
-    PyObject *regex;
-    int is_positive;
-} CaptureMatchString;
+    uint32_t capture_id;
+    PyObject *pattern;
+    bool is_positive;
+    bool is_any;
+} QueryPredicateMatch;
+
+typedef struct {
+    PyObject_HEAD
+    uint32_t capture_id;
+    PyObject *values;
+    bool is_positive;
+} QueryPredicateAnyOf;
+
+typedef struct {
+    PyObject_HEAD
+    PyObject *predicate;
+    PyObject *arguments;
+} QueryPredicateGeneric;
 
 typedef struct {
     PyObject_HEAD
     TSQuery *query;
+    TSQueryCursor *cursor;
     PyObject *capture_names;
-    PyObject *text_predicates;
+    PyObject *predicates;
+    PyObject *settings;
+    PyObject *assertions;
 } Query;
-
-typedef struct {
-    PyObject_HEAD
-    TSQueryCapture capture;
-} QueryCapture;
-
-typedef struct {
-    PyObject_HEAD
-    TSQueryMatch match;
-    PyObject *captures;
-    PyObject *pattern_index;
-} QueryMatch;
 
 typedef struct {
     PyObject_HEAD
@@ -104,34 +111,32 @@ typedef LookaheadIterator LookaheadNamesIterator;
 
 typedef struct {
     TSTreeCursor default_cursor;
-    TSQueryCursor *query_cursor;
-
     PyObject *re_compile;
-    PyObject *namedtuple;
-
-    PyTypeObject *point_type;
-    PyTypeObject *tree_type;
-    PyTypeObject *tree_cursor_type;
+    PyObject *query_error;
     PyTypeObject *language_type;
-    PyTypeObject *parser_type;
-    PyTypeObject *node_type;
-    PyTypeObject *query_type;
-    PyTypeObject *range_type;
-    PyTypeObject *query_capture_type;
-    PyTypeObject *query_match_type;
-    PyTypeObject *capture_eq_capture_type;
-    PyTypeObject *capture_eq_string_type;
-    PyTypeObject *capture_match_string_type;
     PyTypeObject *lookahead_iterator_type;
     PyTypeObject *lookahead_names_iterator_type;
+    PyTypeObject *node_type;
+    PyTypeObject *parser_type;
+    PyTypeObject *point_type;
+    PyTypeObject *query_predicate_anyof_type;
+    PyTypeObject *query_predicate_eq_capture_type;
+    PyTypeObject *query_predicate_eq_string_type;
+    PyTypeObject *query_predicate_generic_type;
+    PyTypeObject *query_predicate_match_type;
+    PyTypeObject *query_type;
+    PyTypeObject *range_type;
+    PyTypeObject *tree_cursor_type;
+    PyTypeObject *tree_type;
 } ModuleState;
 
 // Macros
 
 #define GET_MODULE_STATE(obj) ((ModuleState *)PyType_GetModuleState(Py_TYPE(obj)))
 
-#define IS_INSTANCE(obj, type)                                                                     \
-    PyObject_IsInstance((obj), (PyObject *)(GET_MODULE_STATE(self)->type))
+#define IS_INSTANCE_OF(obj, type) PyObject_IsInstance((obj), (PyObject *)(type))
+
+#define IS_INSTANCE(obj, type_name) IS_INSTANCE_OF(obj, GET_MODULE_STATE(self)->type_name)
 
 #define POINT_NEW(state, point)                                                                    \
     PyObject_CallFunction((PyObject *)(state)->point_type, "II", (point).row, (point).column)
@@ -142,14 +147,14 @@ typedef struct {
 
 // Docstrings
 
-#define DOC_ATTENTION "\n\nAttention\n---------\n\n"
-#define DOC_CAUTION "\n\nCaution\n-------\n\n"
-#define DOC_EXAMPLES "\n\nExamples\n--------\n\n"
-#define DOC_IMPORTANT "\n\nImportant\n---------\n\n"
-#define DOC_NOTE "\n\nNote\n----\n\n"
-#define DOC_PARAMETERS "\n\nParameters\n----------\n\n"
-#define DOC_RAISES "\n\Raises\n------\n\n"
-#define DOC_RETURNS "\n\nReturns\n-------\n\n"
-#define DOC_SEE_ALSO "\n\nSee Also\n--------\n\n"
-#define DOC_HINT "\n\nHint\n----\n\n"
-#define DOC_TIP "\n\nTip\n---\n\n"
+#define DOC_ATTENTION "\n\nAttention\n---------\n"
+#define DOC_CAUTION "\n\nCaution\n-------\n"
+#define DOC_EXAMPLES "\n\nExamples\n--------\n"
+#define DOC_IMPORTANT "\n\nImportant\n---------\n"
+#define DOC_NOTE "\n\nNote\n----\n"
+#define DOC_PARAMETERS "\n\nParameters\n----------\n"
+#define DOC_RAISES "\n\nRaises\n------\n"
+#define DOC_RETURNS "\n\nReturns\n-------\n"
+#define DOC_SEE_ALSO "\n\nSee Also\n--------\n"
+#define DOC_HINT "\n\nHint\n----\n"
+#define DOC_TIP "\n\nTip\n---\n"

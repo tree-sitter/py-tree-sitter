@@ -66,6 +66,8 @@ def process_signature(_app, _what, name, _obj, _options, _signature, return_anno
         return "(language, *, included_ranges=None, timeout_micros=None)", return_annotation
     if name == "tree_sitter.Range":
         return "(start_point, end_point, start_byte, end_byte)", return_annotation
+    if name == "tree_sitter.QueryPredicate":
+        return None, return_annotation
 
 
 def process_docstring(_app, what, name, _obj, _options, lines):
@@ -78,6 +80,14 @@ def process_docstring(_app, what, name, _obj, _options, lines):
             lines[0] = f"Implements ``{special_doc.search(lines[0]).group(0)}``."
 
 
+def process_bases(_app, name, _obj, _options, bases):
+    if name == "tree_sitter.Point":
+        bases[-1] = ":class:`~typing.NamedTuple`"
+    if name == "tree_sitter.LookaheadIterator":
+        bases[-1] = ":class:`~collections.abc.Iterator`"
+
+
 def setup(app):
     app.connect("autodoc-process-signature", process_signature)
     app.connect("autodoc-process-docstring", process_docstring)
+    app.connect("autodoc-process-bases", process_bases)

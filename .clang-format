@@ -5,5 +5,6 @@ PointerAlignment: Right
 IndentWidth: 4
 ColumnLimit: 100
 IncludeBlocks: Preserve
-StatementMacros: [PyObject_HEAD, PyObject_VAR_HEAD, _PyObject_HEAD_EXTRA]
+StatementMacros: [PyObject_HEAD]
 BinPackArguments: true
+IndentCaseLabels: true
