@@ -48,7 +48,7 @@ jobs:
         with:
           platforms: ${{matrix.qemu_arch}}
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.16
+        uses: pypa/cibuildwheel@v2.18
         env:
           CIBW_ARCHS: ${{matrix.cibw_arch}}
           CIBW_TEST_SKIP: "*-*linux_aarch64 *-macosx_x86_64"
