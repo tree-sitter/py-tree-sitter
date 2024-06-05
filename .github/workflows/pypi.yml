@@ -25,35 +25,39 @@ jobs:
         with:
           name: dist-sources
           path: dist/*.tar.gz
+          retention-days: 2
 
   build-wheels:
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-13, windows-latest]
+        include:
+          - { os: windows-latest, cibw_arch: AMD64 }
+          - { os: ubuntu-latest,  cibw_arch: x86_64 }
+          - { os: ubuntu-latest,  cibw_arch: aarch64, qemu_arch: arm64 }
+          - { os: macos-latest,   cibw_arch: arm64 }
+          - { os: macos-latest,   cibw_arch: x86_64 }
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: true
       - name: Set up QEMU
-        if: runner.os == 'Linux'
+        if: matrix.qemu_arch != ''
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: arm64
+          platforms: ${{matrix.qemu_arch}}
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.16
+        uses: pypa/cibuildwheel@v2.18
         env:
-          CIBW_SKIP: pp*
-          CIBW_ARCHS_WINDOWS: AMD64
-          CIBW_ARCHS_LINUX: x86_64 aarch64
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_TEST_SKIP: "*arm64 *aarch64"
+          CIBW_ARCHS: ${{matrix.cibw_arch}}
+          CIBW_TEST_SKIP: "*-*linux_aarch64 *-macosx_x86_64"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: dist-wheels-${{matrix.os}}
+          name: dist-wheels-${{matrix.os}}-${{matrix.cibw_arch}}
           path: wheelhouse/*.whl
+          retention-days: 2
 
   release:
     runs-on: ubuntu-latest
