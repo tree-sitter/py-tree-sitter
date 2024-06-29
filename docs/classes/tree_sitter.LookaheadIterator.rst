@@ -1,16 +1,16 @@
-﻿LookaheadIterator
+LookaheadIterator
 =================
 
 .. autoclass:: tree_sitter.LookaheadIterator
+   :show-inheritance:
 
    Methods
    -------
 
    .. automethod:: iter_names
-   .. automethod:: reset
    .. automethod:: reset_state
 
-   Special methods
+   Special Methods
    ---------------
 
    .. automethod:: __iter__

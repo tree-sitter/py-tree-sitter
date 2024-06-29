@@ -14,19 +14,6 @@ PyObject *tree_get_root_node(Tree *self, void *Py_UNUSED(payload)) {
     return node_new_internal(state, node, (PyObject *)self);
 }
 
-PyObject *tree_get_text(Tree *self, void *Py_UNUSED(payload)) {
-    if (REPLACE("Tree.text", "Tree.root_node.text") < 0) {
-        return NULL;
-    }
-
-    PyObject *source = self->source;
-    if (source == NULL) {
-        Py_RETURN_NONE;
-    }
-    Py_INCREF(source);
-    return source;
-}
-
 PyObject *tree_root_node_with_offset(Tree *self, PyObject *args) {
     uint32_t offset_bytes;
     TSPoint offset_extent;
@@ -140,6 +127,11 @@ PyObject *tree_get_included_ranges(Tree *self, PyObject *Py_UNUSED(args)) {
     return result;
 }
 
+PyObject *tree_get_language(Tree *self, PyObject *Py_UNUSED(args)) {
+    Py_INCREF(self->language);
+    return self->language;
+}
+
 PyDoc_STRVAR(tree_root_node_with_offset_doc,
              "root_node_with_offset(self, offset_bytes, offset_extent, /)\n--\n\n"
              "Get the root node of the syntax tree, but with its position shifted "
@@ -192,12 +184,10 @@ static PyMethodDef tree_methods[] = {
 static PyGetSetDef tree_accessors[] = {
     {"root_node", (getter)tree_get_root_node, NULL, PyDoc_STR("The root node of the syntax tree."),
      NULL},
-    {"text", (getter)tree_get_text, NULL,
-     PyDoc_STR("The source text of this tree, if unedited.\n\n"
-               ".. deprecated:: 0.22.0\n\n   Use ``root_node.text`` instead."),
-     NULL},
     {"included_ranges", (getter)tree_get_included_ranges, NULL,
      PyDoc_STR("The included ranges that were used to parse the syntax tree."), NULL},
+    {"language", (getter)tree_get_language, NULL,
+     PyDoc_STR("The language that was used to parse the syntax tree."), NULL},
     {NULL},
 };
 

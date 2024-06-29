@@ -112,34 +112,26 @@ PyObject *tree_cursor_goto_first_child_for_byte(TreeCursor *self, PyObject *args
 
     int64_t result = ts_tree_cursor_goto_first_child_for_byte(&self->cursor, byte);
     if (result == -1) {
-        Py_RETURN_FALSE;
+        Py_RETURN_NONE;
     }
     Py_XDECREF(self->node);
     self->node = NULL;
-    Py_RETURN_TRUE;
+    return PyLong_FromUnsignedLong((uint32_t)result);
 }
 
 PyObject *tree_cursor_goto_first_child_for_point(TreeCursor *self, PyObject *args) {
     TSPoint point;
     if (!PyArg_ParseTuple(args, "(II):goto_first_child_for_point", &point.row, &point.column)) {
-        if (PyArg_ParseTuple(args, "II:goto_first_child_for_point", &point.row, &point.column)) {
-            PyErr_Clear();
-            if (REPLACE("TreeCursor.goto_first_child_for_point(row, col)",
-                        "TreeCursor.goto_first_child_for_point(point)") < 0) {
-                return NULL;
-            }
-        } else {
-            return NULL;
-        }
+        return NULL;
     }
 
     int64_t result = ts_tree_cursor_goto_first_child_for_point(&self->cursor, point);
     if (result == -1) {
-        Py_RETURN_FALSE;
+        Py_RETURN_NONE;
     }
     Py_XDECREF(self->node);
     self->node = NULL;
-    Py_RETURN_TRUE;
+    return PyLong_FromUnsignedLong((uint32_t)result);
 }
 
 PyObject *tree_cursor_reset(TreeCursor *self, PyObject *args) {
@@ -170,17 +162,16 @@ PyObject *tree_cursor_reset_to(TreeCursor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PyObject *tree_cursor_copy(PyObject *self, PyObject *Py_UNUSED(args)) {
+PyObject *tree_cursor_copy(TreeCursor *self, PyObject *Py_UNUSED(args)) {
     ModuleState *state = GET_MODULE_STATE(self);
-    TreeCursor *origin = (TreeCursor *)self;
     TreeCursor *copied = PyObject_New(TreeCursor, state->tree_cursor_type);
     if (copied == NULL) {
         return NULL;
     }
 
-    Py_INCREF(origin->tree);
-    copied->tree = origin->tree;
-    copied->cursor = ts_tree_cursor_copy(&origin->cursor);
+    Py_INCREF(self->tree);
+    copied->tree = self->tree;
+    copied->cursor = ts_tree_cursor_copy(&self->cursor);
     return PyObject_Init((PyObject *)copied, state->tree_cursor_type);
 }
 
@@ -221,14 +212,12 @@ PyDoc_STRVAR(tree_cursor_goto_first_child_for_byte_doc,
              "goto_first_child_for_byte(self, byte, /)\n--\n\n"
              "Move this cursor to the first child of its current node that extends beyond the "
              "given byte offset." DOC_RETURNS
-             "``True`` if the child node was found, ``False`` otherwise.");
+             "The index of the child node if it was found, ``None`` otherwise.");
 PyDoc_STRVAR(tree_cursor_goto_first_child_for_point_doc,
-             "goto_first_child_for_point(self, *args)\n--\n\n"
+             "goto_first_child_for_point(self, point, /)\n--\n\n"
              "Move this cursor to the first child of its current node that extends beyond the "
-             "given row/column point.\n\n"
-             ".. versionchanged:: 0.22.0\n   Use ``goto_first_child_for_point(point)`` "
-             "instead of ``goto_first_child_for_point(row, column)``" DOC_RETURNS
-             "``True`` if the child node was found, ``False`` otherwise.");
+             "given row/column point.\n\n" DOC_RETURNS
+             "The index of the child node if it was found, ``None`` otherwise.");
 PyDoc_STRVAR(tree_cursor_reset_doc, "reset(self, node, /)\n--\n\n"
                                     "Re-initialize the cursor to start at the original node "
                                     "that it was constructed with.");

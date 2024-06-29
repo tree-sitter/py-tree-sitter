@@ -1,4 +1,4 @@
-﻿Range
+Range
 =====
 
 .. autoclass:: tree_sitter.Range
@@ -10,8 +10,6 @@
    .. automethod:: __ne__
    .. automethod:: __repr__
    .. automethod:: __hash__
-
-      .. versionadded:: 0.22.0
 
    Attributes
    ----------
