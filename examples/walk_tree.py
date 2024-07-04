@@ -5,7 +5,7 @@ import tree_sitter_python
 PY_LANGUAGE = Language(tree_sitter_python.language())
 
 parser = Parser()
-parser.set_language(PY_LANGUAGE)
+parser.language PY_LANGUAGE
 
 tree = parser.parse(bytes("a = 1", "utf8"))
 
