@@ -2,7 +2,7 @@ from typing import Generator
 from tree_sitter import Language, Parser, Tree, Node
 import tree_sitter_python
 
-PY_LANGUAGE = Language(tree_sitter_python.language(), "python")
+PY_LANGUAGE = Language(tree_sitter_python.language())
 
 parser = Parser()
 parser.set_language(PY_LANGUAGE)
