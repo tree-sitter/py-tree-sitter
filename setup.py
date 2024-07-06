@@ -23,29 +23,33 @@ setup(
                 "tree_sitter/binding/range.c",
                 "tree_sitter/binding/tree.c",
                 "tree_sitter/binding/tree_cursor.c",
+                "tree_sitter/binding/wasmtime.c",
                 "tree_sitter/binding/module.c",
             ],
             include_dirs=[
                 "tree_sitter/binding",
                 "tree_sitter/core/lib/include",
                 "tree_sitter/core/lib/src",
+                "tree_sitter/core/lib/src/wasm",
             ],
             define_macros=[
                 ("PY_SSIZE_T_CLEAN", None),
                 ("TREE_SITTER_HIDE_SYMBOLS", None),
+                ("TREE_SITTER_FEATURE_WASM", None),
             ],
-            undef_macros=[
-                "TREE_SITTER_FEATURE_WASM",
-            ],
-            extra_compile_args=[
-                "-std=c11",
-                "-fvisibility=hidden",
-                "-Wno-cast-function-type",
-                "-Werror=implicit-function-declaration",
-            ] if system() != "Windows" else [
-                "/std:c11",
-                "/wd4244",
-            ],
+            extra_compile_args=(
+                [
+                    "-std=c11",
+                    "-fvisibility=hidden",
+                    "-Wno-cast-function-type",
+                    "-Werror=implicit-function-declaration",
+                ]
+                if system() != "Windows"
+                else [
+                    "/std:c11",
+                    "/wd4244",
+                ]
+            ),
         )
     ],
 )

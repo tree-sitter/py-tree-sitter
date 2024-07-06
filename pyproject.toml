@@ -38,6 +38,7 @@ tests = [
     "tree-sitter-python>=0.23.0",
     "tree-sitter-rust>=0.23.0",
 ]
+wasm = ["wasmtime>=25"]
 
 [tool.ruff]
 target-version = "py39"
