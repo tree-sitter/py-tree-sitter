@@ -46,13 +46,6 @@ PyObject *node_compare(Node *self, PyObject *other, int op) {
     return PyBool_FromLong(result ^ (op == Py_NE));
 }
 
-PyObject *node_sexp(Node *self, PyObject *Py_UNUSED(args)) {
-    if (REPLACE("Node.sexp()", "str()") < 0) {
-        return NULL;
-    }
-    return node_str(self);
-}
-
 PyObject *node_walk(Node *self, PyObject *Py_UNUSED(args)) {
     ModuleState *state = GET_MODULE_STATE(self);
     TreeCursor *tree_cursor = PyObject_New(TreeCursor, state->tree_cursor_type);
@@ -284,6 +277,20 @@ PyObject *node_named_descendant_for_point_range(Node *self, PyObject *args) {
         Py_RETURN_NONE;
     }
     return node_new_internal(state, descendant, self->tree);
+}
+
+PyObject *node_child_containing_descendant(Node *self, PyObject *args) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    TSNode descendant;
+    if (!PyArg_ParseTuple(args, "O!:child_containing_descendant", &descendant, state->node_type)) {
+        return NULL;
+    }
+
+    TSNode child = ts_node_child_containing_descendant(self->node, descendant);
+    if (ts_node_is_null(child)) {
+        Py_RETURN_NONE;
+    }
+    return node_new_internal(state, child, self->tree);
 }
 
 PyObject *node_get_id(Node *self, void *Py_UNUSED(payload)) {
@@ -565,9 +572,6 @@ PyDoc_STRVAR(node_edit_doc,
              ":meth:`Tree.edit`, all of the nodes that you retrieve from the tree afterwards "
              "will already reflect the edit. You only need to use this when you have a specific "
              ":class:`Node` instance that you want to keep and continue to use after an edit.");
-PyDoc_STRVAR(node_sexp_doc, "sexp(self, /)\n--\n\n"
-                            "Get an S-expression representing the node.\n\n"
-                            ".. deprecated:: 0.22.0\n\n   Use :obj:`str` instead.");
 PyDoc_STRVAR(node_child_doc,
              "child(self, index, /)\n--\n\n"
              "Get this node's child at the given index, where ``0`` represents the first "
@@ -588,7 +592,7 @@ PyDoc_STRVAR(node_child_by_field_id_doc,
 PyDoc_STRVAR(node_children_by_field_id_doc,
              "children_by_field_id(self, id, /)\n--\n\n"
              "Get a list of children with the given numerical field id."
-             DOC_SEE_ALSO ":meth:`children_by_field_name`" );
+             DOC_SEE_ALSO ":meth:`children_by_field_name`");
 PyDoc_STRVAR(node_child_by_field_name_doc, "child_by_field_name(self, name, /)\n--\n\n"
                                            "Get the first child with the given field name.");
 PyDoc_STRVAR(node_children_by_field_name_doc, "children_by_field_name(self, name, /)\n--\n\n"
@@ -608,6 +612,9 @@ PyDoc_STRVAR(node_descendant_for_point_range_doc,
 PyDoc_STRVAR(node_named_descendant_for_point_range_doc,
              "named_descendant_for_point_range(self, start_point, end_point, /)\n--\n\n"
              "Get the smallest *named* node within this node that spans the given point range.");
+PyDoc_STRVAR(node_child_containing_descendant_doc,
+             "child_containing_descendant(self, descendant, /)\n--\n\n"
+             "Get the child of the node that contains the given descendant.");
 
 static PyMethodDef node_methods[] = {
     {
@@ -621,12 +628,6 @@ static PyMethodDef node_methods[] = {
         .ml_meth = (PyCFunction)node_edit,
         .ml_flags = METH_VARARGS | METH_KEYWORDS,
         .ml_doc = node_edit_doc,
-    },
-    {
-        .ml_name = "sexp",
-        .ml_meth = (PyCFunction)node_sexp,
-        .ml_flags = METH_NOARGS,
-        .ml_doc = node_sexp_doc,
     },
     {
         .ml_name = "child",
@@ -694,6 +695,12 @@ static PyMethodDef node_methods[] = {
         .ml_flags = METH_VARARGS,
         .ml_doc = node_named_descendant_for_point_range_doc,
     },
+    {
+        .ml_name = "child_containing_descendant",
+        .ml_meth = (PyCFunction)node_child_containing_descendant,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = node_child_containing_descendant_doc,
+    },
     {NULL},
 };
 
@@ -718,7 +725,7 @@ static PyGetSetDef node_accessors[] = {
      NULL},
     {"is_extra", (getter)node_get_is_extra, NULL,
      PyDoc_STR("Check if this node is _extra_.\n\nExtra nodes represent things which are not "
-               "required the grammar but can appear anywhere (e.g. whitespace)."),
+               "required by the grammar but can appear anywhere (e.g. whitespace)."),
      NULL},
     {"has_changes", (getter)node_get_has_changes, NULL,
      PyDoc_STR("Check if this node has been edited."), NULL},

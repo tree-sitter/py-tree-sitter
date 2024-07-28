@@ -12,6 +12,6 @@ indent_size = 2
 [*.rst]
 indent_size = 3
 
-[*.{c,h,py}]
+[*.{c,h,py,pyi}]
 indent_size = 4
 max_line_length = 100

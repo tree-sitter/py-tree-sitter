@@ -145,6 +145,7 @@ class TestParser(TestCase):
 
         self.assertEqual(snake_node.type, "string")
         self.assertEqual(snake.decode("utf16"), "🐍")
+        self.assertIs(tree.language, self.javascript)
 
 
     def test_parse_invalid_encoding(self):
