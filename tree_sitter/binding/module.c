@@ -1,3 +1,4 @@
+#include <wasm.h>
 #include "types.h"
 
 extern PyType_Spec capture_eq_capture_type_spec;
@@ -14,6 +15,8 @@ extern PyType_Spec query_type_spec;
 extern PyType_Spec range_type_spec;
 extern PyType_Spec tree_cursor_type_spec;
 extern PyType_Spec tree_type_spec;
+
+void tsp_load_wasmtime_symbols();
 
 // TODO(0.24): drop Python 3.9 support
 #if PY_MINOR_VERSION > 9
@@ -54,12 +57,17 @@ static void module_free(void *self) {
     Py_XDECREF(state->query_type);
     Py_XDECREF(state->range_type);
     Py_XDECREF(state->query_capture_type);
+    Py_XDECREF(state->query_match_type);
     Py_XDECREF(state->capture_eq_capture_type);
     Py_XDECREF(state->capture_eq_string_type);
     Py_XDECREF(state->capture_match_string_type);
     Py_XDECREF(state->lookahead_iterator_type);
+    Py_XDECREF(state->lookahead_names_iterator_type);
     Py_XDECREF(state->re_compile);
     Py_XDECREF(state->namedtuple);
+    Py_XDECREF(state->wasmtime_engine_type);
+    Py_XDECREF(state->ctypes_cast);
+    Py_XDECREF(state->c_void_p);
 }
 
 static struct PyModuleDef module_definition = {
@@ -135,6 +143,34 @@ PyMODINIT_FUNC PyInit__binding(void) {
     state->namedtuple = import_attribute("collections", "namedtuple");
     if (state->namedtuple == NULL) {
         goto cleanup;
+    }
+
+    PyObject *wasmtime_engine = import_attribute("wasmtime", "Engine");
+    if (wasmtime_engine == NULL) {
+        // No worries, disable functionality.
+        PyErr_Clear();
+    } else {
+        // Ensure wasmtime_engine is a PyTypeObject
+        if (!PyType_Check(wasmtime_engine)) {
+            PyErr_SetString(PyExc_TypeError, "wasmtime.Engine is not a type");
+            goto cleanup;
+        }
+        state->wasmtime_engine_type = (PyTypeObject *)wasmtime_engine;
+
+        tsp_load_wasmtime_symbols();
+        if (PyErr_Occurred()) {
+            goto cleanup;
+        }
+
+        state->ctypes_cast = import_attribute("ctypes", "cast");
+        if (state->ctypes_cast == NULL) {
+            goto cleanup;
+        }
+
+        state->c_void_p = import_attribute("ctypes", "c_void_p");
+        if (state->c_void_p == NULL) {
+            goto cleanup;
+        }
     }
 
     PyObject *point_args = Py_BuildValue("s[ss]", "Point", "row", "column");
