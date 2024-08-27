@@ -52,6 +52,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.20
         env:
           CIBW_ARCHS: ${{matrix.cibw_arch}}
+          CIBW_SKIP: "pp* cp313-*"
           CIBW_TEST_SKIP: "*-*linux_aarch64 *-macosx_x86_64 *-win_arm64"
       - name: Upload wheels
         uses: actions/upload-artifact@v4

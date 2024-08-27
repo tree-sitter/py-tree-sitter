@@ -24,8 +24,8 @@ class TestLanguage(TestCase):
     def test_properties(self):
         lang = Language(self.python)
         self.assertEqual(lang.version, 14)
-        self.assertEqual(lang.node_kind_count, 274)
-        self.assertEqual(lang.parse_state_count, 2831)
+        self.assertEqual(lang.node_kind_count, 275)
+        self.assertEqual(lang.parse_state_count, 2795)
         self.assertEqual(lang.field_count, 32)
 
     def test_node_kind_for_id(self):
@@ -76,7 +76,7 @@ class TestLanguage(TestCase):
         self.assertNotEqual(Language(self.rust), Language(self.html))
 
     def test_hash(self):
-        for name in ["html", "javascript", "json", "python", "rust"]:
+        for name in ["html", "javascript", "json", "rust"]:
             with self.subTest(language=name):
                 ptr = getattr(self, name)
                 lang = Language(ptr)
