@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.10", "3.11", "3.12"]
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13-dev"]
         os: [ubuntu-latest, macos-13, windows-latest]
     runs-on: ${{matrix.os}}
     steps:
