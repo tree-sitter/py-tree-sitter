@@ -274,7 +274,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                 PyObject *pattern =
                     PyObject_CallFunction(state->re_compile, "s#", second_arg, length);
                 if (pattern == NULL) {
-                    _PyErr_FormatFromCause(
+                    PyErr_Format(
                         state->query_error,
                         "Invalid predicate in pattern at row %u: regular expression error", row);
                     goto error;
