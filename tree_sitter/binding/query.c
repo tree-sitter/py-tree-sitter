@@ -274,9 +274,33 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                 PyObject *pattern =
                     PyObject_CallFunction(state->re_compile, "s#", second_arg, length);
                 if (pattern == NULL) {
-                    _PyErr_FormatFromCause(
-                        state->query_error,
-                        "Invalid predicate in pattern at row %u: regular expression error", row);
+                    const char *msg =
+                        "Invalid predicate in pattern at row %u: regular expression error";
+#if PY_MINOR_VERSION < 12
+                    PyObject *etype, *cause, *exc, *trace;
+                    PyErr_Fetch(&etype, &cause, &trace);
+                    PyErr_NormalizeException(&etype, &cause, &trace);
+                    if (trace != NULL) {
+                        PyException_SetTraceback(cause, trace);
+                        Py_DECREF(trace);
+                    }
+                    Py_DECREF(etype);
+                    PyErr_Format(state->query_error, msg, row);
+                    PyErr_Fetch(&etype, &exc, &trace);
+                    PyErr_NormalizeException(&etype, &exc, &trace);
+                    Py_INCREF(cause);
+                    PyException_SetCause(exc, cause);
+                    PyException_SetContext(exc, cause);
+                    PyErr_Restore(etype, exc, trace);
+#else
+                    PyObject *cause = PyErr_GetRaisedException();
+                    PyErr_Format(state->query_error, msg, row);
+                    PyObject *exc = PyErr_GetRaisedException();
+                    PyException_SetCause(exc, Py_NewRef(cause));
+                    PyException_SetContext(exc, Py_NewRef(cause));
+                    Py_DECREF(cause);
+                    PyErr_SetRaisedException(exc);
+#endif
                     goto error;
                 }
 

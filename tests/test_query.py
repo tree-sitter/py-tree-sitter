@@ -1,3 +1,4 @@
+from re import error as RegexError
 from unittest import TestCase
 
 import tree_sitter_python
@@ -256,6 +257,19 @@ class TestQuery(TestCase):
                     (#match? @function-name @function-name))
                 """
             )
+
+        with self.assertRaises(QueryError) as ctx:
+            self.javascript.query(
+                """
+                ((function_declaration
+                    name: (identifier) @function-name)
+                    (#match? @function-name "?"))
+                """
+            )
+        self.assertEqual(
+            str(ctx.exception), "Invalid predicate in pattern at row 1: regular expression error"
+        )
+        self.assertIsInstance(ctx.exception.__cause__, RegexError)
 
     def test_point_range_captures(self):
         parser = Parser(self.python)
