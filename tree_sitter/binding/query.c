@@ -611,6 +611,16 @@ PyObject *query_pattern_assertions(Query *self, PyObject *args) {
     return item;
 }
 
+PyObject *query_set_timeout_micros(Query *self, PyObject *args) {
+    uint32_t timeout_micros;
+    if (!PyArg_ParseTuple(args, "I:set_timeout_micros", &timeout_micros)) {
+        return NULL;
+    }
+    ts_query_cursor_set_timeout_micros(self->cursor, timeout_micros);
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
 PyObject *query_set_match_limit(Query *self, PyObject *args) {
     uint32_t match_limit;
     if (!PyArg_ParseTuple(args, "I:set_match_limit", &match_limit)) {
@@ -730,6 +740,10 @@ PyObject *query_get_capture_count(Query *self, void *Py_UNUSED(payload)) {
     return PyLong_FromSize_t(ts_query_capture_count(self->query));
 }
 
+PyObject *query_get_timeout_micros(Query *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromSize_t(ts_query_cursor_timeout_micros(self->cursor));
+}
+
 PyObject *query_get_match_limit(Query *self, void *Py_UNUSED(payload)) {
     return PyLong_FromSize_t(ts_query_cursor_match_limit(self->cursor));
 }
@@ -738,6 +752,9 @@ PyObject *query_get_did_exceed_match_limit(Query *self, void *Py_UNUSED(payload)
     return PyLong_FromSize_t(ts_query_cursor_did_exceed_match_limit(self->cursor));
 }
 
+PyDoc_STRVAR(query_set_timeout_micros_doc, "set_timeout_micros(self, timeout_micros)\n--\n\n"
+                                           "Set the maximum duration in microseconds that query "
+                                           "execution should be allowed to take before halting.");
 PyDoc_STRVAR(query_set_match_limit_doc, "set_match_limit(self, match_limit)\n--\n\n"
                                         "Set the maximum number of in-progress matches." DOC_RAISES
                                         "ValueError\n\n   If set to ``0``.");
@@ -798,6 +815,12 @@ PyDoc_STRVAR(query_is_pattern_guaranteed_at_step_doc,
              "Check if a pattern is guaranteed to match once a given byte offset is reached.");
 
 static PyMethodDef query_methods[] = {
+    {
+        .ml_name = "set_timeout_micros",
+        .ml_meth = (PyCFunction)query_set_timeout_micros,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = query_set_timeout_micros_doc,
+    },
     {
         .ml_name = "set_match_limit",
         .ml_meth = (PyCFunction)query_set_match_limit,
@@ -902,13 +925,18 @@ static PyGetSetDef query_accessors[] = {
      PyDoc_STR("The number of patterns in the query."), NULL},
     {"capture_count", (getter)query_get_capture_count, NULL,
      PyDoc_STR("The number of captures in the query."), NULL},
+    {"timeout_micros", (getter)query_get_timeout_micros, NULL,
+     PyDoc_STR("The maximum duration in microseconds that query "
+               "execution should be allowed to take before halting."),
+     NULL},
     {"match_limit", (getter)query_get_match_limit, NULL,
      PyDoc_STR("The maximum number of in-progress matches."), NULL},
     {"did_exceed_match_limit", (getter)query_get_did_exceed_match_limit, NULL,
      PyDoc_STR("Check if the query exceeded its maximum number of "
                "in-progress matches during its last execution."),
      NULL},
-    {NULL}};
+    {NULL},
+};
 
 static PyType_Slot query_type_slots[] = {
     {Py_tp_doc, PyDoc_STR("A set of patterns that match nodes in a syntax tree." DOC_RAISES

@@ -205,7 +205,7 @@ int parser_set_timeout_micros(Parser *self, PyObject *arg, void *Py_UNUSED(paylo
         return -1;
     }
 
-    ts_parser_set_timeout_micros(self->parser, PyLong_AsUnsignedLong(arg));
+    ts_parser_set_timeout_micros(self->parser, PyLong_AsSize_t(arg));
     return 0;
 }
 
@@ -312,12 +312,7 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
 int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *language = NULL, *included_ranges = NULL, *timeout_micros = NULL;
-    char *keywords[] = {
-        "language",
-        "included_ranges",
-        "timeout_micros",
-        NULL,
-    };
+    char *keywords[] = {"language", "included_ranges", "timeout_micros", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!$OO:__init__", keywords,
                                      state->language_type, &language, &included_ranges,
                                      &timeout_micros)) {

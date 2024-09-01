@@ -79,6 +79,9 @@ Query
    .. automethod:: set_max_start_depth
 
       .. versionadded:: 0.23.0
+   .. automethod:: set_timeout_micros
+
+      .. versionadded:: 0.23.1
 
    Attributes
    ----------
@@ -95,3 +98,6 @@ Query
    .. autoattribute:: pattern_count
 
       .. versionadded:: 0.23.0
+   .. autoattribute:: timeout_micros
+
+      .. versionadded:: 0.23.1
