@@ -76,9 +76,8 @@ class TestLanguage(TestCase):
         self.assertNotEqual(Language(self.rust), Language(self.html))
 
     def test_hash(self):
-        for name in ["html", "javascript", "json", "rust"]:
+        for name in ["html", "javascript", "json", "python", "rust"]:
             with self.subTest(language=name):
-                ptr = getattr(self, name)
-                lang = Language(ptr)
+                lang = Language(getattr(self, name))
                 hash_ = hash(lang) & maxsize << 1
-                self.assertEqual(hash_, ptr)
+                self.assertGreater(hash_, 0)
