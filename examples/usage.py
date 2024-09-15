@@ -155,23 +155,19 @@ query = PY_LANGUAGE.query(
 # ...with captures
 captures = query.captures(tree.root_node)
 assert len(captures) == 4
-assert captures[0][0] == function_name_node
-assert captures[0][1] == "function.def"
-assert captures[1][0] == function_body_node
-assert captures[1][1] == "function.block"
-assert captures[2][0] == function_call_name_node
-assert captures[2][1] == "function.call"
-assert captures[3][0] == function_call_args_node
-assert captures[3][1] == "function.args"
+assert captures["function.def"][0] == function_name_node
+assert captures["function.block"][0] == function_body_node
+assert captures["function.call"][0] == function_call_name_node
+assert captures["function.args"][0] == function_call_args_node
 
 # ...with matches
 matches = query.matches(tree.root_node)
 assert len(matches) == 2
 
 # first match
-assert matches[0][1]["function.def"] == function_name_node
-assert matches[0][1]["function.block"] == function_body_node
+assert matches[0][1]["function.def"] == [function_name_node]
+assert matches[0][1]["function.block"] == [function_body_node]
 
 # second match
-assert matches[1][1]["function.call"] == function_call_name_node
-assert matches[1][1]["function.args"] == function_call_args_node
+assert matches[1][1]["function.call"] == [function_call_name_node]
+assert matches[1][1]["function.args"] == [function_call_args_node]

@@ -268,16 +268,12 @@ query = PY_LANGUAGE.query(
 
 ```python
 captures = query.captures(tree.root_node)
-assert len(captures) == 2
-assert captures[0][0] == function_name_node
-assert captures[0][1] == "function.def"
+assert len(captures) == 4
+assert captures["function.def"][0] == function_name_node
+assert captures["function.block"][0] == function_body_node
+assert captures["function.call"][0] == function_call_name_node
+assert captures["function.args"][0] == function_call_args_node
 ```
-
-The `Query.captures()` method takes optional `start_point`, `end_point`,
-`start_byte` and `end_byte` keyword arguments, which can be used to restrict the
-query's range. Only one of the `..._byte` or `..._point` pairs need to be given
-to restrict the range. If all are omitted, the entire range of the passed node
-is used.
 
 #### Matches
 
@@ -286,18 +282,16 @@ matches = query.matches(tree.root_node)
 assert len(matches) == 2
 
 # first match
-assert matches[0][1]["function.def"] == function_name_node
-assert matches[0][1]["function.block"] == function_body_node
+assert matches[0][1]["function.def"] == [function_name_node]
+assert matches[0][1]["function.block"] == [function_body_node]
 
 # second match
-assert matches[1][1]["function.call"] == function_call_name_node
-assert matches[1][1]["function.args"] == function_call_args_node
+assert matches[1][1]["function.call"] == [function_call_name_node]
+assert matches[1][1]["function.args"] == [function_call_args_node]
 ```
 
-The `Query.matches()` method takes the same optional arguments as `Query.captures()`.
 The difference between the two methods is that `Query.matches()` groups captures into matches,
-which is much more useful when your captures within a query relate to each other. It maps the
-capture's name to the node that was captured via a dictionary.
+which is much more useful when your captures within a query relate to each other.
 
 To try out and explore the code referenced in this README, check out [examples/usage.py].
 
