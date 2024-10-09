@@ -18,8 +18,7 @@ PyObject *tree_cursor_get_node(TreeCursor *self, void *Py_UNUSED(payload)) {
         ModuleState *state = GET_MODULE_STATE(self);
         self->node = node_new_internal(state, current_node, self->tree);
     }
-    Py_INCREF(self->node);
-    return self->node;
+    return Py_NewRef(self->node);
 }
 
 PyObject *tree_cursor_get_field_id(TreeCursor *self, void *Py_UNUSED(payload)) {
@@ -169,8 +168,7 @@ PyObject *tree_cursor_copy(TreeCursor *self, PyObject *Py_UNUSED(args)) {
         return NULL;
     }
 
-    Py_INCREF(self->tree);
-    copied->tree = self->tree;
+    copied->tree = Py_NewRef(self->tree);
     copied->cursor = ts_tree_cursor_copy(&self->cursor);
     return PyObject_Init((PyObject *)copied, state->tree_cursor_type);
 }

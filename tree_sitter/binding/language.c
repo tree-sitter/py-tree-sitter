@@ -174,8 +174,7 @@ PyObject *language_lookahead_iterator(Language *self, PyObject *args) {
     if (iter == NULL) {
         return NULL;
     }
-    Py_INCREF(self);
-    iter->language = (PyObject *)self;
+    iter->language = Py_NewRef(self);
     iter->lookahead_iterator = lookahead_iterator;
     return PyObject_Init((PyObject *)iter, state->lookahead_iterator_type);
 }

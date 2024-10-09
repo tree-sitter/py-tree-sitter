@@ -273,8 +273,7 @@ PyObject *parser_get_language(Parser *self, void *Py_UNUSED(payload)) {
     if (!self->language) {
         Py_RETURN_NONE;
     }
-    Py_INCREF(self->language);
-    return self->language;
+    return Py_NewRef(self->language);
 }
 
 int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
@@ -304,8 +303,7 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
         return -1;
     }
 
-    Py_INCREF(language);
-    Py_XSETREF(self->language, (PyObject *)language);
+    Py_XSETREF(self->language, Py_NewRef(language));
     return 0;
 }
 

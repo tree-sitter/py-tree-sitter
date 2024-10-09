@@ -37,8 +37,7 @@ PyObject *tree_walk(Tree *self, PyObject *Py_UNUSED(args)) {
         return NULL;
     }
 
-    Py_INCREF(self);
-    tree_cursor->tree = (PyObject *)self;
+    tree_cursor->tree = Py_NewRef(self);
     tree_cursor->node = NULL;
     tree_cursor->cursor = ts_tree_cursor_new(ts_tree_root_node(self->tree));
     return PyObject_Init((PyObject *)tree_cursor, state->tree_cursor_type);
@@ -128,8 +127,7 @@ PyObject *tree_get_included_ranges(Tree *self, PyObject *Py_UNUSED(args)) {
 }
 
 PyObject *tree_get_language(Tree *self, PyObject *Py_UNUSED(args)) {
-    Py_INCREF(self->language);
-    return self->language;
+    return Py_NewRef(self->language);
 }
 
 PyDoc_STRVAR(tree_root_node_with_offset_doc,
