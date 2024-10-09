@@ -6,11 +6,6 @@
 
 #define HAS_LANGUAGE_NAMES (TREE_SITTER_LANGUAGE_VERSION >= 15)
 
-#if PY_MINOR_VERSION < 10
-#define Py_TPFLAGS_DISALLOW_INSTANTIATION 0
-#define Py_TPFLAGS_IMMUTABLETYPE 0
-#endif
-
 // Types
 
 typedef struct {
