@@ -16,6 +16,9 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
             }
             return -1;
         }
+        if (DEPRECATE("int argument support is deprecated") < 0) {
+            return -1;
+        }
         self->language = PyLong_AsVoidPtr(language);
     }
 
