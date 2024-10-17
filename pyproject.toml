@@ -30,7 +30,7 @@ name = "Max Brunsfeld"
 email = "maxbrunsfeld@gmail.com"
 
 [project.optional-dependencies]
-docs = ["sphinx~=7.3", "sphinx-book-theme"]
+docs = ["sphinx~=7.4", "sphinx-book-theme"]
 tests = [
     "tree-sitter-html>=0.23.0",
     "tree-sitter-javascript>=0.23.0",

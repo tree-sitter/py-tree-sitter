@@ -37,8 +37,7 @@ PyObject *tree_walk(Tree *self, PyObject *Py_UNUSED(args)) {
         return NULL;
     }
 
-    Py_INCREF(self);
-    tree_cursor->tree = (PyObject *)self;
+    tree_cursor->tree = Py_NewRef(self);
     tree_cursor->node = NULL;
     tree_cursor->cursor = ts_tree_cursor_new(ts_tree_root_node(self->tree));
     return PyObject_Init((PyObject *)tree_cursor, state->tree_cursor_type);
@@ -72,6 +71,24 @@ PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
         self->source = Py_None;
         Py_INCREF(self->source);
     }
+    Py_RETURN_NONE;
+}
+
+PyObject *tree_copy(Tree *self, PyObject *Py_UNUSED(args)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    Tree *copied = PyObject_New(Tree, state->tree_type);
+    if (copied == NULL) {
+        return NULL;
+    }
+
+    copied->tree = ts_tree_copy(self->tree);
+    return PyObject_Init((PyObject *)copied, state->tree_type);
+}
+
+PyObject *tree_print_dot_graph(Tree *self, PyObject *arg) {
+    int fd = PyObject_AsFileDescriptor(arg);
+    if (fd < 0) return NULL;
+    ts_tree_print_dot_graph(self->tree, fd);
     Py_RETURN_NONE;
 }
 
@@ -128,8 +145,7 @@ PyObject *tree_get_included_ranges(Tree *self, PyObject *Py_UNUSED(args)) {
 }
 
 PyObject *tree_get_language(Tree *self, PyObject *Py_UNUSED(args)) {
-    Py_INCREF(self->language);
-    return self->language;
+    return Py_NewRef(self->language);
 }
 
 PyDoc_STRVAR(tree_root_node_with_offset_doc,
@@ -152,6 +168,13 @@ PyDoc_STRVAR(
     "ranges match up to the new tree.\n\nGenerally, you'll want to call this method "
     "right after calling the :meth:`Parser.parse` method. Call it on the old tree that "
     "was passed to the method, and pass the new tree that was returned from it.");
+PyDoc_STRVAR(tree_print_dot_graph_doc,
+             "print_dot_graph(self, /, file)\n--\n\n"
+             "Write a DOT graph describing the syntax tree to the given file.");
+PyDoc_STRVAR(tree_copy_doc, "copy(self, /)\n--\n\n"
+                            "Create a shallow copy of the tree.");
+PyDoc_STRVAR(tree_copy2_doc, "__copy__(self, /)\n--\n\n"
+                             "Use :func:`copy.copy` to create a copy of the tree.");
 
 static PyMethodDef tree_methods[] = {
     {
@@ -178,6 +201,22 @@ static PyMethodDef tree_methods[] = {
         .ml_flags = METH_KEYWORDS | METH_VARARGS,
         .ml_doc = tree_changed_ranges_doc,
     },
+    {
+        .ml_name = "print_dot_graph",
+        .ml_meth = (PyCFunction)tree_print_dot_graph,
+        .ml_flags = METH_O,
+        .ml_doc = tree_print_dot_graph_doc,
+    },
+    {
+        .ml_name = "copy",
+        .ml_meth = (PyCFunction)tree_copy,
+        .ml_flags = METH_NOARGS,
+        .ml_doc = tree_copy_doc,
+    },
+    {.ml_name = "__copy__",
+     .ml_meth = (PyCFunction)tree_copy,
+     .ml_flags = METH_NOARGS,
+     .ml_doc = tree_copy2_doc},
     {NULL},
 };
 

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tree_sitter import Language, Parser, Range, Tree
+from tree_sitter import Language, LogType, Parser, Range, Tree
 
 import tree_sitter_html
 import tree_sitter_javascript
@@ -84,6 +84,13 @@ class TestParser(TestCase):
             parser.timeout_micros = self.timeout
             self.assertEqual(parser.timeout_micros, self.timeout)
 
+        with self.subTest(setter="logger"):
+            def logger(log_type, message):
+                print(log_type.name, message)
+
+            parser.logger = logger
+            self.assertEqual(parser.logger, logger)
+
     def test_deleters(self):
         parser = Parser()
 
@@ -95,9 +102,13 @@ class TestParser(TestCase):
             del parser.included_ranges
             self.assertListEqual(parser.included_ranges, [self.max_range])
 
-        with self.subTest(setter="timeout_micros"):
+        with self.subTest(deleter="timeout_micros"):
             del parser.timeout_micros
             self.assertEqual(parser.timeout_micros, 0)
+
+        with self.subTest(deleter="logger"):
+            del parser.logger
+            self.assertEqual(parser.logger, None)
 
     def test_parse_buffer(self):
         parser = Parser(self.javascript)
@@ -136,23 +147,21 @@ class TestParser(TestCase):
         parser = Parser(self.javascript)
 
         def read(byte_position, _):
-            return source_code[byte_position: byte_position + 2]
+            return source_code[byte_position : byte_position + 2]
 
-        tree = parser.parse(read, encoding="utf-16")
+        tree = parser.parse(read, encoding="utf16")
         root_node = tree.root_node
         snake_node = root_node.children[0].children[0].children[2]
-        snake = source_code[snake_node.start_byte + 2:snake_node.end_byte - 2]
+        snake = source_code[snake_node.start_byte + 2 : snake_node.end_byte - 2]
 
         self.assertEqual(snake_node.type, "string")
         self.assertEqual(snake.decode("utf16"), "🐍")
         self.assertIs(tree.language, self.javascript)
 
-
     def test_parse_invalid_encoding(self):
         parser = Parser(self.python)
         with self.assertRaises(ValueError):
             parser.parse(b"foo", encoding="ascii")
-
 
     def test_parse_with_one_included_range(self):
         source_code = b"<span>hi</span><script>console.log('sup');</script>"
@@ -226,7 +235,7 @@ class TestParser(TestCase):
             + " (text)"
             + " (element (start_tag (tag_name)) (end_tag (tag_name)))"
             + " (text)"
-            + " (end_tag (tag_name))))"
+            + " (end_tag (tag_name))))",
         )
         self.assertEqual(html_tree.included_ranges, html_ranges)
 
@@ -269,7 +278,7 @@ class TestParser(TestCase):
 
         self.assertEqual(
             str(html_tree.root_node),
-            "(document (element (start_tag (tag_name)) (text) (end_tag (tag_name))))"
+            "(document (element (start_tag (tag_name)) (text) (end_tag (tag_name))))",
         )
 
     def test_parse_with_included_range_boundaries(self):
@@ -279,20 +288,23 @@ class TestParser(TestCase):
         range2_start_byte = source_code.index(b" d() ")
         range2_end_byte = range2_start_byte + len(b" d() ")
 
-        parser = Parser(self.javascript, included_ranges=[
-            Range(
-                start_byte=range1_start_byte,
-                end_byte=range1_end_byte,
-                start_point=(0, range1_start_byte),
-                end_point=(0, range1_end_byte),
-            ),
-            Range(
-                start_byte=range2_start_byte,
-                end_byte=range2_end_byte,
-                start_point=(0, range2_start_byte),
-                end_point=(0, range2_end_byte),
-            )
-        ])
+        parser = Parser(
+            self.javascript,
+            included_ranges=[
+                Range(
+                    start_byte=range1_start_byte,
+                    end_byte=range1_end_byte,
+                    start_point=(0, range1_start_byte),
+                    end_point=(0, range1_end_byte),
+                ),
+                Range(
+                    start_byte=range2_start_byte,
+                    end_byte=range2_end_byte,
+                    start_point=(0, range2_start_byte),
+                    end_point=(0, range2_end_byte),
+                ),
+            ],
+        )
 
         tree = parser.parse(source_code)
         root = tree.root_node
@@ -303,11 +315,11 @@ class TestParser(TestCase):
 
         self.assertEqual(
             str(root),
-            "(program" +
-                " (expression_statement (call_expression" +
-                " function: (identifier) arguments: (arguments)))" +
-                " (expression_statement (call_expression" +
-                " function: (identifier) arguments: (arguments))))"
+            "(program"
+            + " (expression_statement (call_expression"
+            + " function: (identifier) arguments: (arguments)))"
+            + " (expression_statement (call_expression"
+            + " function: (identifier) arguments: (arguments))))",
         )
 
         self.assertEqual(statement1.start_byte, source_code.index(b"b()"))
@@ -357,10 +369,10 @@ class TestParser(TestCase):
 
         self.assertEqual(
             str(tree.root_node),
-            "(document (text) (element" +
-                " (start_tag (tag_name))" +
-                " (element (start_tag (tag_name)) (end_tag (tag_name)))" +
-                " (end_tag (tag_name))))"
+            "(document (text) (element"
+            + " (start_tag (tag_name))"
+            + " (element (start_tag (tag_name)) (end_tag (tag_name)))"
+            + " (end_tag (tag_name))))",
         )
 
         self.assertEqual(
@@ -381,8 +393,8 @@ class TestParser(TestCase):
                     end_byte=directive_end,
                     start_point=(0, directive_start),
                     end_point=(0, directive_end),
-                )
-            ]
+                ),
+            ],
         )
 
     def test_parsing_with_a_newly_included_range(self):
@@ -400,9 +412,9 @@ class TestParser(TestCase):
         tree = parser.parse(source_code)
         self.assertEqual(
             str(tree.root_node),
-            "(program" +
-                " (expression_statement (call_expression" +
-                " function: (identifier) arguments: (arguments))))"
+            "(program"
+            + " (expression_statement (call_expression"
+            + " function: (identifier) arguments: (arguments))))",
         )
 
         # Parse both the first and third code directives as JavaScript, using the old tree as a
@@ -414,16 +426,13 @@ class TestParser(TestCase):
         tree2 = parser.parse(source_code)
         self.assertEqual(
             str(tree2.root_node),
-            "(program" +
-                " (expression_statement (call_expression" +
-                " function: (identifier) arguments: (arguments)))" +
-                " (expression_statement (call_expression" +
-                " function: (identifier) arguments: (arguments))))"
+            "(program"
+            + " (expression_statement (call_expression"
+            + " function: (identifier) arguments: (arguments)))"
+            + " (expression_statement (call_expression"
+            + " function: (identifier) arguments: (arguments))))",
         )
-        self.assertEqual(
-            tree2.changed_ranges(tree),
-            [simple_range(range1_end, range3_end)]
-        )
+        self.assertEqual(tree2.changed_ranges(tree), [simple_range(range1_end, range3_end)])
 
         # Parse all three code directives as JavaScript, using the old tree as a
         # reference.
@@ -435,15 +444,48 @@ class TestParser(TestCase):
         tree3 = parser.parse(source_code)
         self.assertEqual(
             str(tree3.root_node),
-            "(program" +
-                " (expression_statement (call_expression" +
-                " function: (identifier) arguments: (arguments)))" +
-                " (expression_statement (call_expression" +
-                " function: (identifier) arguments: (arguments)))"
-                + " (expression_statement (call_expression" +
-                " function: (identifier) arguments: (arguments))))"
+            "(program"
+            + " (expression_statement (call_expression"
+            + " function: (identifier) arguments: (arguments)))"
+            + " (expression_statement (call_expression"
+            + " function: (identifier) arguments: (arguments)))"
+            + " (expression_statement (call_expression"
+            + " function: (identifier) arguments: (arguments))))",
         )
         self.assertEqual(
             tree3.changed_ranges(tree2),
             [simple_range(range2_start + 1, range2_end - 1)],
         )
+
+    def test_logging(self):
+        from logging import getLogger
+
+        def logger(log_type: LogType, message: str):
+            match log_type:
+                case LogType.PARSE:
+                    parse_logger.info(message)
+                case LogType.LEX:
+                    lex_logger.info(message)
+
+        parse_logger = getLogger("tree_sitter.PARSE")
+        lex_logger = getLogger("tree_sitter.LEX")
+        parser = Parser(self.python, logger=logger)
+        with self.assertLogs("tree_sitter") as logs:
+            parser.parse(b"foo")
+
+        self.assertEqual(logs.records[0].name, "tree_sitter.PARSE")
+        self.assertEqual(logs.records[0].message, "new_parse")
+        self.assertEqual(logs.records[3].name, "tree_sitter.LEX")
+        self.assertEqual(logs.records[3].message, "consume character:'f'")
+
+    def test_dot_graphs(self):
+        from tempfile import TemporaryFile
+
+        new_parse = ["graph {\n", 'label="new_parse"\n', "}\n"]
+        parser = Parser(self.python)
+        with TemporaryFile("w+") as f:
+            parser.print_dot_graphs(f)
+            parser.parse(b"foo")
+            f.seek(0)
+            lines = [f.readline(), f.readline(), f.readline()]
+            self.assertListEqual(lines, new_parse)

@@ -29,6 +29,7 @@ static void module_free(void *self) {
     ModuleState *state = PyModule_GetState((PyObject *)self);
     ts_tree_cursor_delete(&state->default_cursor);
     Py_XDECREF(state->language_type);
+    Py_XDECREF(state->log_type_type);
     Py_XDECREF(state->lookahead_iterator_type);
     Py_XDECREF(state->lookahead_names_iterator_type);
     Py_XDECREF(state->node_type);
@@ -142,6 +143,18 @@ PyMODINIT_FUNC PyInit__binding(void) {
         PyModule_AddObjectRef(module, "Point", (PyObject *)state->point_type) < 0) {
         goto cleanup;
     }
+
+    PyObject *int_enum = import_attribute("enum", "IntEnum");
+    if (int_enum == NULL) {
+        goto cleanup;
+    }
+    state->log_type_type = (PyTypeObject *)PyObject_CallFunction(
+        int_enum, "s{sisi}", "LogType", "PARSE", TSLogTypeParse, "LEX", TSLogTypeLex);
+    if (state->log_type_type == NULL ||
+        PyModule_AddObjectRef(module, "LogType", (PyObject *)state->log_type_type) < 0) {
+        goto cleanup;
+    };
+    Py_DECREF(int_enum);
 
     PyModule_AddIntConstant(module, "LANGUAGE_VERSION", TREE_SITTER_LANGUAGE_VERSION);
     PyModule_AddIntConstant(module, "MIN_COMPATIBLE_LANGUAGE_VERSION",
