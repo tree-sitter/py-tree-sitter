@@ -4,6 +4,7 @@ from typing import Protocol as _Protocol
 
 from ._binding import (
     Language,
+    LogType,
     LookaheadIterator,
     Node,
     Parser,
@@ -17,9 +18,12 @@ from ._binding import (
     MIN_COMPATIBLE_LANGUAGE_VERSION,
 )
 
+LogType.__doc__ = "The type of a log message."
+
 Point.__doc__ = "A position in a multi-line text document, in terms of rows and columns."
 Point.row.__doc__ = "The zero-based row of the document."
 Point.column.__doc__ = "The zero-based column of the document."
+
 
 class QueryPredicate(_Protocol):
     """A custom query predicate that runs on a pattern."""
@@ -49,6 +53,7 @@ class QueryPredicate(_Protocol):
 
 __all__ = [
     "Language",
+    "LogType",
     "LookaheadIterator",
     "Node",
     "Parser",

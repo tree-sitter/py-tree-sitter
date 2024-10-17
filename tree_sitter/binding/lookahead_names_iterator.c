@@ -9,8 +9,7 @@ void lookahead_names_iterator_dealloc(LookaheadNamesIterator *self) {
 }
 
 PyObject *lookahead_names_iterator_iter(LookaheadNamesIterator *self) {
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *lookahead_names_iterator_next(LookaheadNamesIterator *self) {

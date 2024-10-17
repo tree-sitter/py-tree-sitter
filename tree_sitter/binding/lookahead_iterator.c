@@ -25,8 +25,7 @@ PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *Py_UNUS
         language->version = ts_language_version(language->language);
         self->language = PyObject_Init((PyObject *)language, state->language_type);
     }
-    Py_INCREF(self->language);
-    return self->language;
+    return Py_NewRef(self->language);
 }
 
 PyObject *lookahead_iterator_get_current_symbol(LookaheadIterator *self, void *Py_UNUSED(payload)) {
@@ -62,8 +61,7 @@ PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args
 }
 
 PyObject *lookahead_iterator_iter(LookaheadIterator *self) {
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *lookahead_iterator_next(LookaheadIterator *self) {

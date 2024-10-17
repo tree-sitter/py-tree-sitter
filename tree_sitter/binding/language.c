@@ -126,6 +126,15 @@ PyObject *language_node_kind_is_visible(Language *self, PyObject *args) {
     return PyBool_FromLong(symbol_type <= TSSymbolTypeAnonymous);
 }
 
+PyObject *language_node_kind_is_supertype(Language *self, PyObject *args) {
+    TSSymbol symbol;
+    if (!PyArg_ParseTuple(args, "H:node_kind_is_supertype", &symbol)) {
+        return NULL;
+    }
+    TSSymbolType symbol_type = ts_language_symbol_type(self->language, symbol);
+    return PyBool_FromLong(symbol_type <= TSSymbolTypeSupertype);
+}
+
 PyObject *language_field_name_for_id(Language *self, PyObject *args) {
     uint16_t field_id;
     if (!PyArg_ParseTuple(args, "H:field_name_for_id", &field_id)) {
@@ -174,8 +183,7 @@ PyObject *language_lookahead_iterator(Language *self, PyObject *args) {
     if (iter == NULL) {
         return NULL;
     }
-    Py_INCREF(self);
-    iter->language = (PyObject *)self;
+    iter->language = Py_NewRef(self);
     iter->lookahead_iterator = lookahead_iterator;
     return PyObject_Init((PyObject *)iter, state->lookahead_iterator_type);
 }
@@ -190,6 +198,17 @@ PyObject *language_query(Language *self, PyObject *args) {
     return PyObject_CallFunction((PyObject *)state->query_type, "Os#", self, source, length);
 }
 
+PyObject *language_copy(Language *self, PyObject *Py_UNUSED(args)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    Language *copied = PyObject_New(Language, state->language_type);
+    if (copied == NULL) {
+        return NULL;
+    }
+
+    copied->language = (TSLanguage *)ts_language_copy(self->language);
+    return PyObject_Init((PyObject *)copied, state->language_type);
+}
+
 PyDoc_STRVAR(language_node_kind_for_id_doc,
              "node_kind_for_id(self, id, /)\n--\n\n"
              "Get the name of the node kind for the given numerical id.");
@@ -202,6 +221,10 @@ PyDoc_STRVAR(language_node_kind_is_visible_doc,
              "node_kind_is_visible(self, id, /)\n--\n\n"
              "Check if the node type for the given numerical id "
              "is visible (as opposed to an auxiliary node type).");
+PyDoc_STRVAR(language_node_kind_is_supertype_doc,
+             "node_kind_is_supertype(self, id, /)\n--\n\n"
+             "Check if the node type for the given numerical id is a supertype.\n\nSupertype "
+             "nodes represent abstract categories of syntax nodes (e.g. \"expression\").");
 PyDoc_STRVAR(language_field_name_for_id_doc, "field_name_for_id(self, field_id, /)\n--\n\n"
                                              "Get the field name for the given numerical id.");
 PyDoc_STRVAR(language_field_id_for_name_doc, "field_id_for_name(self, name, /)\n--\n\n"
@@ -218,6 +241,10 @@ PyDoc_STRVAR(
     language_query_doc,
     "query(self, source, /)\n--\n\n"
     "Create a new :class:`Query` from a string containing one or more S-expression patterns.");
+PyDoc_STRVAR(language_copy_doc, "copy(self, /)\n--\n\n"
+                                "Create a copy of the language.");
+PyDoc_STRVAR(language_copy2_doc, "__copy__(self, /)\n--\n\n"
+                                 "Use :func:`copy.copy` to create a copy of the language.");
 
 static PyMethodDef language_methods[] = {
     {
@@ -243,6 +270,12 @@ static PyMethodDef language_methods[] = {
         .ml_meth = (PyCFunction)language_node_kind_is_visible,
         .ml_flags = METH_VARARGS,
         .ml_doc = language_node_kind_is_visible_doc,
+    },
+    {
+        .ml_name = "node_kind_is_supertype",
+        .ml_meth = (PyCFunction)language_node_kind_is_supertype,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_node_kind_is_supertype_doc,
     },
     {
         .ml_name = "field_name_for_id",
@@ -274,6 +307,16 @@ static PyMethodDef language_methods[] = {
         .ml_flags = METH_VARARGS,
         .ml_doc = language_query_doc,
     },
+    {
+        .ml_name = "copy",
+        .ml_meth = (PyCFunction)language_copy,
+        .ml_flags = METH_NOARGS,
+        .ml_doc = language_copy_doc,
+    },
+    {.ml_name = "__copy__",
+     .ml_meth = (PyCFunction)language_copy,
+     .ml_flags = METH_NOARGS,
+     .ml_doc = language_copy2_doc},
     {NULL},
 };
 

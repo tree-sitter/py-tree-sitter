@@ -9,18 +9,33 @@ typedef struct {
     ModuleState *state;
 } ReadWrapperPayload;
 
+typedef struct {
+    PyObject *callback;
+    PyTypeObject *log_type_type;
+} LoggerPayload;
+
+static void free_logger(const TSParser *parser) {
+    TSLogger logger = ts_parser_logger(parser);
+    if (logger.payload != NULL) {
+        PyMem_Free(logger.payload);
+    }
+}
+
 PyObject *parser_new(PyTypeObject *cls, PyObject *Py_UNUSED(args), PyObject *Py_UNUSED(kwargs)) {
     Parser *self = (Parser *)cls->tp_alloc(cls, 0);
     if (self != NULL) {
         self->parser = ts_parser_new();
         self->language = NULL;
+        self->logger = NULL;
     }
     return (PyObject *)self;
 }
 
 void parser_dealloc(Parser *self) {
+    free_logger(self->parser);
     ts_parser_delete(self->parser);
     Py_XDECREF(self->language);
+    Py_XDECREF(self->logger);
     Py_TYPE(self)->tp_free(self);
 }
 
@@ -190,6 +205,19 @@ PyObject *parser_reset(Parser *self, void *Py_UNUSED(payload)) {
     Py_RETURN_NONE;
 }
 
+PyObject *parser_print_dot_graphs(Parser *self, PyObject *arg) {
+    if (arg == Py_None) {
+        ts_parser_print_dot_graphs(self->parser, -1);
+    } else {
+        int fd = PyObject_AsFileDescriptor(arg);
+        if (fd < 0) {
+            return NULL;
+        }
+        ts_parser_print_dot_graphs(self->parser, fd);
+    }
+    Py_RETURN_NONE;
+}
+
 PyObject *parser_get_timeout_micros(Parser *self, void *Py_UNUSED(payload)) {
     return PyLong_FromUnsignedLong(ts_parser_timeout_micros(self->parser));
 }
@@ -273,8 +301,49 @@ PyObject *parser_get_language(Parser *self, void *Py_UNUSED(payload)) {
     if (!self->language) {
         Py_RETURN_NONE;
     }
-    Py_INCREF(self->language);
-    return self->language;
+    return Py_NewRef(self->language);
+}
+
+PyObject *parser_get_logger(Parser *self, void *Py_UNUSED(payload)) {
+    if (!self->logger) {
+        Py_RETURN_NONE;
+    }
+    return Py_NewRef(self->logger);
+}
+
+static void log_callback(void *payload, TSLogType log_type, const char *buffer) {
+    LoggerPayload *logger_payload = (LoggerPayload *)payload;
+    PyObject *log_type_enum =
+        PyObject_CallFunction((PyObject *)logger_payload->log_type_type, "i", log_type);
+    PyObject_CallFunction(logger_payload->callback, "Os", log_type_enum, buffer);
+}
+
+int parser_set_logger(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
+    free_logger(self->parser);
+
+    if (arg == NULL || arg == Py_None) {
+        Py_XDECREF(self->logger);
+        self->logger = NULL;
+        TSLogger logger = {NULL, NULL};
+        ts_parser_set_logger(self->parser, logger);
+        return 0;
+    }
+    if (!PyCallable_Check(arg)) {
+        PyErr_Format(PyExc_TypeError, "logger must be assigned a Callable object, not %s",
+                     arg->ob_type->tp_name);
+        return -1;
+    }
+
+    Py_XSETREF(self->logger, Py_NewRef(arg));
+
+    ModuleState *state = GET_MODULE_STATE(self);
+    LoggerPayload *payload = PyMem_Malloc(sizeof(LoggerPayload));
+    payload->callback = self->logger;
+    payload->log_type_type = state->log_type_type;
+    TSLogger logger = {payload, log_callback};
+    ts_parser_set_logger(self->parser, logger);
+
+    return 0;
 }
 
 int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
@@ -304,18 +373,17 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
         return -1;
     }
 
-    Py_INCREF(language);
-    Py_XSETREF(self->language, (PyObject *)language);
+    Py_XSETREF(self->language, Py_NewRef(language));
     return 0;
 }
 
 int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
-    PyObject *language = NULL, *included_ranges = NULL, *timeout_micros = NULL;
-    char *keywords[] = {"language", "included_ranges", "timeout_micros", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!$OO:__init__", keywords,
+    PyObject *language = NULL, *included_ranges = NULL, *timeout_micros = NULL, *logger = NULL;
+    char *keywords[] = {"language", "included_ranges", "timeout_micros", "logger", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!$OOO:__init__", keywords,
                                      state->language_type, &language, &included_ranges,
-                                     &timeout_micros)) {
+                                     &timeout_micros, &logger)) {
         return -1;
     }
 
@@ -326,6 +394,9 @@ int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
         return -1;
     }
     if (SET_ATTRIBUTE_ERROR(timeout_micros)) {
+        return -1;
+    }
+    if (SET_ATTRIBUTE_ERROR(logger)) {
         return -1;
     }
     return 0;
@@ -347,6 +418,11 @@ PyDoc_STRVAR(
     "If the parser previously failed because of a timeout, then by default, it will resume where "
     "it left off on the next call to :meth:`parse`.\nIf you don't want to resume, and instead "
     "intend to use this parser to parse some other document, you must call :meth:`reset` first.");
+PyDoc_STRVAR(parser_print_dot_graphs_doc,
+             "print_dot_graphs(self, /, file)\n--\n\n"
+             "Set the file descriptor to which the parser should write debugging "
+             "graphs during parsing. The graphs are formatted in the DOT language. "
+             "You can turn off this logging by passing ``None``.");
 
 static PyMethodDef parser_methods[] = {
     {
@@ -361,6 +437,12 @@ static PyMethodDef parser_methods[] = {
         .ml_flags = METH_NOARGS,
         .ml_doc = parser_reset_doc,
     },
+    {
+        .ml_name = "print_dot_graphs",
+        .ml_meth = (PyCFunction)parser_print_dot_graphs,
+        .ml_flags = METH_O,
+        .ml_doc = parser_print_dot_graphs_doc,
+    },
     {NULL},
 };
 
@@ -371,6 +453,8 @@ static PyGetSetDef parser_accessors[] = {
      PyDoc_STR("The ranges of text that the parser will include when parsing."), NULL},
     {"timeout_micros", (getter)parser_get_timeout_micros, (setter)parser_set_timeout_micros,
      PyDoc_STR("The duration in microseconds that parsing is allowed to take."), NULL},
+    {"logger", (getter)parser_get_logger, (setter)parser_set_logger,
+     PyDoc_STR("The logger that the parser should use during parsing."), NULL},
     {NULL},
 };
 

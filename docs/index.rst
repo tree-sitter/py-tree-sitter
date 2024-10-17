@@ -30,6 +30,7 @@ Classes
    :nosignatures:
 
    tree_sitter.Language
+   tree_sitter.LogType
    tree_sitter.LookaheadIterator
    tree_sitter.Node
    tree_sitter.Parser
