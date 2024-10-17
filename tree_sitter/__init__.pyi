@@ -1,6 +1,7 @@
 from enum import IntEnum
 from collections.abc import ByteString, Callable, Iterator, Sequence
 from typing import Annotated, Any, Final, Literal, NamedTuple, Protocol, Self, final, overload
+from typing_extensions import deprecated
 
 class _SupportsFileno(Protocol):
     def fileno(self) -> int: ...
@@ -15,8 +16,11 @@ class LogType(IntEnum):
 
 @final
 class Language:
-    # TODO(0.25): ptr: Callable[[], CapsuleType] | CapsuleType
-    def __init__(self, ptr: Annotated[int | object, "TSLanguage *"], /) -> None: ...
+    @overload
+    @deprecated("int argument support is deprecated")
+    def __init__(self, ptr: Annotated[int, "TSLanguage *"], /) -> None: ...
+    @overload
+    def __init__(self, ptr: Annotated[object, "TSLanguage *"], /) -> None: ...
 
     # TODO(0.25): implement name
     # @property
