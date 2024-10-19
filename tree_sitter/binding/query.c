@@ -780,9 +780,9 @@ PyDoc_STRVAR(query_matches_doc,
 PyDoc_STRVAR(query_captures_doc,
              "captures(self, node, /, predicate=None)\n--\n\n"
              "Get a list of *captures* within the given node.\n\n" DOC_RETURNS
-             "A list of tuples where the first element is the name of the capture and "
-             "the second element is the captured node." DOC_HINT "This method returns "
-             "all of the captures while :meth:`matches` only returns the last match.");
+             "A dict where the keys are the names of the captures and the values are "
+             "lists of the captured nodes." DOC_HINT "This method returns all of the"
+             "captures while :meth:`matches` only returns the last match.");
 PyDoc_STRVAR(query_pattern_settings_doc,
              "pattern_settings(self, index)\n--\n\n"
              "Get the property settings for the given pattern index.\n\n"
