@@ -30,6 +30,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     TSLanguage *language;
+    TSWasmEngine *wasm_engine;
     uint32_t version;
 #if HAS_LANGUAGE_NAMES
     const char *name;
@@ -40,6 +41,7 @@ typedef struct {
     PyObject_HEAD
     TSParser *parser;
     PyObject *language;
+    int has_wasm_store;
 } Parser;
 
 typedef struct {
@@ -113,6 +115,9 @@ typedef struct {
     TSTreeCursor default_cursor;
     PyObject *re_compile;
     PyObject *query_error;
+    PyTypeObject *wasmtime_engine_type;
+    PyObject *ctypes_cast;
+    PyObject *c_void_p;
     PyTypeObject *language_type;
     PyTypeObject *lookahead_iterator_type;
     PyTypeObject *lookahead_names_iterator_type;
