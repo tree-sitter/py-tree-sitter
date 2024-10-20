@@ -10,15 +10,7 @@ TreeCursor
    .. automethod:: goto_descendant
    .. automethod:: goto_first_child
    .. automethod:: goto_first_child_for_byte
-
-      .. versionchanged:: 0.23.0
-
-         Returns the child index instead of a `bool`.
    .. automethod:: goto_first_child_for_point
-
-      .. versionchanged:: 0.23.0
-
-         Returns the child index instead of a `bool`.
    .. automethod:: goto_last_child
    .. automethod:: goto_next_sibling
    .. automethod:: goto_parent

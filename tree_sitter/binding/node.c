@@ -6,8 +6,7 @@ PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree) {
         return NULL;
     }
     self->node = node;
-    Py_INCREF(tree);
-    self->tree = tree;
+    self->tree = Py_NewRef(tree);
     self->children = NULL;
     return PyObject_Init((PyObject *)self, state->node_type);
 }
@@ -53,8 +52,7 @@ PyObject *node_walk(Node *self, PyObject *Py_UNUSED(args)) {
         return NULL;
     }
 
-    Py_INCREF(self->tree);
-    tree_cursor->tree = self->tree;
+    tree_cursor->tree = Py_NewRef(self->tree);
     tree_cursor->node = NULL;
     tree_cursor->cursor = ts_tree_cursor_new(self->node);
     return PyObject_Init((PyObject *)tree_cursor, state->tree_cursor_type);
@@ -217,6 +215,27 @@ PyObject *node_field_name_for_child(Node *self, PyObject *args) {
     }
 
     const char *field_name = ts_node_field_name_for_child(self->node, index);
+    if (field_name == NULL) {
+        Py_RETURN_NONE;
+    }
+    return PyUnicode_FromString(field_name);
+}
+
+PyObject *node_field_name_for_named_child(Node *self, PyObject *args) {
+    long index;
+    if (!PyArg_ParseTuple(args, "l:field_name_for_named_child", &index)) {
+        return NULL;
+    }
+    if (index < 0) {
+        PyErr_SetString(PyExc_ValueError, "child index must be positive");
+        return NULL;
+    }
+    if ((uint32_t)index >= ts_node_child_count(self->node)) {
+        PyErr_SetString(PyExc_IndexError, "child index out of range");
+        return NULL;
+    }
+
+    const char *field_name = ts_node_field_name_for_named_child(self->node, index);
     if (field_name == NULL) {
         Py_RETURN_NONE;
     }
@@ -399,8 +418,7 @@ PyObject *node_get_end_point(Node *self, void *Py_UNUSED(payload)) {
 PyObject *node_get_children(Node *self, void *Py_UNUSED(payload)) {
     ModuleState *state = GET_MODULE_STATE(self);
     if (self->children) {
-        Py_INCREF(self->children);
-        return self->children;
+        return Py_NewRef(self->children);
     }
 
     uint32_t length = ts_node_child_count(self->node);
@@ -421,9 +439,8 @@ PyObject *node_get_children(Node *self, void *Py_UNUSED(payload)) {
             }
         } while (ts_tree_cursor_goto_next_sibling(&state->default_cursor));
     }
-    Py_INCREF(result);
-    self->children = result;
-    return result;
+    self->children = Py_NewRef(result);
+    return self->children;
 }
 
 PyObject *node_get_named_children(Node *self, void *payload) {
@@ -444,8 +461,7 @@ PyObject *node_get_named_children(Node *self, void *payload) {
     for (uint32_t i = 0, j = 0; i < length; ++i) {
         PyObject *child = PyList_GetItem(self->children, i);
         if (ts_node_is_named(((Node *)child)->node)) {
-            Py_INCREF(child);
-            if (PyList_SetItem(result, j++, child)) {
+            if (PyList_SetItem(result, j++, Py_NewRef(child))) {
                 Py_DECREF(result);
                 return NULL;
             }
@@ -600,6 +616,9 @@ PyDoc_STRVAR(node_children_by_field_name_doc, "children_by_field_name(self, name
 PyDoc_STRVAR(node_field_name_for_child_doc,
              "field_name_for_child(self, child_index, /)\n--\n\n"
              "Get the field name of this node's child at the given index.");
+PyDoc_STRVAR(node_field_name_for_named_child_doc,
+             "field_name_for_child(self, child_index, /)\n--\n\n"
+             "Get the field name of this node's *named* child at the given index.");
 PyDoc_STRVAR(node_descendant_for_byte_range_doc,
              "descendant_for_byte_range(self, start_byte, end_byte, /)\n--\n\n"
              "Get the smallest node within this node that spans the given byte range.");
@@ -670,6 +689,12 @@ static PyMethodDef node_methods[] = {
         .ml_meth = (PyCFunction)node_field_name_for_child,
         .ml_flags = METH_VARARGS,
         .ml_doc = node_field_name_for_child_doc,
+    },
+    {
+        .ml_name = "field_name_for_named_child",
+        .ml_meth = (PyCFunction)node_field_name_for_named_child,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = node_field_name_for_named_child_doc,
     },
     {
         .ml_name = "descendant_for_byte_range",

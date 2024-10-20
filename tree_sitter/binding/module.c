@@ -15,23 +15,6 @@ extern PyType_Spec range_type_spec;
 extern PyType_Spec tree_cursor_type_spec;
 extern PyType_Spec tree_type_spec;
 
-// TODO(0.24): drop Python 3.9 support
-#if PY_MINOR_VERSION > 9
-#define AddObjectRef PyModule_AddObjectRef
-#else
-static int AddObjectRef(PyObject *module, const char *name, PyObject *value) {
-    if (value == NULL) {
-        PyErr_Format(PyExc_SystemError, "PyModule_AddObjectRef() %s == NULL", name);
-        return -1;
-    }
-    int ret = PyModule_AddObject(module, name, value);
-    if (ret == 0) {
-        Py_INCREF(value);
-    }
-    return ret;
-}
-#endif
-
 static inline PyObject *import_attribute(const char *mod, const char *attr) {
     PyObject *module = PyImport_ImportModule(mod);
     if (module == NULL) {
@@ -46,6 +29,7 @@ static void module_free(void *self) {
     ModuleState *state = PyModule_GetState((PyObject *)self);
     ts_tree_cursor_delete(&state->default_cursor);
     Py_XDECREF(state->language_type);
+    Py_XDECREF(state->log_type_type);
     Py_XDECREF(state->lookahead_iterator_type);
     Py_XDECREF(state->lookahead_names_iterator_type);
     Py_XDECREF(state->node_type);
@@ -106,27 +90,27 @@ PyMODINIT_FUNC PyInit__binding(void) {
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &tree_cursor_type_spec, NULL);
     state->tree_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &tree_type_spec, NULL);
 
-    if ((AddObjectRef(module, "Language", (PyObject *)state->language_type) < 0) ||
-        (AddObjectRef(module, "LookaheadIterator", (PyObject *)state->lookahead_iterator_type) <
-         0) ||
-        (AddObjectRef(module, "LookaheadNamesIterator",
-                      (PyObject *)state->lookahead_names_iterator_type) < 0) ||
-        (AddObjectRef(module, "Node", (PyObject *)state->node_type) < 0) ||
-        (AddObjectRef(module, "Parser", (PyObject *)state->parser_type) < 0) ||
-        (AddObjectRef(module, "Query", (PyObject *)state->query_type) < 0) ||
-        (AddObjectRef(module, "QueryPredicateAnyof",
-                      (PyObject *)state->query_predicate_anyof_type) < 0) ||
-        (AddObjectRef(module, "QueryPredicateEqCapture",
-                      (PyObject *)state->query_predicate_eq_capture_type) < 0) ||
-        (AddObjectRef(module, "QueryPredicateEqString",
-                      (PyObject *)state->query_predicate_eq_string_type) < 0) ||
-        (AddObjectRef(module, "QueryPredicateGeneric",
-                      (PyObject *)state->query_predicate_generic_type) < 0) ||
-        (AddObjectRef(module, "QueryPredicateMatch",
-                      (PyObject *)state->query_predicate_match_type) < 0) ||
-        (AddObjectRef(module, "Range", (PyObject *)state->range_type) < 0) ||
-        (AddObjectRef(module, "Tree", (PyObject *)state->tree_type) < 0) ||
-        (AddObjectRef(module, "TreeCursor", (PyObject *)state->tree_cursor_type) < 0)) {
+    if ((PyModule_AddObjectRef(module, "Language", (PyObject *)state->language_type) < 0) ||
+        (PyModule_AddObjectRef(module, "LookaheadIterator",
+                               (PyObject *)state->lookahead_iterator_type) < 0) ||
+        (PyModule_AddObjectRef(module, "LookaheadNamesIterator",
+                               (PyObject *)state->lookahead_names_iterator_type) < 0) ||
+        (PyModule_AddObjectRef(module, "Node", (PyObject *)state->node_type) < 0) ||
+        (PyModule_AddObjectRef(module, "Parser", (PyObject *)state->parser_type) < 0) ||
+        (PyModule_AddObjectRef(module, "Query", (PyObject *)state->query_type) < 0) ||
+        (PyModule_AddObjectRef(module, "QueryPredicateAnyof",
+                               (PyObject *)state->query_predicate_anyof_type) < 0) ||
+        (PyModule_AddObjectRef(module, "QueryPredicateEqCapture",
+                               (PyObject *)state->query_predicate_eq_capture_type) < 0) ||
+        (PyModule_AddObjectRef(module, "QueryPredicateEqString",
+                               (PyObject *)state->query_predicate_eq_string_type) < 0) ||
+        (PyModule_AddObjectRef(module, "QueryPredicateGeneric",
+                               (PyObject *)state->query_predicate_generic_type) < 0) ||
+        (PyModule_AddObjectRef(module, "QueryPredicateMatch",
+                               (PyObject *)state->query_predicate_match_type) < 0) ||
+        (PyModule_AddObjectRef(module, "Range", (PyObject *)state->range_type) < 0) ||
+        (PyModule_AddObjectRef(module, "Tree", (PyObject *)state->tree_type) < 0) ||
+        (PyModule_AddObjectRef(module, "TreeCursor", (PyObject *)state->tree_cursor_type) < 0)) {
         goto cleanup;
     }
 
@@ -134,7 +118,8 @@ PyMODINIT_FUNC PyInit__binding(void) {
         "tree_sitter.QueryError",
         PyDoc_STR("An error that occurred while attempting to create a :class:`Query`."),
         PyExc_ValueError, NULL);
-    if (state->query_error == NULL || AddObjectRef(module, "QueryError", state->query_error) < 0) {
+    if (state->query_error == NULL ||
+        PyModule_AddObjectRef(module, "QueryError", state->query_error) < 0) {
         goto cleanup;
     }
 
@@ -155,9 +140,21 @@ PyMODINIT_FUNC PyInit__binding(void) {
     Py_DECREF(point_kwargs);
     Py_DECREF(namedtuple);
     if (state->point_type == NULL ||
-        AddObjectRef(module, "Point", (PyObject *)state->point_type) < 0) {
+        PyModule_AddObjectRef(module, "Point", (PyObject *)state->point_type) < 0) {
         goto cleanup;
     }
+
+    PyObject *int_enum = import_attribute("enum", "IntEnum");
+    if (int_enum == NULL) {
+        goto cleanup;
+    }
+    state->log_type_type = (PyTypeObject *)PyObject_CallFunction(
+        int_enum, "s{sisi}", "LogType", "PARSE", TSLogTypeParse, "LEX", TSLogTypeLex);
+    if (state->log_type_type == NULL ||
+        PyModule_AddObjectRef(module, "LogType", (PyObject *)state->log_type_type) < 0) {
+        goto cleanup;
+    };
+    Py_DECREF(int_enum);
 
     PyModule_AddIntConstant(module, "LANGUAGE_VERSION", TREE_SITTER_LANGUAGE_VERSION);
     PyModule_AddIntConstant(module, "MIN_COMPATIBLE_LANGUAGE_VERSION",

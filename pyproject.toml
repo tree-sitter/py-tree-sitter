@@ -17,7 +17,7 @@ classifiers = [
     "Topic :: Text Processing :: Linguistic",
     "Typing :: Typed",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.md"
 
 [project.urls]
@@ -30,7 +30,7 @@ name = "Max Brunsfeld"
 email = "maxbrunsfeld@gmail.com"
 
 [project.optional-dependencies]
-docs = ["sphinx~=7.3", "sphinx-book-theme"]
+docs = ["sphinx~=7.4", "sphinx-book-theme"]
 tests = [
     "tree-sitter-html>=0.23.0",
     "tree-sitter-javascript>=0.23.0",
@@ -40,7 +40,7 @@ tests = [
 ]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 100
 indent-width = 4
 extend-exclude = [
