@@ -1,5 +1,8 @@
 #include "types.h"
 
+extern void wasm_engine_delete(TSWasmEngine *engine);
+extern TSWasmEngine *wasmtime_engine_clone(TSWasmEngine *engine);
+
 int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     PyObject *language;
     if (!PyArg_ParseTuple(args, "O:__init__", &language)) {
@@ -30,8 +33,117 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
 }
 
 void language_dealloc(Language *self) {
+    if (self->wasm_engine != NULL) {
+        wasm_engine_delete(self->wasm_engine);
+    }
     ts_language_delete(self->language);
     Py_TYPE(self)->tp_free(self);
+}
+
+// ctypes.cast(managed_pointer.ptr(), ctypes.c_void_p).value
+static void *get_managed_pointer(PyObject *cast, PyObject *c_void_p, PyObject *managed_pointer) {
+    void *ptr = NULL;
+    PyObject *ptr_method = NULL;
+    PyObject *ptr_result = NULL;
+    PyObject *cast_result = NULL;
+    PyObject *value_attr = NULL;
+
+    // Call .ptr() method on the managed pointer
+    ptr_method = PyObject_GetAttrString(managed_pointer, "ptr");
+    if (ptr_method == NULL) {
+        goto cleanup;
+    }
+    ptr_result = PyObject_CallObject(ptr_method, NULL);
+    if (ptr_result == NULL) {
+        goto cleanup;
+    }
+
+    // Call cast function
+    cast_result = PyObject_CallFunctionObjArgs(cast, ptr_result, c_void_p, NULL);
+    if (cast_result == NULL) {
+        goto cleanup;
+    }
+
+    // Get the 'value' attribute from the cast result
+    value_attr = PyObject_GetAttrString(cast_result, "value");
+    if (value_attr == NULL) {
+        goto cleanup;
+    }
+
+    // Convert the value attribute to a C void pointer
+    ptr = PyLong_AsVoidPtr(value_attr);
+
+cleanup:
+    Py_XDECREF(value_attr);
+    Py_XDECREF(cast_result);
+    Py_XDECREF(ptr_result);
+    Py_XDECREF(ptr_method);
+
+    if (PyErr_Occurred()) {
+        return NULL;
+    }
+
+    return ptr;
+}
+
+PyObject *language_from_wasm(PyTypeObject *cls, PyObject *args) {
+    ModuleState *state = (ModuleState *)PyType_GetModuleState(cls);
+    TSWasmError error;
+    TSWasmStore *wasm_store = NULL;
+    TSLanguage *language = NULL;
+    Language *self = NULL;
+    char *name;
+    PyObject *py_engine = NULL;
+    char *wasm;
+    Py_ssize_t wasm_length;
+    if (state->wasmtime_engine_type == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "wasmtime module is not loaded");
+        return NULL;
+    }
+    if (!PyArg_ParseTuple(args, "sO!y#:from_wasm", &name, state->wasmtime_engine_type, &py_engine, &wasm, &wasm_length)) {
+        return NULL;
+    }
+
+    TSWasmEngine *engine = (TSWasmEngine *)get_managed_pointer(state->ctypes_cast, state->c_void_p, py_engine);
+    if (engine == NULL) {
+        goto fail;
+    }
+    engine = wasmtime_engine_clone(engine);
+    if (engine == NULL) {
+        goto fail;
+    }
+
+    wasm_store = ts_wasm_store_new(engine, &error);
+    if (wasm_store == NULL) {
+        PyErr_Format(PyExc_RuntimeError, "Failed to create TSWasmStore: %s", error.message);
+        goto fail;
+    }
+
+    language = (TSLanguage *)ts_wasm_store_load_language(wasm_store, name, wasm, wasm_length, &error);
+    if (language == NULL) {
+        PyErr_Format(PyExc_RuntimeError, "Failed to load language: %s", error.message);
+        goto fail;
+    }
+
+    self = (Language *)cls->tp_alloc(cls, 0);
+    if (self == NULL) {
+        goto fail;
+    }
+
+    self->language = language;
+    self->wasm_engine = engine;
+    self->version = ts_language_version(self->language);
+#if HAS_LANGUAGE_NAMES
+    self->name = ts_language_name(self->language);
+#endif
+    return (PyObject *)self;
+
+fail:
+    if (engine != NULL) {
+        wasm_engine_delete(engine);
+    }
+    ts_language_delete(language);
+    return NULL;
 }
 
 PyObject *language_repr(Language *self) {
@@ -80,6 +192,10 @@ PyObject *language_get_parse_state_count(Language *self, void *Py_UNUSED(payload
 
 PyObject *language_get_field_count(Language *self, void *Py_UNUSED(payload)) {
     return PyLong_FromUnsignedLong(ts_language_field_count(self->language));
+}
+
+PyObject *language_is_wasm(Language *self, void *Py_UNUSED(payload)) {
+    return PyBool_FromLong(ts_language_is_wasm(self->language));
 }
 
 PyObject *language_node_kind_for_id(Language *self, PyObject *args) {
@@ -190,6 +306,9 @@ PyObject *language_query(Language *self, PyObject *args) {
     return PyObject_CallFunction((PyObject *)state->query_type, "Os#", self, source, length);
 }
 
+PyDoc_STRVAR(language_from_wasm_doc,
+             "from_wasm(self, name, engine, wasm, /)\n--\n\n"
+             "Load a language compiled as wasm.");
 PyDoc_STRVAR(language_node_kind_for_id_doc,
              "node_kind_for_id(self, id, /)\n--\n\n"
              "Get the name of the node kind for the given numerical id.");
@@ -220,6 +339,12 @@ PyDoc_STRVAR(
     "Create a new :class:`Query` from a string containing one or more S-expression patterns.");
 
 static PyMethodDef language_methods[] = {
+    {
+        .ml_name = "from_wasm",
+        .ml_meth = (PyCFunction)language_from_wasm,
+        .ml_flags = METH_CLASS | METH_VARARGS,
+        .ml_doc = language_from_wasm_doc,
+    },
     {
         .ml_name = "node_kind_for_id",
         .ml_meth = (PyCFunction)language_node_kind_for_id,
@@ -291,6 +416,8 @@ static PyGetSetDef language_accessors[] = {
      PyDoc_STR("The number of valid states in this language."), NULL},
     {"field_count", (getter)language_get_field_count, NULL,
      PyDoc_STR("The number of distinct field names in this language."), NULL},
+    {"is_wasm", (getter)language_is_wasm, NULL,
+     PyDoc_STR("Check if the language came from a wasm module."), NULL},
     {NULL},
 };
 

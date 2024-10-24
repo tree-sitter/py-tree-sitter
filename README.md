@@ -15,6 +15,8 @@ The package has no library dependencies and provides pre-compiled wheels for all
 
 ```sh
 pip install tree-sitter
+# For wasm support
+pip install tree-sitter[wasm]
 ```
 
 ## Usage
@@ -38,6 +40,22 @@ from tree_sitter import Language, Parser
 
 PY_LANGUAGE = Language(tspython.language())
 ```
+
+#### Wasm support
+
+If you enable the `wasm` extra, then tree-sitter will be able to use wasmtime to load languages compiled to wasm and parse with them. Example:
+
+```python
+from pathlib import Path
+from wasmtime import Engine
+from tree_sitter import Language, Parser
+
+engine = Engine()
+wasm_bytes = Path("my_language.wasm").read_bytes()
+MY_LANGUAGE = Language.from_wasm("my_language", engine, wasm_bytes)
+```
+
+Languages loaded this way work identically to native-binary languages.
 
 ### Basic parsing
 
