@@ -70,7 +70,7 @@ static inline bool satisfies_eq_capture(ModuleState *state, QueryPredicateEqCapt
     PyObject *text1, *text2;
     size_t size1 = (size_t)PyList_Size(nodes1), size2 = (size_t)PyList_Size(nodes2);
     int result = 1;
-    for (size_t i = 0, l = size1 > size2 ? size1 : size2; i < l; ++i) {
+    for (size_t i = 0, l = size1 < size2 ? size1 : size2; i < l; ++i) {
         text1 = node_get_text((Node *)PyList_GetItem(nodes1, i), NULL);
         text2 = node_get_text((Node *)PyList_GetItem(nodes2, i), NULL);
         result = PREDICATE_CMP(text1, text2, predicate);
