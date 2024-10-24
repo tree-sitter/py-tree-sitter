@@ -592,8 +592,7 @@ PyObject *query_pattern_settings(Query *self, PyObject *args) {
         return NULL;
     }
     PyObject *item = PyList_GetItem(self->settings, pattern_index);
-    Py_INCREF(item);
-    return item;
+    return Py_NewRef(item);
 }
 
 PyObject *query_pattern_assertions(Query *self, PyObject *args) {
@@ -607,8 +606,7 @@ PyObject *query_pattern_assertions(Query *self, PyObject *args) {
         return NULL;
     }
     PyObject *item = PyList_GetItem(self->assertions, pattern_index);
-    Py_INCREF(item);
-    return item;
+    return Py_NewRef(item);
 }
 
 PyObject *query_set_timeout_micros(Query *self, PyObject *args) {
@@ -617,8 +615,7 @@ PyObject *query_set_timeout_micros(Query *self, PyObject *args) {
         return NULL;
     }
     ts_query_cursor_set_timeout_micros(self->cursor, timeout_micros);
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *query_set_match_limit(Query *self, PyObject *args) {
@@ -631,8 +628,7 @@ PyObject *query_set_match_limit(Query *self, PyObject *args) {
         return NULL;
     }
     ts_query_cursor_set_match_limit(self->cursor, match_limit);
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *query_set_max_start_depth(Query *self, PyObject *args) {
@@ -641,8 +637,7 @@ PyObject *query_set_max_start_depth(Query *self, PyObject *args) {
         return NULL;
     }
     ts_query_cursor_set_max_start_depth(self->cursor, max_start_depth);
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *query_set_byte_range(Query *self, PyObject *args) {
@@ -651,8 +646,7 @@ PyObject *query_set_byte_range(Query *self, PyObject *args) {
         return NULL;
     }
     ts_query_cursor_set_byte_range(self->cursor, start_byte, end_byte);
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *query_set_point_range(Query *self, PyObject *args) {
@@ -662,8 +656,7 @@ PyObject *query_set_point_range(Query *self, PyObject *args) {
         return NULL;
     }
     ts_query_cursor_set_point_range(self->cursor, start_point, end_point);
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *query_disable_pattern(Query *self, PyObject *args) {
@@ -672,8 +665,7 @@ PyObject *query_disable_pattern(Query *self, PyObject *args) {
         return NULL;
     }
     ts_query_disable_pattern(self->query, pattern_index);
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *query_disable_capture(Query *self, PyObject *args) {
@@ -683,8 +675,7 @@ PyObject *query_disable_capture(Query *self, PyObject *args) {
         return NULL;
     }
     ts_query_disable_capture(self->query, capture_name, length);
-    Py_INCREF(self);
-    return (PyObject *)self;
+    return Py_NewRef(self);
 }
 
 PyObject *query_start_byte_for_pattern(Query *self, PyObject *args) {

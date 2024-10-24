@@ -3,13 +3,12 @@ Language
 
 .. autoclass:: tree_sitter.Language
 
-   .. versionchanged:: 0.23.0
-
-      The argument can now be a `capsule <https://docs.python.org/3/c-api/capsule.html>`_.
-
    Methods
    -------
 
+   .. automethod:: copy
+
+      .. versionadded:: 0.24.0
    .. automethod:: field_id_for_name
    .. automethod:: field_name_for_id
    .. automethod:: id_for_node_kind
@@ -17,12 +16,18 @@ Language
    .. automethod:: next_state
    .. automethod:: node_kind_for_id
    .. automethod:: node_kind_is_named
+   .. automethod:: node_kind_is_supertype
+
+      .. versionadded:: 0.24.0
    .. automethod:: node_kind_is_visible
    .. automethod:: query
 
    Special Methods
    ---------------
 
+   .. automethod:: __copy__
+
+      .. versionadded:: 0.24.0
    .. automethod:: __eq__
    .. automethod:: __hash__
 

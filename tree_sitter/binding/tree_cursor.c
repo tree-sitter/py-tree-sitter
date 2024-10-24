@@ -18,8 +18,7 @@ PyObject *tree_cursor_get_node(TreeCursor *self, void *Py_UNUSED(payload)) {
         ModuleState *state = GET_MODULE_STATE(self);
         self->node = node_new_internal(state, current_node, self->tree);
     }
-    Py_INCREF(self->node);
-    return self->node;
+    return Py_NewRef(self->node);
 }
 
 PyObject *tree_cursor_get_field_id(TreeCursor *self, void *Py_UNUSED(payload)) {
@@ -169,8 +168,7 @@ PyObject *tree_cursor_copy(TreeCursor *self, PyObject *Py_UNUSED(args)) {
         return NULL;
     }
 
-    Py_INCREF(self->tree);
-    copied->tree = self->tree;
+    copied->tree = Py_NewRef(self->tree);
     copied->cursor = ts_tree_cursor_copy(&self->cursor);
     return PyObject_Init((PyObject *)copied, state->tree_cursor_type);
 }
@@ -183,7 +181,7 @@ PyDoc_STRVAR(
     tree_cursor_goto_last_child_doc,
     "goto_last_child(self, /)\n--\n\n"
     "Move this cursor to the last child of its current node." DOC_RETURNS "``True`` "
-    "if the cursor successfully moved, or ``False`` if there were no children." DOC_ATTENTION
+    "if the cursor successfully moved, or ``False`` if there were no children." DOC_CAUTION
     "This method may be slower than :meth:`goto_first_child` because it needs "
     "to iterate through all the children to compute the child's position.");
 PyDoc_STRVAR(tree_cursor_goto_parent_doc,
@@ -199,7 +197,7 @@ PyDoc_STRVAR(tree_cursor_goto_previous_sibling_doc,
              "goto_previous_sibling(self, /)\n--\n\n"
              "Move this cursor to the previous sibling of its current node." DOC_RETURNS
              "``True`` if the cursor successfully moved, or ``False`` if there was no previous "
-             "sibling." DOC_ATTENTION
+             "sibling." DOC_CAUTION
              "This method may be slower than :meth:`goto_next_sibling` due to how node positions "
              "are stored.\nIn the worst case, this will need to iterate through all the children "
              "up to the previous sibling node to recalculate its position.");

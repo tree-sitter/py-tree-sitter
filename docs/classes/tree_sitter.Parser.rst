@@ -7,10 +7,9 @@ Parser
    -------
 
    .. automethod:: parse
+   .. automethod:: print_dot_graphs
 
-      .. versionchanged:: 0.23.0
-
-         No longer accepts a ``keep_text`` parameter.
+      .. versionadded:: 0.24.0
    .. automethod:: reset
 
    Attributes
@@ -18,4 +17,7 @@ Parser
 
    .. autoattribute:: included_ranges
    .. autoattribute:: language
+   .. autoattribute:: logger
+
+      .. versionadded:: 0.24.0
    .. autoattribute:: timeout_micros

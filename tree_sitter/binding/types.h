@@ -6,11 +6,6 @@
 
 #define HAS_LANGUAGE_NAMES (TREE_SITTER_LANGUAGE_VERSION >= 15)
 
-#if PY_MINOR_VERSION < 10
-#define Py_TPFLAGS_DISALLOW_INSTANTIATION 0
-#define Py_TPFLAGS_IMMUTABLETYPE 0
-#endif
-
 // Types
 
 typedef struct {
@@ -40,6 +35,7 @@ typedef struct {
     PyObject_HEAD
     TSParser *parser;
     PyObject *language;
+    PyObject *logger;
 } Parser;
 
 typedef struct {
@@ -114,6 +110,7 @@ typedef struct {
     PyObject *re_compile;
     PyObject *query_error;
     PyTypeObject *language_type;
+    PyTypeObject *log_type_type;
     PyTypeObject *lookahead_iterator_type;
     PyTypeObject *lookahead_names_iterator_type;
     PyTypeObject *node_type;
