@@ -1,3 +1,4 @@
+#include <wasm.h>
 #include "types.h"
 
 extern PyType_Spec language_type_spec;
@@ -14,6 +15,8 @@ extern PyType_Spec query_predicate_match_type_spec;
 extern PyType_Spec range_type_spec;
 extern PyType_Spec tree_cursor_type_spec;
 extern PyType_Spec tree_type_spec;
+
+void tsp_load_wasmtime_symbols();
 
 // TODO(0.24): drop Python 3.9 support
 #if PY_MINOR_VERSION > 9
@@ -62,6 +65,9 @@ static void module_free(void *self) {
     Py_XDECREF(state->tree_type);
     Py_XDECREF(state->query_error);
     Py_XDECREF(state->re_compile);
+    Py_XDECREF(state->wasmtime_engine_type);
+    Py_XDECREF(state->ctypes_cast);
+    Py_XDECREF(state->c_void_p);
 }
 
 static struct PyModuleDef module_definition = {
@@ -147,6 +153,35 @@ PyMODINIT_FUNC PyInit__binding(void) {
     if (namedtuple == NULL) {
         goto cleanup;
     }
+
+    PyObject *wasmtime_engine = import_attribute("wasmtime", "Engine");
+    if (wasmtime_engine == NULL) {
+        // No worries, disable functionality.
+        PyErr_Clear();
+    } else {
+        // Ensure wasmtime_engine is a PyTypeObject
+        if (!PyType_Check(wasmtime_engine)) {
+            PyErr_SetString(PyExc_TypeError, "wasmtime.Engine is not a type");
+            goto cleanup;
+        }
+        state->wasmtime_engine_type = (PyTypeObject *)wasmtime_engine;
+
+        tsp_load_wasmtime_symbols();
+        if (PyErr_Occurred()) {
+            goto cleanup;
+        }
+
+        state->ctypes_cast = import_attribute("ctypes", "cast");
+        if (state->ctypes_cast == NULL) {
+            goto cleanup;
+        }
+
+        state->c_void_p = import_attribute("ctypes", "c_void_p");
+        if (state->c_void_p == NULL) {
+            goto cleanup;
+        }
+    }
+
     PyObject *point_args = Py_BuildValue("s[ss]", "Point", "row", "column");
     PyObject *point_kwargs = PyDict_New();
     PyDict_SetItemString(point_kwargs, "module", PyUnicode_FromString("tree_sitter"));

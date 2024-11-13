@@ -1,3 +1,4 @@
+#include <wasm.h>
 #include "types.h"
 
 #define SET_ATTRIBUTE_ERROR(name)                                                                  \
@@ -278,6 +279,7 @@ PyObject *parser_get_language(Parser *self, void *Py_UNUSED(payload)) {
 }
 
 int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
+    ModuleState *state = GET_MODULE_STATE(self);
     if (arg == NULL || arg == Py_None) {
         self->language = NULL;
         return 0;
@@ -297,6 +299,24 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
                      language->version, TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION,
                      TREE_SITTER_LANGUAGE_VERSION);
         return -1;
+    }
+
+    if (state->wasmtime_engine_type != NULL && ts_language_is_wasm(language->language)) {
+        TSWasmEngine *engine = language->wasm_engine;
+        if (engine == NULL) {
+            PyErr_Format(PyExc_RuntimeError, "Language has no WASM engine");
+            return -1;
+        }
+        // Allocate a new wasm store and assign it before loading this wasm language.
+        // It would be possible to reuse the existing store if it belonged to the same
+        // engine, but tree-sitter does not expose an API to verify that.
+        TSWasmError error;
+        TSWasmStore *store = ts_wasm_store_new(engine, &error);
+        if (store == NULL) {
+            PyErr_Format(PyExc_RuntimeError, "Failed to create TSWasmStore: %s", error.message);
+            return -1;
+        }
+        ts_parser_set_wasm_store(self->parser, store);
     }
 
     if (!ts_parser_set_language(self->parser, language->language)) {
