@@ -107,7 +107,7 @@ static inline bool satisfies_match(ModuleState *state, QueryPredicateMatch *pred
         text = node_get_text((Node *)PyList_GetItem(nodes, i), NULL);
         search_result =
             PyObject_CallMethod(predicate->pattern, "search", "s", PyBytes_AsString(text));
-        result = search_result != NULL && search_result != Py_None;
+        result = (search_result != NULL && search_result != Py_None) == predicate->is_positive;
         Py_DECREF(text);
         Py_XDECREF(search_result);
         PREDICATE_BREAK(predicate, result);
