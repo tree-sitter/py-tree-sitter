@@ -558,6 +558,9 @@ PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
         if (!query_satisfies_predicates(self, match, (Tree *)node->tree, predicate)) {
             continue;
         }
+        if (PyErr_Occurred()) {
+            return NULL;
+        }
 
         TSQueryCapture capture = match.captures[capture_index];
         PyObject *capture_name = PyList_GetItem(self->capture_names, capture.index);
