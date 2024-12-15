@@ -2,7 +2,7 @@
 .venv
 build
 dist
-*.pyc
+*.py[cd]
 *.egg-info
 *.so
 __pycache__
