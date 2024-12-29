@@ -25,7 +25,7 @@ class TestLanguage(TestCase):
         lang = Language(self.python)
         self.assertEqual(lang.version, 14)
         self.assertEqual(lang.node_kind_count, 275)
-        self.assertEqual(lang.parse_state_count, 2795)
+        self.assertEqual(lang.parse_state_count, 2809)
         self.assertEqual(lang.field_count, 32)
 
     def test_node_kind_for_id(self):
