@@ -48,17 +48,25 @@ static inline bool satisfies_anyof(ModuleState *state, QueryPredicateAnyOf *pred
     PyObject *nodes = nodes_for_capture_index(state, predicate->capture_id, match, tree);
     for (size_t i = 0, l = (size_t)PyList_Size(nodes); i < l; ++i) {
         Node *node = (Node *)PyList_GetItem(nodes, i);
-        PyObject *text1 = node_get_text(node, NULL), *text2;
+        PyObject *text1 = node_get_text(node, NULL);
+        bool found_match = false;
+
         for (size_t j = 0, k = (size_t)PyList_Size(predicate->values); j < k; ++j) {
-            text2 = PyList_GetItem(predicate->values, j);
-            if (PREDICATE_CMP(text1, text2, predicate) != 1) {
-                Py_DECREF(text1);
-                Py_DECREF(nodes);
-                return false;
+            PyObject *text2 = PyList_GetItem(predicate->values, j);
+            if (PREDICATE_CMP(text1, text2, predicate) == 1) {
+                found_match = true;
+                break;
             }
         }
+
         Py_DECREF(text1);
+
+        if (!found_match) {
+            Py_DECREF(nodes);
+            return false;
+        }
     }
+
     Py_DECREF(nodes);
     return true;
 }
