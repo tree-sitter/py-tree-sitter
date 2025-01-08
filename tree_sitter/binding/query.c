@@ -351,6 +351,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
 
                 QueryPredicateAnyOf *predicate =
                     PyObject_New(QueryPredicateAnyOf, state->query_predicate_anyof_type);
+                predicate->capture_id = (predicate_step + 1)->value_id;
                 predicate->is_positive = is_positive;
                 predicate->values = values;
                 PyObject *predicate_obj =
