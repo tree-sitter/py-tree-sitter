@@ -21,3 +21,12 @@ updates:
       prefix: build
     labels: [dependencies]
     open-pull-requests-limit: 1
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: friday
+    commit-message:
+      prefix: build
+    labels: [dependencies]
+    open-pull-requests-limit: 1
