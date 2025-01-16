@@ -22,7 +22,7 @@ source_suffix = {
 }
 master_doc = "index"
 language = "en"
-needs_sphinx = "7.4"
+needs_sphinx = "8.1"
 templates_path = ["_templates"]
 
 intersphinx_mapping = {
@@ -43,8 +43,8 @@ napoleon_use_admonition_for_notes = True
 html_theme = "sphinx_book_theme"
 html_theme_options = {
     "repository_url": "https://github.com/tree-sitter/py-tree-sitter",
-    "pygment_light_style": "default",
-    "pygment_dark_style": "github-dark",
+    "pygments_light_style": "default",
+    "pygments_dark_style": "github-dark",
     "navigation_with_keys": False,
     "use_repository_button": True,
     "use_download_button": False,

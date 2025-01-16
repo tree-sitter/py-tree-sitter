@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tree-sitter"
-version = "0.23.2"
+version = "0.24.0"
 description = "Python bindings to the Tree-sitter parsing library"
 keywords = ["incremental", "parsing", "tree-sitter"]
 classifiers = [
@@ -31,12 +31,12 @@ name = "Max Brunsfeld"
 email = "maxbrunsfeld@gmail.com"
 
 [project.optional-dependencies]
-docs = ["sphinx~=7.4", "sphinx-book-theme"]
+docs = ["sphinx~=8.1", "sphinx-book-theme"]
 tests = [
     "tree-sitter-html>=0.23.2",
     "tree-sitter-javascript>=0.23.1",
     "tree-sitter-json>=0.24.8",
-    "tree-sitter-python>=0.23.0",
+    "tree-sitter-python>=0.23.6",
     "tree-sitter-rust>=0.23.2",
 ]
 
