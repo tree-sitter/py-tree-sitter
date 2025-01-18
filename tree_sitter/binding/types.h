@@ -103,8 +103,6 @@ typedef struct {
     PyObject *language;
 } LookaheadIterator;
 
-typedef LookaheadIterator LookaheadNamesIterator;
-
 typedef struct {
     TSTreeCursor default_cursor;
     PyObject *re_compile;
@@ -112,7 +110,6 @@ typedef struct {
     PyTypeObject *language_type;
     PyTypeObject *log_type_type;
     PyTypeObject *lookahead_iterator_type;
-    PyTypeObject *lookahead_names_iterator_type;
     PyTypeObject *node_type;
     PyTypeObject *parser_type;
     PyTypeObject *point_type;
