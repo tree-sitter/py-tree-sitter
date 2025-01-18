@@ -87,8 +87,12 @@ PyObject *tree_copy(Tree *self, PyObject *Py_UNUSED(args)) {
 
 PyObject *tree_print_dot_graph(Tree *self, PyObject *arg) {
     int fd = PyObject_AsFileDescriptor(arg);
-    if (fd < 0) return NULL;
+    if (fd < 0) {
+        return NULL;
+    }
+    Py_BEGIN_ALLOW_THREADS
     ts_tree_print_dot_graph(self->tree, fd);
+    Py_END_ALLOW_THREADS
     Py_RETURN_NONE;
 }
 
