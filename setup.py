@@ -16,6 +16,7 @@ setup(
                 "tree_sitter/binding/language.c",
                 "tree_sitter/binding/lookahead_iterator.c",
                 "tree_sitter/binding/lookahead_names_iterator.c",
+                "tree_sitter/binding/lookahead_symbols_iterator.c",
                 "tree_sitter/binding/node.c",
                 "tree_sitter/binding/parser.c",
                 "tree_sitter/binding/query.c",

@@ -7,8 +7,8 @@ import tree_sitter_rust
 
 class TestLookaheadIterator(TestCase):
     @classmethod
-    def setUpClass(self):
-        self.rust = Language(tree_sitter_rust.language())
+    def setUpClass(cls):
+        cls.rust = Language(tree_sitter_rust.language())
 
     def test_lookahead_iterator(self):
         parser = Parser(self.rust)
@@ -34,10 +34,13 @@ class TestLookaheadIterator(TestCase):
         self.assertEqual(lookahead.language, self.rust)
         self.assertListEqual(list(lookahead.iter_names()), expected_symbols)
 
-        lookahead.reset_state(next_state)
-        self.assertListEqual(list(lookahead.iter_names()), expected_symbols)
-
-        lookahead.reset_state(next_state, self.rust)
+        lookahead.reset(next_state)
         self.assertListEqual(
-            list(map(self.rust.node_kind_for_id, list(iter(lookahead)))), expected_symbols
+            list(map(self.rust.node_kind_for_id, list(lookahead.iter_symbols()))), expected_symbols
+        )
+
+        lookahead.reset(next_state, self.rust)
+        self.assertTupleEqual(
+            (self.rust.id_for_node_kind("//", False), "//"),
+            next(lookahead)
         )
