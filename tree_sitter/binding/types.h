@@ -105,6 +105,8 @@ typedef struct {
 
 typedef LookaheadIterator LookaheadNamesIterator;
 
+typedef LookaheadIterator LookaheadSymbolsIterator;
+
 typedef struct {
     TSTreeCursor default_cursor;
     PyObject *re_compile;
@@ -113,6 +115,7 @@ typedef struct {
     PyTypeObject *log_type_type;
     PyTypeObject *lookahead_iterator_type;
     PyTypeObject *lookahead_names_iterator_type;
+    PyTypeObject *lookahead_symbols_iterator_type;
     PyTypeObject *node_type;
     PyTypeObject *parser_type;
     PyTypeObject *point_type;

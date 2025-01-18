@@ -3,6 +3,7 @@
 extern PyType_Spec language_type_spec;
 extern PyType_Spec lookahead_iterator_type_spec;
 extern PyType_Spec lookahead_names_iterator_type_spec;
+extern PyType_Spec lookahead_symbols_iterator_type_spec;
 extern PyType_Spec node_type_spec;
 extern PyType_Spec parser_type_spec;
 extern PyType_Spec query_type_spec;
@@ -32,6 +33,7 @@ static void module_free(void *self) {
     Py_XDECREF(state->log_type_type);
     Py_XDECREF(state->lookahead_iterator_type);
     Py_XDECREF(state->lookahead_names_iterator_type);
+    Py_XDECREF(state->lookahead_symbols_iterator_type);
     Py_XDECREF(state->node_type);
     Py_XDECREF(state->parser_type);
     Py_XDECREF(state->point_type);
@@ -72,6 +74,8 @@ PyMODINIT_FUNC PyInit__binding(void) {
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &lookahead_iterator_type_spec, NULL);
     state->lookahead_names_iterator_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &lookahead_names_iterator_type_spec, NULL);
+    state->lookahead_symbols_iterator_type =
+        (PyTypeObject *)PyType_FromModuleAndSpec(module, &lookahead_symbols_iterator_type_spec, NULL);
     state->node_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &node_type_spec, NULL);
     state->parser_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &parser_type_spec, NULL);
     state->query_predicate_anyof_type =
@@ -95,6 +99,8 @@ PyMODINIT_FUNC PyInit__binding(void) {
                                (PyObject *)state->lookahead_iterator_type) < 0) ||
         (PyModule_AddObjectRef(module, "LookaheadNamesIterator",
                                (PyObject *)state->lookahead_names_iterator_type) < 0) ||
+        (PyModule_AddObjectRef(module, "LookaheadSymbolsIterator",
+                               (PyObject *)state->lookahead_symbols_iterator_type) < 0) ||
         (PyModule_AddObjectRef(module, "Node", (PyObject *)state->node_type) < 0) ||
         (PyModule_AddObjectRef(module, "Parser", (PyObject *)state->parser_type) < 0) ||
         (PyModule_AddObjectRef(module, "Query", (PyObject *)state->query_type) < 0) ||
