@@ -213,7 +213,9 @@ PyObject *parser_print_dot_graphs(Parser *self, PyObject *arg) {
         if (fd < 0) {
             return NULL;
         }
+        Py_BEGIN_ALLOW_THREADS
         ts_parser_print_dot_graphs(self->parser, fd);
+        Py_END_ALLOW_THREADS
     }
     Py_RETURN_NONE;
 }
