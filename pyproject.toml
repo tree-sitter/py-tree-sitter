@@ -25,6 +25,7 @@ Homepage = "https://tree-sitter.github.io/tree-sitter/"
 Source = "https://github.com/tree-sitter/py-tree-sitter"
 Documentation = "https://tree-sitter.github.io/py-tree-sitter/"
 Discord = "https://discord.gg/w7nTvsVJhm"
+Matrix = "https://matrix.to/#/#tree-sitter-chat:matrix.org"
 
 [[project.authors]]
 name = "Max Brunsfeld"
