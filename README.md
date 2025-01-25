@@ -298,7 +298,7 @@ To try out and explore the code referenced in this README, check out [examples/u
 [tree-sitter]: https://tree-sitter.github.io/tree-sitter/
 [issue]: https://github.com/tree-sitter/py-tree-sitter/issues/new
 [tree-sitter-python]: https://github.com/tree-sitter/tree-sitter-python
-[tree query]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
+[tree query]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries
 [ci]: https://img.shields.io/github/actions/workflow/status/tree-sitter/py-tree-sitter/ci.yml?logo=github&label=CI
 [pypi]: https://img.shields.io/pypi/v/tree-sitter?logo=pypi&logoColor=ffd242&label=PyPI
 [docs]: https://img.shields.io/github/deployments/tree-sitter/py-tree-sitter/github-pages?logo=sphinx&label=Docs
