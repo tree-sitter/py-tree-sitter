@@ -1,6 +1,7 @@
+from typing import cast
 from unittest import TestCase
 
-from tree_sitter import Language, LogType, Parser, Range, Tree
+from tree_sitter import Language, LogType, Node, Parser, Range, Tree
 
 import tree_sitter_html
 import tree_sitter_javascript
@@ -29,15 +30,13 @@ class TestParser(TestCase):
         parser = Parser()
         self.assertIsNone(parser.language)
         self.assertListEqual(parser.included_ranges, [self.max_range])
-        self.assertEqual(parser.timeout_micros, 0)
 
     def test_init_args(self):
         parser = Parser(
-            language=self.python, included_ranges=[self.min_range], timeout_micros=self.timeout
+            language=self.python, included_ranges=[self.min_range]
         )
         self.assertEqual(parser.language, self.python)
         self.assertListEqual(parser.included_ranges, [self.min_range])
-        self.assertEqual(parser.timeout_micros, self.timeout)
 
     def test_setters(self):
         parser = Parser()
@@ -80,10 +79,6 @@ class TestParser(TestCase):
                     )
                 ]
 
-        with self.subTest(setter="timeout_micros"):
-            parser.timeout_micros = self.timeout
-            self.assertEqual(parser.timeout_micros, self.timeout)
-
         with self.subTest(setter="logger"):
             def logger(log_type, message):
                 print(log_type.name, message)
@@ -101,10 +96,6 @@ class TestParser(TestCase):
         with self.subTest(deleter="included_ranges"):
             del parser.included_ranges
             self.assertListEqual(parser.included_ranges, [self.max_range])
-
-        with self.subTest(deleter="timeout_micros"):
-            del parser.timeout_micros
-            self.assertEqual(parser.timeout_micros, 0)
 
         with self.subTest(deleter="logger"):
             del parser.logger
@@ -161,14 +152,15 @@ class TestParser(TestCase):
     def test_parse_invalid_encoding(self):
         parser = Parser(self.python)
         with self.assertRaises(ValueError):
-            parser.parse(b"foo", encoding="ascii")
+            parser.parse(b"foo", encoding="ascii")  # pyright: ignore
 
     def test_parse_with_one_included_range(self):
         source_code = b"<span>hi</span><script>console.log('sup');</script>"
         parser = Parser(self.html)
         html_tree = parser.parse(source_code)
-        script_content_node = html_tree.root_node.child(1).child(1)
+        script_content_node = cast(Node, html_tree.root_node.child(1)).child(1)
         self.assertIsNotNone(script_content_node)
+        script_content_node = cast(Node, script_content_node)
         self.assertEqual(script_content_node.type, "raw_text")
 
         parser.included_ranges = [script_content_node.range]
@@ -192,16 +184,17 @@ class TestParser(TestCase):
             source_code.index(b"`<"), source_code.index(b">`")
         )
         self.assertIsNotNone(template_string_node)
+        template_string_node = cast(Node, template_string_node)
 
         self.assertEqual(template_string_node.type, "template_string")
 
-        open_quote_node = template_string_node.child(0)
+        open_quote_node = cast(Node, template_string_node.child(0))
         self.assertIsNotNone(open_quote_node)
-        interpolation_node1 = template_string_node.child(2)
+        interpolation_node1 = cast(Node, template_string_node.child(2))
         self.assertIsNotNone(interpolation_node1)
-        interpolation_node2 = template_string_node.child(4)
+        interpolation_node2 = cast(Node, template_string_node.child(4))
         self.assertIsNotNone(interpolation_node2)
-        close_quote_node = template_string_node.child(6)
+        close_quote_node = cast(Node, template_string_node.child(6))
         self.assertIsNotNone(close_quote_node)
 
         html_ranges = [
@@ -239,15 +232,15 @@ class TestParser(TestCase):
         )
         self.assertEqual(html_tree.included_ranges, html_ranges)
 
-        div_element_node = html_tree.root_node.child(0)
+        div_element_node = cast(Node, html_tree.root_node.child(0))
         self.assertIsNotNone(div_element_node)
-        hello_text_node = div_element_node.child(1)
+        hello_text_node = cast(Node, div_element_node.child(1))
         self.assertIsNotNone(hello_text_node)
-        b_element_node = div_element_node.child(2)
+        b_element_node = cast(Node, div_element_node.child(2))
         self.assertIsNotNone(b_element_node)
-        b_start_tag_node = b_element_node.child(0)
+        b_start_tag_node = cast(Node, b_element_node.child(0))
         self.assertIsNotNone(b_start_tag_node)
-        b_end_tag_node = b_element_node.child(1)
+        b_end_tag_node = cast(Node, b_element_node.child(1))
         self.assertIsNotNone(b_end_tag_node)
 
         self.assertEqual(hello_text_node.type, "text")
@@ -308,9 +301,9 @@ class TestParser(TestCase):
 
         tree = parser.parse(source_code)
         root = tree.root_node
-        statement1 = root.child(0)
+        statement1 = cast(Node, root.child(0))
         self.assertIsNotNone(statement1)
-        statement2 = root.child(1)
+        statement2 = cast(Node, root.child(1))
         self.assertIsNotNone(statement2)
 
         self.assertEqual(
