@@ -22,7 +22,7 @@ PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *Py_UNUS
             return NULL;
         }
         language->language = language_id;
-        language->version = ts_language_version(language->language);
+        language->abi_version = ts_language_abi_version(language->language);
         self->language = PyObject_Init((PyObject *)language, state->language_type);
     }
     return Py_NewRef(self->language);
@@ -68,7 +68,11 @@ PyObject *lookahead_iterator_next(LookaheadIterator *self) {
     }
     TSSymbol symbol = ts_lookahead_iterator_current_symbol(self->lookahead_iterator);
     const char *name = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
-    return PyTuple_Pack(2, PyLong_FromUnsignedLong(symbol), PyUnicode_FromString(name));
+    PyObject *symbol_obj = PyLong_FromUnsignedLong(symbol), *name_obj = PyUnicode_FromString(name);
+    PyObject *result = PyTuple_Pack(2, symbol_obj, name_obj);
+    Py_XDECREF(symbol_obj);
+    Py_XDECREF(name_obj);
+    return result;
 }
 
 PyObject *lookahead_iterator_names(LookaheadIterator *self) {

@@ -7,9 +7,11 @@ Parser
    -------
 
    .. automethod:: parse
-   .. automethod:: print_dot_graphs
 
-      .. versionadded:: 0.24.0
+      .. versionchanged:: 0.25.0
+         * ``encoding`` can be one of ``"utf8", "utf16", "utf16le", "utf16be"``.
+         * ``progress_callback`` parameter added.
+   .. automethod:: print_dot_graphs
    .. automethod:: reset
 
    Attributes
@@ -18,6 +20,7 @@ Parser
    .. autoattribute:: included_ranges
    .. autoattribute:: language
    .. autoattribute:: logger
-
-      .. versionadded:: 0.24.0
    .. autoattribute:: timeout_micros
+
+      .. deprecated:: 0.25.0
+         Use the ``progress_callback`` in :meth:`parse`.

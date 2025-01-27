@@ -167,7 +167,11 @@ PyDoc_STRVAR(
     tree_changed_ranges_doc,
     "changed_ranges(self, /, new_tree)\n--\n\n"
     "Compare this old edited syntax tree to a new syntax tree representing the same document, "
-    "returning a sequence of ranges whose syntactic structure has changed." DOC_TIP
+    "returning a sequence of ranges whose syntactic structure has changed." DOC_RETURNS
+    "Ranges where the hierarchical structure of syntax nodes (from root to leaf) has changed "
+    "between the old and new trees. Characters outside these ranges have identical ancestor "
+    "nodes in both trees." DOC_NOTE "The returned ranges may be slightly larger than the exact "
+    "changed areas, but Tree-sitter attempts to make them as small as possible. " DOC_TIP
     "For this to work correctly, this syntax tree must have been edited such that its "
     "ranges match up to the new tree.\n\nGenerally, you'll want to call this method "
     "right after calling the :meth:`Parser.parse` method. Call it on the old tree that "

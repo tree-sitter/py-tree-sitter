@@ -649,7 +649,10 @@ PyObject *query_set_byte_range(Query *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "(II):set_byte_range", &start_byte, &end_byte)) {
         return NULL;
     }
-    ts_query_cursor_set_byte_range(self->cursor, start_byte, end_byte);
+    if (!ts_query_cursor_set_byte_range(self->cursor, start_byte, end_byte)) {
+        PyErr_SetString(PyExc_ValueError, "Invalid byte range");
+        return NULL;
+    }
     return Py_NewRef(self);
 }
 
@@ -659,7 +662,10 @@ PyObject *query_set_point_range(Query *self, PyObject *args) {
                           &end_point.row, &end_point.column)) {
         return NULL;
     }
-    ts_query_cursor_set_point_range(self->cursor, start_point, end_point);
+    if (!ts_query_cursor_set_point_range(self->cursor, start_point, end_point)) {
+        PyErr_SetString(PyExc_ValueError, "Invalid point range");
+        return NULL;
+    }
     return Py_NewRef(self);
 }
 
@@ -757,10 +763,18 @@ PyDoc_STRVAR(query_set_max_start_depth_doc, "set_max_start_depth(self, max_start
                                             "Set the maximum start depth for the query.");
 PyDoc_STRVAR(query_set_byte_range_doc,
              "set_byte_range(self, byte_range)\n--\n\n"
-             "Set the range of bytes in which the query will be executed.");
+             "Set the range of bytes in which the query will be executed." DOC_RAISES
+             "ValueError\n\n   If the start byte exceeds the end byte." DOC_NOTE
+             "The query cursor will return matches that intersect with the given byte range. "
+             "This means that a match may be returned even if some of its captures fall outside "
+             "the specified range, as long as at least part of the match overlaps with it.");
 PyDoc_STRVAR(query_set_point_range_doc,
              "set_point_range(self, point_range)\n--\n\n"
-             "Set the range of points in which the query will be executed.");
+             "Set the range of points in which the query will be executed." DOC_RAISES
+             "ValueError\n\n   If the start point exceeds the end point." DOC_NOTE
+             "The query cursor will return matches that intersect with the given point range. "
+             "This means that a match may be returned even if some of its captures fall outside "
+             "the specified range, as long as at least part of the match overlaps with it.");
 PyDoc_STRVAR(query_disable_pattern_doc, "disable_pattern(self, index)\n--\n\n"
                                         "Disable a certain pattern within a query." DOC_IMPORTANT
                                         "Currently, there is no way to undo this.");
