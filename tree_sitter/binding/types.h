@@ -4,8 +4,6 @@
 
 #include <Python.h>
 
-#define HAS_LANGUAGE_NAMES (TREE_SITTER_LANGUAGE_VERSION >= 15)
-
 // Types
 
 typedef struct {
@@ -25,10 +23,8 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     TSLanguage *language;
-    uint32_t version;
-#if HAS_LANGUAGE_NAMES
+    uint32_t abi_version;
     const char *name;
-#endif
 } Language;
 
 typedef struct {
