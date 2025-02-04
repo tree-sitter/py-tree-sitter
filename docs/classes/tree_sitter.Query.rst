@@ -20,36 +20,30 @@ Query
    Methods
    -------
 
-   .. automethod:: captures
+   .. automethod:: capture_name
 
-      .. important::
+      .. versionadded:: 0.25.0
+   .. automethod:: capture_quantifier
 
-         Predicates cannot be used if the tree was parsed from a callback.
+      .. versionadded:: 0.25.0
    .. automethod:: disable_capture
    .. automethod:: disable_pattern
    .. automethod:: end_byte_for_pattern
    .. automethod:: is_pattern_guaranteed_at_step
    .. automethod:: is_pattern_non_local
    .. automethod:: is_pattern_rooted
-   .. automethod:: matches
-
-      .. important::
-
-         Predicates cannot be used if the tree was parsed from a callback.
    .. automethod:: pattern_assertions
    .. automethod:: pattern_settings
-   .. automethod:: set_byte_range
-   .. automethod:: set_point_range
    .. automethod:: start_byte_for_pattern
-   .. automethod:: set_match_limit
-   .. automethod:: set_max_start_depth
-   .. automethod:: set_timeout_micros
+   .. automethod:: string_value
+
+      .. versionadded:: 0.25.0
 
    Attributes
    ----------
 
    .. autoattribute:: capture_count
-   .. autoattribute:: did_exceed_match_limit
-   .. autoattribute:: match_limit
    .. autoattribute:: pattern_count
-   .. autoattribute:: timeout_micros
+   .. autoattribute:: string_count
+
+      .. versionadded:: 0.25.0

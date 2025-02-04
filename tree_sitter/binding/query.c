@@ -18,10 +18,6 @@ void query_dealloc(Query *self) {
     if (self->query) {
         ts_query_delete(self->query);
     }
-    if (self->cursor) {
-        ts_query_cursor_delete(self->cursor);
-    }
-    Py_XDECREF(self->capture_names);
     Py_XDECREF(self->predicates);
     Py_XDECREF(self->settings);
     Py_XDECREF(self->assertions);
@@ -48,8 +44,6 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
     PyObject *pattern_predicates = NULL, *pattern_settings = NULL, *pattern_assertions = NULL;
     TSLanguage *language_id = ((Language *)language_obj)->language;
     query->query = ts_query_new(language_id, source, source_len, &error_offset, &error_type);
-    query->cursor = ts_query_cursor_new();
-    query->capture_names = NULL;
     query->predicates = NULL;
     query->settings = NULL;
     query->assertions = NULL;
@@ -128,15 +122,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
         goto error;
     }
 
-    uint32_t n = ts_query_capture_count(query->query), length;
-    query->capture_names = PyList_New(n);
-    for (uint32_t i = 0; i < n; ++i) {
-        const char *capture_name = ts_query_capture_name_for_id(query->query, i, &length);
-        PyObject *value = PyUnicode_FromStringAndSize(capture_name, length);
-        PyList_SetItem(query->capture_names, i, value);
-    }
-
-    uint32_t pattern_count = ts_query_pattern_count(query->query);
+    uint32_t length, pattern_count = ts_query_pattern_count(query->query);
     query->predicates = PyList_New(pattern_count);
     if (query->predicates == NULL) {
         goto error;
@@ -482,107 +468,64 @@ error:
     return NULL;
 }
 
-PyObject *query_matches(Query *self, PyObject *args, PyObject *kwargs) {
-    ModuleState *state = GET_MODULE_STATE(self);
-    char *keywords[] = {"node", "predicate", NULL};
-    PyObject *node_obj, *predicate = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!|O:matches", keywords, state->node_type,
-                                     &node_obj, &predicate)) {
+PyObject *query_capture_name(Query *self, PyObject *args) {
+    uint32_t index, length, count;
+    if (!PyArg_ParseTuple(args, "I:capture_name", &index)) {
         return NULL;
     }
-    if (predicate != NULL && !PyCallable_Check(predicate)) {
-        PyErr_Format(PyExc_TypeError, "Second argument to captures must be a callable, not %s",
-                     predicate->ob_type->tp_name);
+    count = ts_query_capture_count(self->query);
+    if (index >= count) {
+        PyErr_Format(PyExc_IndexError, "Index %u exceeds count %u", index, count);
         return NULL;
     }
-
-    PyObject *result = PyList_New(0);
-    if (result == NULL) {
-        return NULL;
-    }
-
-    TSQueryMatch match;
-    Node *node = (Node *)node_obj;
-    ts_query_cursor_exec(self->cursor, self->query, node->node);
-    while (ts_query_cursor_next_match(self->cursor, &match)) {
-        if (!query_satisfies_predicates(self, match, (Tree *)node->tree, predicate)) {
-            continue;
-        }
-
-        PyObject *captures_for_match = PyDict_New();
-        for (uint16_t i = 0; i < match.capture_count; ++i) {
-            TSQueryCapture capture = match.captures[i];
-            PyObject *capture_name = PyList_GetItem(self->capture_names, capture.index);
-            PyObject *capture_node = node_new_internal(state, capture.node, node->tree);
-            PyObject *default_list = PyList_New(0);
-            PyObject *capture_list =
-                PyDict_SetDefault(captures_for_match, capture_name, default_list);
-            Py_DECREF(default_list);
-            PyList_Append(capture_list, capture_node);
-            Py_XDECREF(capture_node);
-        }
-        PyObject *pattern_index = PyLong_FromSize_t(match.pattern_index);
-        PyObject *tuple_match = PyTuple_Pack(2, pattern_index, captures_for_match);
-        Py_DECREF(pattern_index);
-        Py_DECREF(captures_for_match);
-        PyList_Append(result, tuple_match);
-        Py_XDECREF(tuple_match);
-    }
-
-    return PyErr_Occurred() == NULL ? result : NULL;
+    const char *capture = ts_query_capture_name_for_id(self->query, index, &length);
+    return PyUnicode_FromStringAndSize(capture, length);
 }
 
-PyObject *query_captures(Query *self, PyObject *args, PyObject *kwargs) {
-    ModuleState *state = GET_MODULE_STATE(self);
-    char *keywords[] = {"node", "predicate", NULL};
-    PyObject *node_obj, *predicate = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!|O:captures", keywords, state->node_type,
-                                     &node_obj, &predicate)) {
+PyObject *query_capture_quantifier(Query *self, PyObject *args) {
+    uint32_t pattern_index, capture_index, count;
+    if (!PyArg_ParseTuple(args, "II:capture_quantifier", &pattern_index, &capture_index)) {
         return NULL;
     }
-    if (predicate != NULL && !PyCallable_Check(predicate)) {
-        PyErr_Format(PyExc_TypeError, "Second argument to captures must be a callable, not %s",
-                     predicate->ob_type->tp_name);
+    count = ts_query_pattern_count(self->query);
+    if (pattern_index >= count) {
+        PyErr_Format(PyExc_IndexError, "Index %u exceeds pattern count %u", pattern_index, count);
         return NULL;
     }
-
-    PyObject *result = PyDict_New();
-    if (result == NULL) {
+    count = ts_query_capture_count(self->query);
+    if (capture_index >= count) {
+        PyErr_Format(PyExc_IndexError, "Index %u exceeds capture count %u", capture_index, count);
         return NULL;
     }
-
-    uint32_t capture_index;
-    TSQueryMatch match;
-    Node *node = (Node *)node_obj;
-    ts_query_cursor_exec(self->cursor, self->query, node->node);
-    while (ts_query_cursor_next_capture(self->cursor, &match, &capture_index)) {
-        if (!query_satisfies_predicates(self, match, (Tree *)node->tree, predicate)) {
-            continue;
-        }
-        if (PyErr_Occurred()) {
+    TSQuantifier quantifier =
+        ts_query_capture_quantifier_for_id(self->query, pattern_index, capture_index);
+    switch (quantifier) {
+        case TSQuantifierOne:
+            return PyUnicode_FromString("");
+        case TSQuantifierZeroOrOne:
+            return PyUnicode_FromString("?");
+        case TSQuantifierZeroOrMore:
+            return PyUnicode_FromString("*");
+        case TSQuantifierOneOrMore:
+            return PyUnicode_FromString("+");
+        default:
+            PyErr_SetString(PyExc_SystemError, "Unexpected capture quantifier of 0");
             return NULL;
-        }
-
-        TSQueryCapture capture = match.captures[capture_index];
-        PyObject *capture_name = PyList_GetItem(self->capture_names, capture.index);
-        PyObject *capture_node = node_new_internal(state, capture.node, node->tree);
-        PyObject *default_set = PySet_New(NULL);
-        PyObject *capture_set = PyDict_SetDefault(result, capture_name, default_set);
-        Py_DECREF(default_set);
-        PySet_Add(capture_set, capture_node);
-        Py_XDECREF(capture_node);
     }
+}
 
-    Py_ssize_t pos = 0;
-    PyObject *key, *value;
-    // convert each set to a list so it can be subscriptable
-    while (PyDict_Next(result, &pos, &key, &value)) {
-        PyObject *list = PySequence_List(value);
-        PyDict_SetItem(result, key, list);
-        Py_DECREF(list);
+PyObject *query_string_value(Query *self, PyObject *args) {
+    uint32_t index, length, count;
+    if (!PyArg_ParseTuple(args, "I:string_value", &index)) {
+        return NULL;
     }
-
-    return PyErr_Occurred() == NULL ? result : NULL;
+    count = ts_query_capture_count(self->query);
+    if (index >= count) {
+        PyErr_Format(PyExc_IndexError, "Index %u exceeds count %u", index, count);
+        return NULL;
+    }
+    const char *value = ts_query_string_value_for_id(self->query, index, &length);
+    return PyUnicode_FromStringAndSize(value, length);
 }
 
 PyObject *query_pattern_settings(Query *self, PyObject *args) {
@@ -611,62 +554,6 @@ PyObject *query_pattern_assertions(Query *self, PyObject *args) {
     }
     PyObject *item = PyList_GetItem(self->assertions, pattern_index);
     return Py_NewRef(item);
-}
-
-PyObject *query_set_timeout_micros(Query *self, PyObject *args) {
-    uint32_t timeout_micros;
-    if (!PyArg_ParseTuple(args, "I:set_timeout_micros", &timeout_micros)) {
-        return NULL;
-    }
-    ts_query_cursor_set_timeout_micros(self->cursor, timeout_micros);
-    return Py_NewRef(self);
-}
-
-PyObject *query_set_match_limit(Query *self, PyObject *args) {
-    uint32_t match_limit;
-    if (!PyArg_ParseTuple(args, "I:set_match_limit", &match_limit)) {
-        return NULL;
-    }
-    if (match_limit == 0) {
-        PyErr_SetString(PyExc_ValueError, "Match limit cannot be set to 0");
-        return NULL;
-    }
-    ts_query_cursor_set_match_limit(self->cursor, match_limit);
-    return Py_NewRef(self);
-}
-
-PyObject *query_set_max_start_depth(Query *self, PyObject *args) {
-    uint32_t max_start_depth;
-    if (!PyArg_ParseTuple(args, "I:set_max_start_depth", &max_start_depth)) {
-        return NULL;
-    }
-    ts_query_cursor_set_max_start_depth(self->cursor, max_start_depth);
-    return Py_NewRef(self);
-}
-
-PyObject *query_set_byte_range(Query *self, PyObject *args) {
-    uint32_t start_byte, end_byte;
-    if (!PyArg_ParseTuple(args, "(II):set_byte_range", &start_byte, &end_byte)) {
-        return NULL;
-    }
-    if (!ts_query_cursor_set_byte_range(self->cursor, start_byte, end_byte)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid byte range");
-        return NULL;
-    }
-    return Py_NewRef(self);
-}
-
-PyObject *query_set_point_range(Query *self, PyObject *args) {
-    TSPoint start_point, end_point;
-    if (!PyArg_ParseTuple(args, "((II)(II)):set_point_range", &start_point.row, &start_point.column,
-                          &end_point.row, &end_point.column)) {
-        return NULL;
-    }
-    if (!ts_query_cursor_set_point_range(self->cursor, start_point, end_point)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid point range");
-        return NULL;
-    }
-    return Py_NewRef(self);
 }
 
 PyObject *query_disable_pattern(Query *self, PyObject *args) {
@@ -741,57 +628,23 @@ PyObject *query_get_capture_count(Query *self, void *Py_UNUSED(payload)) {
     return PyLong_FromSize_t(ts_query_capture_count(self->query));
 }
 
-PyObject *query_get_timeout_micros(Query *self, void *Py_UNUSED(payload)) {
-    return PyLong_FromSize_t(ts_query_cursor_timeout_micros(self->cursor));
+PyObject *query_get_string_count(Query *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromSize_t(ts_query_string_count(self->query));
 }
 
-PyObject *query_get_match_limit(Query *self, void *Py_UNUSED(payload)) {
-    return PyLong_FromSize_t(ts_query_cursor_match_limit(self->cursor));
-}
-
-PyObject *query_get_did_exceed_match_limit(Query *self, void *Py_UNUSED(payload)) {
-    return PyLong_FromSize_t(ts_query_cursor_did_exceed_match_limit(self->cursor));
-}
-
-PyDoc_STRVAR(query_set_timeout_micros_doc, "set_timeout_micros(self, timeout_micros)\n--\n\n"
-                                           "Set the maximum duration in microseconds that query "
-                                           "execution should be allowed to take before halting.");
-PyDoc_STRVAR(query_set_match_limit_doc, "set_match_limit(self, match_limit)\n--\n\n"
-                                        "Set the maximum number of in-progress matches." DOC_RAISES
-                                        "ValueError\n\n   If set to ``0``.");
-PyDoc_STRVAR(query_set_max_start_depth_doc, "set_max_start_depth(self, max_start_depth)\n--\n\n"
-                                            "Set the maximum start depth for the query.");
-PyDoc_STRVAR(query_set_byte_range_doc,
-             "set_byte_range(self, byte_range)\n--\n\n"
-             "Set the range of bytes in which the query will be executed." DOC_RAISES
-             "ValueError\n\n   If the start byte exceeds the end byte." DOC_NOTE
-             "The query cursor will return matches that intersect with the given byte range. "
-             "This means that a match may be returned even if some of its captures fall outside "
-             "the specified range, as long as at least part of the match overlaps with it.");
-PyDoc_STRVAR(query_set_point_range_doc,
-             "set_point_range(self, point_range)\n--\n\n"
-             "Set the range of points in which the query will be executed." DOC_RAISES
-             "ValueError\n\n   If the start point exceeds the end point." DOC_NOTE
-             "The query cursor will return matches that intersect with the given point range. "
-             "This means that a match may be returned even if some of its captures fall outside "
-             "the specified range, as long as at least part of the match overlaps with it.");
 PyDoc_STRVAR(query_disable_pattern_doc, "disable_pattern(self, index)\n--\n\n"
                                         "Disable a certain pattern within a query." DOC_IMPORTANT
                                         "Currently, there is no way to undo this.");
-PyDoc_STRVAR(query_disable_capture_doc, "disable_capture(self, capture)\n--\n\n"
+PyDoc_STRVAR(query_disable_capture_doc, "disable_capture(self, name)\n--\n\n"
                                         "Disable a certain capture within a query." DOC_IMPORTANT
                                         "Currently, there is no way to undo this.");
-PyDoc_STRVAR(query_matches_doc,
-             "matches(self, node, /, predicate=None)\n--\n\n"
-             "Get a list of *matches* within the given node." DOC_RETURNS
-             "A list of tuples where the first element is the pattern index and "
-             "the second element is a dictionary that maps capture names to nodes.");
-PyDoc_STRVAR(query_captures_doc,
-             "captures(self, node, /, predicate=None)\n--\n\n"
-             "Get a list of *captures* within the given node.\n\n" DOC_RETURNS
-             "A dict where the keys are the names of the captures and the values are "
-             "lists of the captured nodes." DOC_HINT "This method returns all of the"
-             "captures while :meth:`matches` only returns the last match.");
+PyDoc_STRVAR(query_capture_name_doc, "capture_name(self, index)\n--\n\n"
+                                     "Get the name of the capture at the given index.");
+PyDoc_STRVAR(query_string_value_doc, "string_value(self, index)\n--\n\n"
+                                     "Get the string literal at the given index.");
+PyDoc_STRVAR(query_capture_quantifier_doc,
+             "capture_quantifier(self, pattern_index, capture_index)\n--\n\n"
+             "Get the quantifier of the capture at the given indexes.");
 PyDoc_STRVAR(query_pattern_settings_doc,
              "pattern_settings(self, index)\n--\n\n"
              "Get the property settings for the given pattern index.\n\n"
@@ -825,36 +678,6 @@ PyDoc_STRVAR(query_is_pattern_guaranteed_at_step_doc,
 
 static PyMethodDef query_methods[] = {
     {
-        .ml_name = "set_timeout_micros",
-        .ml_meth = (PyCFunction)query_set_timeout_micros,
-        .ml_flags = METH_VARARGS,
-        .ml_doc = query_set_timeout_micros_doc,
-    },
-    {
-        .ml_name = "set_match_limit",
-        .ml_meth = (PyCFunction)query_set_match_limit,
-        .ml_flags = METH_VARARGS,
-        .ml_doc = query_set_match_limit_doc,
-    },
-    {
-        .ml_name = "set_max_start_depth",
-        .ml_meth = (PyCFunction)query_set_max_start_depth,
-        .ml_flags = METH_VARARGS,
-        .ml_doc = query_set_max_start_depth_doc,
-    },
-    {
-        .ml_name = "set_byte_range",
-        .ml_meth = (PyCFunction)query_set_byte_range,
-        .ml_flags = METH_VARARGS,
-        .ml_doc = query_set_byte_range_doc,
-    },
-    {
-        .ml_name = "set_point_range",
-        .ml_meth = (PyCFunction)query_set_point_range,
-        .ml_flags = METH_VARARGS,
-        .ml_doc = query_set_point_range_doc,
-    },
-    {
         .ml_name = "disable_pattern",
         .ml_meth = (PyCFunction)query_disable_pattern,
         .ml_flags = METH_VARARGS,
@@ -867,16 +690,22 @@ static PyMethodDef query_methods[] = {
         .ml_doc = query_disable_capture_doc,
     },
     {
-        .ml_name = "matches",
-        .ml_meth = (PyCFunction)query_matches,
-        .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc = query_matches_doc,
+        .ml_name = "capture_name",
+        .ml_meth = (PyCFunction)query_capture_name,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = query_capture_name_doc,
     },
     {
-        .ml_name = "captures",
-        .ml_meth = (PyCFunction)query_captures,
-        .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc = query_captures_doc,
+        .ml_name = "capture_quantifier",
+        .ml_meth = (PyCFunction)query_capture_quantifier,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = query_capture_quantifier_doc,
+    },
+    {
+        .ml_name = "string_value",
+        .ml_meth = (PyCFunction)query_string_value,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = query_string_value_doc,
     },
     {
         .ml_name = "pattern_settings",
@@ -934,16 +763,8 @@ static PyGetSetDef query_accessors[] = {
      PyDoc_STR("The number of patterns in the query."), NULL},
     {"capture_count", (getter)query_get_capture_count, NULL,
      PyDoc_STR("The number of captures in the query."), NULL},
-    {"timeout_micros", (getter)query_get_timeout_micros, NULL,
-     PyDoc_STR("The maximum duration in microseconds that query "
-               "execution should be allowed to take before halting."),
-     NULL},
-    {"match_limit", (getter)query_get_match_limit, NULL,
-     PyDoc_STR("The maximum number of in-progress matches."), NULL},
-    {"did_exceed_match_limit", (getter)query_get_did_exceed_match_limit, NULL,
-     PyDoc_STR("Check if the query exceeded its maximum number of "
-               "in-progress matches during its last execution."),
-     NULL},
+    {"string_count", (getter)query_get_string_count, NULL,
+     PyDoc_STR("The number of string literals in the query."), NULL},
     {NULL},
 };
 
