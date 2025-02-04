@@ -81,12 +81,16 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     TSQuery *query;
-    TSQueryCursor *cursor;
-    PyObject *capture_names;
     PyObject *predicates;
     PyObject *settings;
     PyObject *assertions;
 } Query;
+
+typedef struct {
+    PyObject_HEAD
+    TSQueryCursor *cursor;
+    PyObject *query;
+} QueryCursor;
 
 typedef struct {
     PyObject_HEAD
@@ -109,6 +113,7 @@ typedef struct {
     PyTypeObject *node_type;
     PyTypeObject *parser_type;
     PyTypeObject *point_type;
+    PyTypeObject *query_cursor_type;
     PyTypeObject *query_predicate_anyof_type;
     PyTypeObject *query_predicate_eq_capture_type;
     PyTypeObject *query_predicate_eq_string_type;

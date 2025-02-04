@@ -67,11 +67,6 @@ class TestLanguage(TestCase):
         self.assertIsNotNone(lang.lookahead_iterator(0))
         self.assertIsNone(lang.lookahead_iterator(9999))
 
-    def test_query(self):
-        lang = Language(self.json)
-        query = lang.query("(string) @string")
-        self.assertIsInstance(query, Query)
-
     def test_eq(self):
         self.assertEqual(Language(self.json), Language(self.json))
         self.assertNotEqual(Language(self.rust), Language(self.html))

@@ -244,6 +244,9 @@ PyObject *language_query(Language *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "s#:query", &source, &length)) {
         return NULL;
     }
+    if (REPLACE("query()", "the Query() constructor") < 0) {
+        return NULL;
+    }
     return PyObject_CallFunction((PyObject *)state->query_type, "Os#", self, source, length);
 }
 

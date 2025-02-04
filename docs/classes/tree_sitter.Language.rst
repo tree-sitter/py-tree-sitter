@@ -17,6 +17,9 @@ Language
    .. automethod:: node_kind_is_supertype
    .. automethod:: node_kind_is_visible
    .. automethod:: query
+
+      .. deprecated:: 0.25.0
+         Use the :class:`Query` constructor instead.
    .. automethod:: subtypes
 
       .. versionadded:: 0.25.0

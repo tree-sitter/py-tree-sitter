@@ -4,12 +4,13 @@ extern PyType_Spec language_type_spec;
 extern PyType_Spec lookahead_iterator_type_spec;
 extern PyType_Spec node_type_spec;
 extern PyType_Spec parser_type_spec;
-extern PyType_Spec query_type_spec;
+extern PyType_Spec query_cursor_type_spec;
 extern PyType_Spec query_predicate_anyof_type_spec;
 extern PyType_Spec query_predicate_eq_capture_type_spec;
 extern PyType_Spec query_predicate_eq_string_type_spec;
 extern PyType_Spec query_predicate_generic_type_spec;
 extern PyType_Spec query_predicate_match_type_spec;
+extern PyType_Spec query_type_spec;
 extern PyType_Spec range_type_spec;
 extern PyType_Spec tree_cursor_type_spec;
 extern PyType_Spec tree_type_spec;
@@ -81,6 +82,8 @@ PyMODINIT_FUNC PyInit__binding(void) {
     state->query_predicate_match_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &query_predicate_match_type_spec, NULL);
     state->query_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &query_type_spec, NULL);
+    state->query_cursor_type =
+        (PyTypeObject *)PyType_FromModuleAndSpec(module, &query_cursor_type_spec, NULL);
     state->range_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &range_type_spec, NULL);
     state->tree_cursor_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &tree_cursor_type_spec, NULL);
@@ -92,6 +95,7 @@ PyMODINIT_FUNC PyInit__binding(void) {
         (PyModule_AddObjectRef(module, "Node", (PyObject *)state->node_type) < 0) ||
         (PyModule_AddObjectRef(module, "Parser", (PyObject *)state->parser_type) < 0) ||
         (PyModule_AddObjectRef(module, "Query", (PyObject *)state->query_type) < 0) ||
+        (PyModule_AddObjectRef(module, "QueryCursor", (PyObject *)state->query_cursor_type) < 0) ||
         (PyModule_AddObjectRef(module, "QueryPredicateAnyof",
                                (PyObject *)state->query_predicate_anyof_type) < 0) ||
         (PyModule_AddObjectRef(module, "QueryPredicateEqCapture",
