@@ -1,6 +1,7 @@
+from typing import cast
 from unittest import TestCase
 
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Node, Parser
 
 import tree_sitter_python
 import tree_sitter_rust
@@ -91,62 +92,62 @@ class TestTree(TestCase):
         # Node always returns the same instance
         self.assertIs(cursor.node, cursor.node)
 
-        self.assertEqual(cursor.node.type, "source_file")
+        self.assertEqual(cast(Node, cursor.node).type, "source_file")
 
         self.assertEqual(cursor.goto_first_child(), True)
-        self.assertEqual(cursor.node.type, "struct_item")
+        self.assertEqual(cast(Node, cursor.node).type, "struct_item")
 
         self.assertEqual(cursor.goto_first_child(), True)
-        self.assertEqual(cursor.node.type, "struct")
-        self.assertEqual(cursor.node.is_named, False)
+        self.assertEqual(cast(Node, cursor.node).type, "struct")
+        self.assertEqual(cast(Node, cursor.node).is_named, False)
 
         self.assertEqual(cursor.goto_next_sibling(), True)
-        self.assertEqual(cursor.node.type, "type_identifier")
-        self.assertEqual(cursor.node.is_named, True)
+        self.assertEqual(cast(Node, cursor.node).type, "type_identifier")
+        self.assertEqual(cast(Node, cursor.node).is_named, True)
 
         self.assertEqual(cursor.goto_next_sibling(), True)
-        self.assertEqual(cursor.node.type, "field_declaration_list")
-        self.assertEqual(cursor.node.is_named, True)
+        self.assertEqual(cast(Node, cursor.node).type, "field_declaration_list")
+        self.assertEqual(cast(Node, cursor.node).is_named, True)
 
         self.assertEqual(cursor.goto_last_child(), True)
-        self.assertEqual(cursor.node.type, "}")
-        self.assertEqual(cursor.node.is_named, False)
-        self.assertEqual(cursor.node.start_point, (4, 16))
+        self.assertEqual(cast(Node, cursor.node).type, "}")
+        self.assertEqual(cast(Node, cursor.node).is_named, False)
+        self.assertEqual(cast(Node, cursor.node).start_point, (4, 16))
 
         self.assertEqual(cursor.goto_previous_sibling(), True)
-        self.assertEqual(cursor.node.type, ",")
-        self.assertEqual(cursor.node.is_named, False)
-        self.assertEqual(cursor.node.start_point, (3, 32))
+        self.assertEqual(cast(Node, cursor.node).type, ",")
+        self.assertEqual(cast(Node, cursor.node).is_named, False)
+        self.assertEqual(cast(Node, cursor.node).start_point, (3, 32))
 
         self.assertEqual(cursor.goto_previous_sibling(), True)
-        self.assertEqual(cursor.node.type, "field_declaration")
-        self.assertEqual(cursor.node.is_named, True)
-        self.assertEqual(cursor.node.start_point, (3, 20))
+        self.assertEqual(cast(Node, cursor.node).type, "field_declaration")
+        self.assertEqual(cast(Node, cursor.node).is_named, True)
+        self.assertEqual(cast(Node, cursor.node).start_point, (3, 20))
 
         self.assertEqual(cursor.goto_previous_sibling(), True)
-        self.assertEqual(cursor.node.type, ",")
-        self.assertEqual(cursor.node.is_named, False)
-        self.assertEqual(cursor.node.start_point, (2, 24))
+        self.assertEqual(cast(Node, cursor.node).type, ",")
+        self.assertEqual(cast(Node, cursor.node).is_named, False)
+        self.assertEqual(cast(Node, cursor.node).start_point, (2, 24))
 
         self.assertEqual(cursor.goto_previous_sibling(), True)
-        self.assertEqual(cursor.node.type, "field_declaration")
-        self.assertEqual(cursor.node.is_named, True)
-        self.assertEqual(cursor.node.start_point, (2, 20))
+        self.assertEqual(cast(Node, cursor.node).type, "field_declaration")
+        self.assertEqual(cast(Node, cursor.node).is_named, True)
+        self.assertEqual(cast(Node, cursor.node).start_point, (2, 20))
 
         self.assertEqual(cursor.goto_previous_sibling(), True)
-        self.assertEqual(cursor.node.type, "{")
-        self.assertEqual(cursor.node.is_named, False)
-        self.assertEqual(cursor.node.start_point, (1, 29))
+        self.assertEqual(cast(Node, cursor.node).type, "{")
+        self.assertEqual(cast(Node, cursor.node).is_named, False)
+        self.assertEqual(cast(Node, cursor.node).start_point, (1, 29))
 
         copy = tree.walk()
         copy.reset_to(cursor)
 
-        self.assertEqual(copy.node.type, "{")
-        self.assertEqual(copy.node.is_named, False)
+        self.assertEqual(cast(Node, copy.node).type, "{")
+        self.assertEqual(cast(Node, copy.node).is_named, False)
 
         self.assertEqual(copy.goto_parent(), True)
-        self.assertEqual(copy.node.type, "field_declaration_list")
-        self.assertEqual(copy.node.is_named, True)
+        self.assertEqual(cast(Node, copy.node).type, "field_declaration_list")
+        self.assertEqual(cast(Node, copy.node).is_named, True)
 
         self.assertEqual(copy.goto_parent(), True)
-        self.assertEqual(copy.node.type, "struct_item")
+        self.assertEqual(cast(Node, copy.node).type, "struct_item")

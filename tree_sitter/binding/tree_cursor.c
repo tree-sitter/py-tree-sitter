@@ -177,13 +177,12 @@ PyDoc_STRVAR(tree_cursor_goto_first_child_doc,
              "goto_first_child(self, /)\n--\n\n"
              "Move this cursor to the first child of its current node." DOC_RETURNS "``True`` "
              "if the cursor successfully moved, or ``False`` if there were no children.");
-PyDoc_STRVAR(
-    tree_cursor_goto_last_child_doc,
-    "goto_last_child(self, /)\n--\n\n"
-    "Move this cursor to the last child of its current node." DOC_RETURNS "``True`` "
-    "if the cursor successfully moved, or ``False`` if there were no children." DOC_CAUTION
-    "This method may be slower than :meth:`goto_first_child` because it needs "
-    "to iterate through all the children to compute the child's position.");
+PyDoc_STRVAR(tree_cursor_goto_last_child_doc,
+             "goto_last_child(self, /)\n--\n\n"
+             "Move this cursor to the last child of its current node." DOC_RETURNS "``True`` "
+             "if the cursor successfully moved, or ``False`` if there were no children." DOC_CAUTION
+             "This method may be slower than :meth:`goto_first_child` because it needs "
+             "to iterate through all the children to compute the child's position.");
 PyDoc_STRVAR(tree_cursor_goto_parent_doc,
              "goto_parent(self, /)\n--\n\n"
              "Move this cursor to the parent of its current node." DOC_RETURNS "``True`` "
@@ -208,13 +207,13 @@ PyDoc_STRVAR(
     "cursor was constructed with, where ``0`` represents the original node itself.");
 PyDoc_STRVAR(tree_cursor_goto_first_child_for_byte_doc,
              "goto_first_child_for_byte(self, byte, /)\n--\n\n"
-             "Move this cursor to the first child of its current node that extends beyond the "
-             "given byte offset." DOC_RETURNS
+             "Move this cursor to the first child of its current node that contains or starts "
+             "after the given byte offset." DOC_RETURNS
              "The index of the child node if it was found, ``None`` otherwise.");
 PyDoc_STRVAR(tree_cursor_goto_first_child_for_point_doc,
              "goto_first_child_for_point(self, point, /)\n--\n\n"
-             "Move this cursor to the first child of its current node that extends beyond the "
-             "given row/column point.\n\n" DOC_RETURNS
+             "Move this cursor to the first child of its current node that contains or starts "
+             "after the given given row/column point." DOC_RETURNS
              "The index of the child node if it was found, ``None`` otherwise.");
 PyDoc_STRVAR(tree_cursor_reset_doc, "reset(self, node, /)\n--\n\n"
                                     "Re-initialize the cursor to start at the original node "
@@ -323,7 +322,7 @@ static PyGetSetDef tree_cursor_accessors[] = {
 static PyType_Slot tree_cursor_type_slots[] = {
     {Py_tp_doc,
      PyDoc_STR("A class for walking a syntax :class:`Tree` efficiently." DOC_IMPORTANT
-               "The cursor can only walk into children of the node that it started from.")},
+               "The cursor can only walk into children of the node it was constructed with.")},
     {Py_tp_new, NULL},
     {Py_tp_dealloc, tree_cursor_dealloc},
     {Py_tp_methods, tree_cursor_methods},

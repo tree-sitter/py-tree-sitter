@@ -8,13 +8,25 @@ LookaheadIterator
    -------
 
    .. automethod:: iter_names
-   .. automethod:: reset_state
+   .. automethod:: iter_symbols
+
+      .. versionadded:: 0.25.0
+   .. automethod:: reset
+
+      .. versionadded:: 0.25.0
+         Replaces the ``reset_state`` method
 
    Special Methods
    ---------------
 
    .. automethod:: __iter__
+
+      .. versionchanged:: 0.25.0
+         Iterates over ``tuple[int, str]``
    .. automethod:: __next__
+
+      .. versionchanged:: 0.25.0
+         Yields ``tuple[int, str]``
 
    Attributes
    ----------

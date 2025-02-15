@@ -4,7 +4,7 @@ from unittest import TestCase
 import tree_sitter_python
 import tree_sitter_javascript
 
-from tree_sitter import Language, Parser, Query, QueryError
+from tree_sitter import Language, Parser, Query, QueryCursor, QueryError
 
 
 def collect_matches(matches):
@@ -28,7 +28,8 @@ class TestQuery(TestCase):
     def assert_query_matches(self, language, query, source, expected):
         parser = Parser(language)
         tree = parser.parse(source)
-        matches = language.query(query).matches(tree.root_node)
+        cursor = QueryCursor(Query(language, query))
+        matches = cursor.matches(tree.root_node)
         self.assertListEqual(collect_matches(matches), expected)
 
     def test_errors(self):
@@ -146,14 +147,16 @@ class TestQuery(TestCase):
         parser = Parser(self.python)
         source = b"def foo():\n  bar()\ndef baz():\n  quux()\n"
         tree = parser.parse(source)
-        query = self.python.query(
+        query = Query(
+            self.python,
             """
             (function_definition name: (identifier) @func-def)
             (call function: (identifier) @func-call)
-            """
+            """,
         )
 
-        captures = list(query.captures(tree.root_node).items())
+        cursor = QueryCursor(query)
+        captures = list(cursor.captures(tree.root_node).items())
 
         self.assertEqual(captures[0][0], "func-def")
         self.assertEqual(captures[0][1][0].start_point, (0, 4))
@@ -187,34 +190,39 @@ class TestQuery(TestCase):
         root_node = tree.root_node
 
         # function with name equal to 'fun1' -> test for #eq? @capture string
-        query1 = self.javascript.query(
+        query1 = Query(
+            self.javascript,
             """
             ((function_declaration
                 name: (identifier) @function-name)
                 (#eq? @function-name fun1))
             """
         )
-        captures1 = list(query1.captures(root_node).items())
+        cursor = QueryCursor(query1)
+        captures1 = list(cursor.captures(root_node).items())
         self.assertEqual(1, len(captures1))
         self.assertEqual(captures1[0][0], "function-name")
         self.assertEqual(captures1[0][1][0].text, b"fun1")
 
         # functions with name not equal to 'fun1' -> test for #not-eq? @capture string
-        query2 = self.javascript.query(
+        query2 = Query(
+            self.javascript,
             """
             ((function_declaration
                 name: (identifier) @function-name)
                 (#not-eq? @function-name fun1))
-        """
+            """
         )
-        captures2 = list(query2.captures(root_node).items())
+        cursor = QueryCursor(query2)
+        captures2 = list(cursor.captures(root_node).items())
         self.assertEqual(1, len(captures2))
         self.assertEqual(captures2[0][0], "function-name")
         self.assertEqual(captures2[0][1][0].text, b"fun2")
 
     def test_text_predicates_errors(self):
         with self.assertRaises(QueryError):
-            self.javascript.query(
+            Query(
+                self.javascript,
                 """
                 ((function_declaration
                     name: (identifier) @function-name)
@@ -223,7 +231,8 @@ class TestQuery(TestCase):
             )
 
         with self.assertRaises(QueryError):
-            self.javascript.query(
+            Query(
+                self.javascript,
                 """
                 ((function_declaration
                     name: (identifier) @function-name)
@@ -232,7 +241,8 @@ class TestQuery(TestCase):
             )
 
         with self.assertRaises(QueryError):
-            self.javascript.query(
+            Query(
+                self.javascript,
                 """
                 ((function_declaration
                     name: (identifier) @function-name)
@@ -241,7 +251,8 @@ class TestQuery(TestCase):
             )
 
         with self.assertRaises(QueryError):
-            self.javascript.query(
+            Query(
+                self.javascript,
                 """
                 ((function_declaration
                     name: (identifier) @function-name)
@@ -250,7 +261,8 @@ class TestQuery(TestCase):
             )
 
         with self.assertRaises(QueryError):
-            self.javascript.query(
+            Query(
+                self.javascript,
                 """
                 ((function_declaration
                     name: (identifier) @function-name)
@@ -259,7 +271,8 @@ class TestQuery(TestCase):
             )
 
         with self.assertRaises(QueryError) as ctx:
-            self.javascript.query(
+            Query(
+                self.javascript,
                 """
                 ((function_declaration
                     name: (identifier) @function-name)
@@ -275,14 +288,17 @@ class TestQuery(TestCase):
         parser = Parser(self.python)
         source = b"def foo():\n  bar()\ndef baz():\n  quux()\n"
         tree = parser.parse(source)
-        query = self.python.query(
+        query = Query(
+            self.python,
             """
             (function_definition name: (identifier) @func-def)
             (call function: (identifier) @func-call)
             """
-        ).set_point_range(((1, 0), (2, 0)))
+        )
+        cursor = QueryCursor(query)
+        cursor.set_point_range((1, 0), (2, 0))
 
-        captures = list(query.captures(tree.root_node).items())
+        captures = list(cursor.captures(tree.root_node).items())
 
         self.assertEqual(captures[0][0], "func-call")
         self.assertEqual(captures[0][1][0].start_point, (1, 2))
@@ -292,14 +308,17 @@ class TestQuery(TestCase):
         parser = Parser(self.python)
         source = b"def foo():\n  bar()\ndef baz():\n  quux()\n"
         tree = parser.parse(source)
-        query = self.python.query(
+        query = Query(
+            self.python,
             """
             (function_definition name: (identifier) @func-def)
             (call function: (identifier) @func-call)
             """
-        ).set_byte_range((10, 20))
+        )
+        cursor = QueryCursor(query)
+        cursor.set_byte_range(10, 20)
 
-        captures = list(query.captures(tree.root_node).items())
+        captures = list(cursor.captures(tree.root_node).items())
         self.assertEqual(captures[0][0], "func-call")
         self.assertEqual(captures[0][1][0].start_point, (1, 2))
         self.assertEqual(captures[0][1][0].end_point, (1, 5))
