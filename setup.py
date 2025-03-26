@@ -1,3 +1,4 @@
+from os import environ
 from platform import system
 
 from setuptools import Extension, setup  # type: ignore
@@ -42,7 +43,7 @@ setup(
                 "-fvisibility=hidden",
                 "-Wno-cast-function-type",
                 "-Werror=implicit-function-declaration",
-            ] if system() != "Windows" else [
+            ] if system() != "Windows" or "MSYSTEM" in environ else [
                 "/std:c11",
                 "/wd4244",
             ],
