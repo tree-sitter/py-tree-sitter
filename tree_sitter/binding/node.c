@@ -557,37 +557,113 @@ PyObject *node_get_text(Node *self, void *Py_UNUSED(payload)) {
         Py_RETURN_NONE;
     }
 
-    PyObject *start_byte = PyLong_FromUnsignedLong(ts_node_start_byte(self->node));
-    if (start_byte == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to determine start byte");
-        return NULL;
-    }
-    PyObject *end_byte = PyLong_FromUnsignedLong(ts_node_end_byte(self->node));
-    if (end_byte == NULL) {
-        Py_DECREF(start_byte);
-        PyErr_SetString(PyExc_RuntimeError, "Failed to determine end byte");
-        return NULL;
-    }
-    PyObject *slice = PySlice_New(start_byte, end_byte, NULL);
-    Py_DECREF(start_byte);
-    Py_DECREF(end_byte);
-    if (slice == NULL) {
-        return NULL;
-    }
-    PyObject *node_mv = PyMemoryView_FromObject(tree->source);
-    if (node_mv == NULL) {
+    PyObject *result = NULL;
+    size_t start_offset = (size_t)ts_node_start_byte(self->node);
+    size_t end_offset = (size_t)ts_node_end_byte(self->node);
+
+    // Case 1: source is a byte buffer
+    if (!PyCallable_Check(tree->source)) {
+        PyObject *start_byte = PyLong_FromSize_t(start_offset),
+                 *end_byte = PyLong_FromSize_t(end_offset);
+        PyObject *slice = PySlice_New(start_byte, end_byte, NULL);
+        Py_XDECREF(start_byte);
+        Py_XDECREF(end_byte);
+        if (slice == NULL) {
+            return NULL;
+        }
+
+        PyObject *node_mv = PyMemoryView_FromObject(tree->source);
+        if (node_mv == NULL) {
+            Py_DECREF(slice);
+            return NULL;
+        }
+
+        PyObject *node_slice = PyObject_GetItem(node_mv, slice);
         Py_DECREF(slice);
-        return NULL;
+        Py_DECREF(node_mv);
+        if (node_slice == NULL) {
+            return NULL;
+        }
+
+        result = PyBytes_FromObject(node_slice);
+        Py_DECREF(node_slice);
+    } else {
+        // Case 2: source is a callable
+        PyObject *collected_bytes = PyByteArray_FromStringAndSize(NULL, 0);
+        if (collected_bytes == NULL) {
+            return NULL;
+        }
+        TSPoint start_point = ts_node_start_point(self->node);
+        TSPoint current_point = start_point;
+
+        for (size_t current_offset = start_offset; current_offset < end_offset;) {
+            // Form arguments to callable.
+            PyObject *byte_offset_obj = PyLong_FromSize_t(current_offset);
+            if (!byte_offset_obj) {
+                Py_DECREF(collected_bytes);
+                return NULL;
+            }
+            PyObject *position_obj = POINT_NEW(GET_MODULE_STATE(self), current_point);
+            if (!position_obj) {
+                Py_DECREF(byte_offset_obj);
+                Py_DECREF(collected_bytes);
+                return NULL;
+            }
+
+            PyObject *args = PyTuple_Pack(2, byte_offset_obj, position_obj);
+            Py_XDECREF(byte_offset_obj);
+            Py_XDECREF(position_obj);
+
+            // Call callable.
+            PyObject *rv = PyObject_Call(tree->source, args, NULL);
+            Py_XDECREF(args);
+
+            PyObject *rv_bytearray = PyByteArray_FromObject(rv);
+            if (rv_bytearray == NULL) {
+                Py_DECREF(collected_bytes);
+                Py_XDECREF(rv);
+                return NULL;
+            }
+
+            PyObject *new_collected_bytes = PyByteArray_Concat(collected_bytes, rv_bytearray);
+            Py_DECREF(rv_bytearray);
+            Py_DECREF(collected_bytes);
+            if (new_collected_bytes == NULL) {
+                Py_XDECREF(rv);
+                return NULL;
+            }
+            collected_bytes = new_collected_bytes;
+
+            // Update current_point and current_offset
+            Py_ssize_t bytes_read = PyBytes_Size(rv);
+            const char *rv_str = PyBytes_AsString(rv);  // Retrieve the string pointer once
+            for (Py_ssize_t i = 0; i < bytes_read; ++i) {
+                if (rv_str[i] == '\n') {
+                    ++current_point.row;
+                    current_point.column = 0;
+                } else {
+                    ++current_point.column;
+                }
+            }
+            current_offset += bytes_read;
+        }
+
+        PyObject *start_byte = PyLong_FromSize_t(0);
+        PyObject *end_byte = PyLong_FromSize_t(end_offset - start_offset);
+        PyObject *slice = PySlice_New(start_byte, end_byte, NULL);
+        Py_XDECREF(start_byte);
+        Py_XDECREF(end_byte);
+        if (slice == NULL) {
+            Py_DECREF(collected_bytes);
+            return NULL;
+        }
+        result = PyObject_GetItem(collected_bytes, slice);
+        Py_DECREF(slice);
+        Py_DECREF(collected_bytes);
     }
-    PyObject *node_slice = PyObject_GetItem(node_mv, slice);
-    Py_DECREF(slice);
-    Py_DECREF(node_mv);
-    if (node_slice == NULL) {
-        return NULL;
-    }
-    PyObject *result = PyBytes_FromObject(node_slice);
-    Py_DECREF(node_slice);
-    return result;
+    PyObject *bytes_result = PyBytes_FromObject(result);
+    Py_DECREF(result);
+    return bytes_result;
 }
 
 Py_hash_t node_hash(Node *self) {

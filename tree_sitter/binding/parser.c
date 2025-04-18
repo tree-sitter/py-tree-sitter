@@ -180,8 +180,6 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         }
         Py_XDECREF(payload.previous_retval);
 
-        source_or_callback = Py_None;
-        keep_text = false;
     } else {
         PyErr_Format(PyExc_TypeError, "source must be a bytestring or a callable, not %s",
                      source_or_callback->ob_type->tp_name);
