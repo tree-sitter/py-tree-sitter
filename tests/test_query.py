@@ -219,6 +219,93 @@ class TestQuery(TestCase):
         self.assertEqual(captures2[0][0], "function-name")
         self.assertEqual(captures2[0][1][0].text, b"fun2")
 
+    def test_text_predicates_with_callback(self):
+        parser = Parser(self.javascript)
+        source = b"""
+            keypair_object = {
+                key1: value1,
+                equal: equal
+            }
+
+            function fun1(arg) {
+                return 1;
+            }
+
+            function fun2(arg) {
+                return 2;
+            }
+
+            function fun3(arg) {
+                return 3;
+            }
+        """
+
+        def read_callable_byte_offset(byte_offset, point):
+            return source[byte_offset: byte_offset + 1]
+
+        def read_callable_point(byte_offset, point):
+            row, col = point
+            lines = source.split(b"\n")
+            if row >= len(lines):
+                return b""
+            line = lines[row]
+            if col >= len(line):
+                return b"\n"
+            return line[col:col + 1]
+
+        tree1 = parser.parse(read_callable_byte_offset)
+        root_node1 = tree1.root_node
+        tree2 = parser.parse(read_callable_point)
+        root_node2 = tree2.root_node
+
+        # function with name equal to 'fun1' -> test for #eq? @capture string
+        query1 = Query(
+            self.javascript,
+            """
+            ((function_declaration
+                name: (identifier) @function-name)
+                (#match? @function-name "fun[12]"))
+            """
+        )
+        cursor1 = QueryCursor(query1)
+        captures1 = cursor1.captures(root_node1)
+        self.assertEqual(1, len(captures1))
+        self.assertIn("function-name", captures1)
+        self.assertEqual(2, len(captures1["function-name"]))
+        self.assertEqual(captures1["function-name"][0].text, b"fun1")
+        self.assertEqual(captures1["function-name"][1].text, b"fun2")
+
+        captures2 = cursor1.captures(root_node2)
+        self.assertEqual(1, len(captures2))
+        self.assertIn("function-name", captures2)
+        self.assertEqual(2, len(captures2["function-name"]))
+        self.assertEqual(captures2["function-name"][0].text, b"fun1")
+        self.assertEqual(captures2["function-name"][1].text, b"fun2")
+
+        # functions with name not equal to 'fun1' -> test for #not-eq? @capture string
+        query2 = Query(
+            self.javascript,
+            """
+            ((function_declaration
+                name: (identifier) @function-name)
+                (#not-eq? @function-name fun1))
+            """
+        )
+        cursor2 = QueryCursor(query2)
+        captures3 = cursor2.captures(root_node1)
+        self.assertEqual(1, len(captures3))
+        self.assertIn("function-name", captures3)
+        self.assertEqual(2, len(captures3["function-name"]))
+        self.assertEqual(captures3["function-name"][0].text, b"fun2")
+        self.assertEqual(captures3["function-name"][1].text, b"fun3")
+
+        captures4 = cursor2.captures(root_node2)
+        self.assertEqual(1, len(captures4))
+        self.assertIn("function-name", captures4)
+        self.assertEqual(2, len(captures4["function-name"]))
+        self.assertEqual(captures4["function-name"][0].text, b"fun2")
+        self.assertEqual(captures4["function-name"][1].text, b"fun3")
+
     def test_text_predicates_errors(self):
         with self.assertRaises(QueryError):
             Query(
