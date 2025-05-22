@@ -1,4 +1,4 @@
-from platform import system
+from sys import platform
 
 from setuptools import Extension, setup  # type: ignore
 
@@ -42,7 +42,7 @@ setup(
                 "-fvisibility=hidden",
                 "-Wno-cast-function-type",
                 "-Werror=implicit-function-declaration",
-            ] if system() != "Windows" else [
+            ] if platform != "win32" else [
                 "/std:c11",
                 "/wd4244",
             ],
