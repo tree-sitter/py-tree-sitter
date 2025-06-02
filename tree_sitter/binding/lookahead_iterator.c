@@ -22,7 +22,7 @@ PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *Py_UNUS
             return NULL;
         }
         language->language = language_id;
-        language->version = ts_language_version(language->language);
+        language->abi_version = ts_language_abi_version(language->language);
         self->language = PyObject_Init((PyObject *)language, state->language_type);
     }
     return Py_NewRef(self->language);
@@ -39,13 +39,12 @@ PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self,
     return PyUnicode_FromString(name);
 }
 
-PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args,
-                                         PyObject *kwargs) {
+PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args, PyObject *kwargs) {
     uint16_t state_id;
     PyObject *language_obj = NULL;
     ModuleState *state = GET_MODULE_STATE(self);
     char *keywords[] = {"state", "language", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "H|O!:reset_state", keywords, &state_id,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "H|O!:reset", keywords, &state_id,
                                      state->language_type, &language_obj)) {
         return NULL;
     }
@@ -60,9 +59,7 @@ PyObject *lookahead_iterator_reset_state(LookaheadIterator *self, PyObject *args
     return PyBool_FromLong(result);
 }
 
-PyObject *lookahead_iterator_iter(LookaheadIterator *self) {
-    return Py_NewRef(self);
-}
+PyObject *lookahead_iterator_iter(LookaheadIterator *self) { return Py_NewRef(self); }
 
 PyObject *lookahead_iterator_next(LookaheadIterator *self) {
     if (!ts_lookahead_iterator_next(self->lookahead_iterator)) {
@@ -70,39 +67,59 @@ PyObject *lookahead_iterator_next(LookaheadIterator *self) {
         return NULL;
     }
     TSSymbol symbol = ts_lookahead_iterator_current_symbol(self->lookahead_iterator);
-    return PyLong_FromUnsignedLong(symbol);
+    const char *name = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
+    PyObject *symbol_obj = PyLong_FromUnsignedLong(symbol), *name_obj = PyUnicode_FromString(name);
+    PyObject *result = PyTuple_Pack(2, symbol_obj, name_obj);
+    Py_XDECREF(symbol_obj);
+    Py_XDECREF(name_obj);
+    return result;
 }
 
-PyObject *lookahead_iterator_iter_names(LookaheadIterator *self) {
-    ModuleState *state = GET_MODULE_STATE(self);
-    LookaheadNamesIterator *iter =
-        PyObject_New(LookaheadNamesIterator, state->lookahead_names_iterator_type);
-    if (iter == NULL) {
-        return NULL;
+PyObject *lookahead_iterator_names(LookaheadIterator *self) {
+    PyObject *result = PyList_New(0);
+    while (ts_lookahead_iterator_next(self->lookahead_iterator)) {
+        const char *name = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
+        PyList_Append(result, PyUnicode_FromString(name));
     }
-    iter->lookahead_iterator = self->lookahead_iterator;
-    return PyObject_Init((PyObject *)iter, state->lookahead_names_iterator_type);
+    return result;
 }
 
-PyDoc_STRVAR(lookahead_iterator_reset_state_doc,
-             "reset_state(self, state, language=None)\n--\n\n"
+PyObject *lookahead_iterator_symbols(LookaheadIterator *self) {
+    PyObject *result = PyList_New(0);
+    while (ts_lookahead_iterator_next(self->lookahead_iterator)) {
+        TSSymbol symbol = ts_lookahead_iterator_current_symbol(self->lookahead_iterator);
+        PyList_Append(result, PyLong_FromLong(symbol));
+    }
+    return result;
+}
+
+PyDoc_STRVAR(lookahead_iterator_reset_doc,
+             "reset(self, state, language=None)\n--\n\n"
              "Reset the lookahead iterator." DOC_RETURNS
              "``True`` if it was reset successfully or ``False`` if it failed.");
-PyDoc_STRVAR(lookahead_iterator_iter_names_doc, "iter_names(self, /)\n--\n\n"
-                                                "Iterate symbol names.");
+PyDoc_STRVAR(lookahead_iterator_names_doc, "names(self, /)\n--\n\n"
+                                           "Get a list of all symbol names.");
+PyDoc_STRVAR(lookahead_iterator_symbols_doc, "symbols(self, /)\n--\n\n"
+                                             "Get a list of all symbol IDs.");
 
 static PyMethodDef lookahead_iterator_methods[] = {
     {
-        .ml_name = "reset_state",
-        .ml_meth = (PyCFunction)lookahead_iterator_reset_state,
+        .ml_name = "reset",
+        .ml_meth = (PyCFunction)lookahead_iterator_reset,
         .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc = lookahead_iterator_reset_state_doc,
+        .ml_doc = lookahead_iterator_reset_doc,
     },
     {
-        .ml_name = "iter_names",
-        .ml_meth = (PyCFunction)lookahead_iterator_iter_names,
+        .ml_name = "names",
+        .ml_meth = (PyCFunction)lookahead_iterator_names,
         .ml_flags = METH_NOARGS,
-        .ml_doc = lookahead_iterator_iter_names_doc,
+        .ml_doc = lookahead_iterator_names_doc,
+    },
+    {
+        .ml_name = "symbols",
+        .ml_meth = (PyCFunction)lookahead_iterator_symbols,
+        .ml_flags = METH_NOARGS,
+        .ml_doc = lookahead_iterator_symbols_doc,
     },
     {NULL},
 };
@@ -111,7 +128,8 @@ static PyGetSetDef lookahead_iterator_accessors[] = {
     {"language", (getter)lookahead_iterator_get_language, NULL, PyDoc_STR("The current language."),
      NULL},
     {"current_symbol", (getter)lookahead_iterator_get_current_symbol, NULL,
-     PyDoc_STR("The current symbol.\n\nNewly created iterators will return the ``ERROR`` symbol."),
+     PyDoc_STR("The current symbol ID.\n\n"
+               "Newly created iterators will return the ``ERROR`` symbol."),
      NULL},
     {"current_symbol_name", (getter)lookahead_iterator_get_current_symbol_name, NULL,
      PyDoc_STR("The current symbol name."), NULL},

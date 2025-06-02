@@ -1,4 +1,5 @@
 from sys import maxsize
+from typing import cast
 from unittest import TestCase
 
 from tree_sitter import Language, Query
@@ -23,7 +24,7 @@ class TestLanguage(TestCase):
 
     def test_properties(self):
         lang = Language(self.python)
-        self.assertEqual(lang.version, 14)
+        self.assertEqual(lang.abi_version, 14)
         self.assertEqual(lang.node_kind_count, 275)
         self.assertEqual(lang.parse_state_count, 2809)
         self.assertEqual(lang.field_count, 32)
@@ -66,11 +67,6 @@ class TestLanguage(TestCase):
         self.assertIsNotNone(lang.lookahead_iterator(0))
         self.assertIsNone(lang.lookahead_iterator(9999))
 
-    def test_query(self):
-        lang = Language(self.json)
-        query = lang.query("(string) @string")
-        self.assertIsInstance(query, Query)
-
     def test_eq(self):
         self.assertEqual(Language(self.json), Language(self.json))
         self.assertNotEqual(Language(self.rust), Language(self.html))
@@ -78,6 +74,5 @@ class TestLanguage(TestCase):
     def test_hash(self):
         for name in ["html", "javascript", "json", "python", "rust"]:
             with self.subTest(language=name):
-                lang = Language(getattr(self, name))
-                hash_ = hash(lang) & maxsize << 1
-                self.assertGreater(hash_, 0)
+                lang = Language(cast(object, getattr(self, name)))
+                self.assertGreater(hash(lang) & maxsize << 1, 0)

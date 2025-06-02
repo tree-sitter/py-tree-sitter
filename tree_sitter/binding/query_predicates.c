@@ -26,19 +26,23 @@ static inline PyObject *nodes_for_capture_index(ModuleState *state, uint32_t ind
     return result;
 }
 
-static inline PyObject *captures_for_match(ModuleState *state, PyObject *capture_names,
-                                           TSQueryMatch *match, Tree *tree) {
+static inline PyObject *captures_for_match(ModuleState *state, TSQuery *query, TSQueryMatch *match,
+                                           Tree *tree) {
+    uint32_t name_length;
     PyObject *captures = PyDict_New();
     for (uint32_t j = 0; j < match->capture_count; ++j) {
         TSQueryCapture capture = match->captures[j];
-        PyObject *name = PyList_GetItem(capture_names, capture.index);
-        if (name == NULL) {
+        const char *capture_name =
+            ts_query_capture_name_for_id(query, capture.index, &name_length);
+        PyObject *capture_name_obj = PyUnicode_FromStringAndSize(capture_name, name_length);
+        if (capture_name_obj == NULL) {
             return NULL;
         }
         PyObject *nodes = nodes_for_capture_index(state, capture.index, match, tree);
-        if (PyDict_SetItem(captures, name, nodes) == -1) {
+        if (PyDict_SetItem(captures, capture_name_obj, nodes) == -1) {
             return NULL;
         }
+        Py_DECREF(capture_name_obj);
     }
     return captures;
 }
@@ -150,7 +154,7 @@ bool query_satisfies_predicates(Query *query, TSQueryMatch match, Tree *tree, Py
         } else if (IS_INSTANCE_OF(item, state->query_predicate_match_type)) {
             is_satisfied = satisfies_match(state, (QueryPredicateMatch *)item, &match, tree);
         } else if (callable != NULL) {
-            PyObject *captures = captures_for_match(state, query->capture_names, &match, tree);
+            PyObject *captures = captures_for_match(state, query->query, &match, tree);
             if (captures == NULL) {
                 is_satisfied = false;
                 break;

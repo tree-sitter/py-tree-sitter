@@ -25,10 +25,8 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     if (self->language == NULL) {
         return -1;
     }
-    self->version = ts_language_version(self->language);
-#if HAS_LANGUAGE_NAMES
+    self->abi_version = ts_language_abi_version(self->language);
     self->name = ts_language_name(self->language);
-#endif
     return 0;
 }
 
@@ -38,17 +36,12 @@ void language_dealloc(Language *self) {
 }
 
 PyObject *language_repr(Language *self) {
-#if HAS_LANGUAGE_NAMES
     if (self->name == NULL) {
         return PyUnicode_FromFormat("<Language id=%" PRIuPTR ", version=%u, name=None>",
-                                    (Py_uintptr_t)self->language, self->version);
+                                    (Py_uintptr_t)self->language, self->abi_version);
     }
     return PyUnicode_FromFormat("<Language id=%" PRIuPTR ", version=%u, name=\"%s\">",
-                                (Py_uintptr_t)self->language, self->version, self->name);
-#else
-    return PyUnicode_FromFormat("<Language id=%" PRIuPTR ", version=%u>",
-                                (Py_uintptr_t)self->language, self->version);
-#endif
+                                (Py_uintptr_t)self->language, self->abi_version, self->name);
 }
 
 Py_hash_t language_hash(Language *self) { return (Py_hash_t)self->language; }
@@ -63,14 +56,37 @@ PyObject *language_compare(Language *self, PyObject *other, int op) {
     return PyBool_FromLong(result ^ (op == Py_NE));
 }
 
-#if HAS_LANGUAGE_NAMES
 PyObject *language_get_name(Language *self, void *Py_UNUSED(payload)) {
+    if (self->name == NULL) {
+        Py_RETURN_NONE;
+    }
     return PyUnicode_FromString(self->name);
 }
-#endif
 
 PyObject *language_get_version(Language *self, void *Py_UNUSED(payload)) {
-    return PyLong_FromUnsignedLong(self->version);
+    if (REPLACE("version", "abi_version") < 0) {
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong(self->abi_version);
+}
+
+PyObject *language_get_abi_version(Language *self, void *Py_UNUSED(payload)) {
+    return PyLong_FromUnsignedLong(self->abi_version);
+}
+
+PyObject *language_get_semantic_version(Language *self, void *Py_UNUSED(payload)) {
+    const TSLanguageMetadata *metadata = ts_language_metadata(self->language);
+    if (metadata == NULL) {
+        Py_RETURN_NONE;
+    }
+    PyObject *major = PyLong_FromUnsignedLong(metadata->major_version),
+             *minor = PyLong_FromUnsignedLong(metadata->minor_version),
+             *patch = PyLong_FromUnsignedLong(metadata->patch_version);
+    PyObject *result = PyTuple_Pack(3, major, minor, patch);
+    Py_XDECREF(major);
+    Py_XDECREF(minor);
+    Py_XDECREF(patch);
+    return result;
 }
 
 PyObject *language_get_node_kind_count(Language *self, void *Py_UNUSED(payload)) {
@@ -83,6 +99,36 @@ PyObject *language_get_parse_state_count(Language *self, void *Py_UNUSED(payload
 
 PyObject *language_get_field_count(Language *self, void *Py_UNUSED(payload)) {
     return PyLong_FromUnsignedLong(ts_language_field_count(self->language));
+}
+
+PyObject *language_get_supertypes(Language *self, void *Py_UNUSED(payload)) {
+    uint32_t length;
+    const TSSymbol *symbols = ts_language_supertypes(self->language, &length);
+    if (length == 0) {
+        return PyTuple_New(0);
+    }
+    PyObject *result = PyTuple_New(length);
+    for (uint32_t i = 0; i < length; ++i) {
+        PyTuple_SetItem(result, i, PyLong_FromUnsignedLong(symbols[i]));
+    }
+    return result;
+}
+
+PyObject *language_subtypes(Language *self, PyObject *args) {
+    TSSymbol supertype;
+    if (!PyArg_ParseTuple(args, "H:subtypes", &supertype)) {
+        return NULL;
+    }
+    uint32_t length;
+    const TSSymbol *symbols = ts_language_subtypes(self->language, supertype, &length);
+    if (length == 0) {
+        return PyTuple_New(0);
+    }
+    PyObject *result = PyTuple_New(length);
+    for (uint32_t i = 0; i < length; ++i) {
+        PyTuple_SetItem(result, i, PyLong_FromUnsignedLong(symbols[i]));
+    }
+    return result;
 }
 
 PyObject *language_node_kind_for_id(Language *self, PyObject *args) {
@@ -198,6 +244,9 @@ PyObject *language_query(Language *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "s#:query", &source, &length)) {
         return NULL;
     }
+    if (REPLACE("query()", "the Query() constructor") < 0) {
+        return NULL;
+    }
     return PyObject_CallFunction((PyObject *)state->query_type, "Os#", self, source, length);
 }
 
@@ -207,11 +256,12 @@ PyObject *language_copy(Language *self, PyObject *Py_UNUSED(args)) {
     if (copied == NULL) {
         return NULL;
     }
-
     copied->language = (TSLanguage *)ts_language_copy(self->language);
     return PyObject_Init((PyObject *)copied, state->language_type);
 }
 
+PyDoc_STRVAR(language_subtypes_doc, "subtypes(self, supertype, /)\n--\n\n"
+                                    "Get all subtype symbol IDs for a given supertype symbol.");
 PyDoc_STRVAR(language_node_kind_for_id_doc,
              "node_kind_for_id(self, id, /)\n--\n\n"
              "Get the name of the node kind for the given numerical id.");
@@ -250,6 +300,12 @@ PyDoc_STRVAR(language_copy2_doc, "__copy__(self, /)\n--\n\n"
                                  "Use :func:`copy.copy` to create a copy of the language.");
 
 static PyMethodDef language_methods[] = {
+    {
+        .ml_name = "subtypes",
+        .ml_meth = (PyCFunction)language_subtypes,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = language_subtypes_doc,
+    },
     {
         .ml_name = "node_kind_for_id",
         .ml_meth = (PyCFunction)language_node_kind_for_id,
@@ -324,19 +380,25 @@ static PyMethodDef language_methods[] = {
 };
 
 static PyGetSetDef language_accessors[] = {
-#if HAS_LANGUAGE_NAMES
     {"name", (getter)language_get_name, NULL, PyDoc_STR("The name of the language."), NULL},
-#endif
     {"version", (getter)language_get_version, NULL,
      PyDoc_STR("The ABI version number that indicates which version of "
-               "the Tree-sitter CLI was used to generate this Language."),
+               "the Tree-sitter CLI was used to generate this language."),
      NULL},
+    {"abi_version", (getter)language_get_abi_version, NULL,
+     PyDoc_STR("The ABI version number that indicates which version of "
+               "the Tree-sitter CLI was used to generate this language."),
+     NULL},
+    {"semantic_version", (getter)language_get_semantic_version, NULL,
+     PyDoc_STR("The `Semantic Version <https://semver.org/>`_ of the language."), NULL},
     {"node_kind_count", (getter)language_get_node_kind_count, NULL,
      PyDoc_STR("The number of distinct node types in this language."), NULL},
     {"parse_state_count", (getter)language_get_parse_state_count, NULL,
      PyDoc_STR("The number of valid states in this language."), NULL},
     {"field_count", (getter)language_get_field_count, NULL,
      PyDoc_STR("The number of distinct field names in this language."), NULL},
+    {"supertypes", (getter)language_get_supertypes, NULL,
+     PyDoc_STR("The supertype symbols of the language."), NULL},
     {NULL},
 };
 

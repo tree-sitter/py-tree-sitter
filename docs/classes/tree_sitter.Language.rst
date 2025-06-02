@@ -7,8 +7,6 @@ Language
    -------
 
    .. automethod:: copy
-
-      .. versionadded:: 0.24.0
    .. automethod:: field_id_for_name
    .. automethod:: field_name_for_id
    .. automethod:: id_for_node_kind
@@ -17,17 +15,19 @@ Language
    .. automethod:: node_kind_for_id
    .. automethod:: node_kind_is_named
    .. automethod:: node_kind_is_supertype
-
-      .. versionadded:: 0.24.0
    .. automethod:: node_kind_is_visible
    .. automethod:: query
+
+      .. deprecated:: 0.25.0
+         Use the :class:`Query` constructor instead.
+   .. automethod:: subtypes
+
+      .. versionadded:: 0.25.0
 
    Special Methods
    ---------------
 
    .. automethod:: __copy__
-
-      .. versionadded:: 0.24.0
    .. automethod:: __eq__
    .. automethod:: __hash__
 
@@ -40,7 +40,22 @@ Language
    Attributes
    ----------
 
+   .. autoattribute:: abi_version
+
+      .. versionadded:: 0.25.0
    .. autoattribute:: field_count
+   .. autoattribute:: name
+
+      .. versionadded:: 0.25.0
    .. autoattribute:: node_kind_count
    .. autoattribute:: parse_state_count
+   .. autoattribute:: semantic_version
+
+      .. versionadded:: 0.25.0
+   .. autoattribute:: supertypes
+
+      .. versionadded:: 0.25.0
    .. autoattribute:: version
+
+      .. deprecated:: 0.25.0
+         Use :attr:`abi_version` instead.

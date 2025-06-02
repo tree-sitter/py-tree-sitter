@@ -63,7 +63,9 @@ def process_signature(_app, _what, name, _obj, _options, _signature, return_anno
     if name == "tree_sitter.Language":
         return "(ptr)", return_annotation
     if name == "tree_sitter.Query":
-        return "(language, source, *, timeout_micros=None)", return_annotation
+        return "(language, source)", return_annotation
+    if name == "tree_sitter.QueryCursor":
+        return "(query, *, match_limit=None, timeout_micros=None)", return_annotation
     if name == "tree_sitter.Parser":
         return "(language, *, included_ranges=None, timeout_micros=None)", return_annotation
     if name == "tree_sitter.Range":

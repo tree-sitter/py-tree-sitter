@@ -9,13 +9,7 @@ Node
    .. automethod:: child
    .. automethod:: child_by_field_id
    .. automethod:: child_by_field_name
-   .. automethod:: child_containing_descendant
-
-      .. deprecated:: 0.24.0
-         Use :meth:`child_with_descendant` instead
    .. automethod:: child_with_descendant
-
-      .. versionadded:: 0.24.0
    .. automethod:: children_by_field_id
    .. automethod:: children_by_field_name
    .. automethod:: descendant_for_byte_range
@@ -23,8 +17,12 @@ Node
    .. automethod:: edit
    .. automethod:: field_name_for_child
    .. automethod:: field_name_for_named_child
+   .. automethod:: first_child_for_byte
 
-      .. versionadded:: 0.24.0
+      .. versionadded:: 0.25.0
+   .. automethod:: first_named_child_for_byte
+
+      .. versionadded:: 0.25.0
    .. automethod:: named_child
    .. automethod:: named_descendant_for_byte_range
    .. automethod:: named_descendant_for_point_range

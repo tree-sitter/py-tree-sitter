@@ -4,8 +4,6 @@
 
 #include <Python.h>
 
-#define HAS_LANGUAGE_NAMES (TREE_SITTER_LANGUAGE_VERSION >= 15)
-
 // Types
 
 typedef struct {
@@ -25,10 +23,8 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     TSLanguage *language;
-    uint32_t version;
-#if HAS_LANGUAGE_NAMES
+    uint32_t abi_version;
     const char *name;
-#endif
 } Language;
 
 typedef struct {
@@ -85,12 +81,16 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     TSQuery *query;
-    TSQueryCursor *cursor;
-    PyObject *capture_names;
     PyObject *predicates;
     PyObject *settings;
     PyObject *assertions;
 } Query;
+
+typedef struct {
+    PyObject_HEAD
+    TSQueryCursor *cursor;
+    PyObject *query;
+} QueryCursor;
 
 typedef struct {
     PyObject_HEAD
@@ -103,8 +103,6 @@ typedef struct {
     PyObject *language;
 } LookaheadIterator;
 
-typedef LookaheadIterator LookaheadNamesIterator;
-
 typedef struct {
     TSTreeCursor default_cursor;
     PyObject *re_compile;
@@ -112,10 +110,10 @@ typedef struct {
     PyTypeObject *language_type;
     PyTypeObject *log_type_type;
     PyTypeObject *lookahead_iterator_type;
-    PyTypeObject *lookahead_names_iterator_type;
     PyTypeObject *node_type;
     PyTypeObject *parser_type;
     PyTypeObject *point_type;
+    PyTypeObject *query_cursor_type;
     PyTypeObject *query_predicate_anyof_type;
     PyTypeObject *query_predicate_eq_capture_type;
     PyTypeObject *query_predicate_eq_string_type;

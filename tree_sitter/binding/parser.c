@@ -5,7 +5,7 @@
 
 typedef struct {
     PyObject *read_cb;
-    PyObject *previous_return_value;
+    PyObject *previous_retval;
     ModuleState *state;
 } ReadWrapperPayload;
 
@@ -49,8 +49,8 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
     // return value from the callable in wrapper_payload->previous_return_value so
     // that its reference count will be decremented either during the next call to
     // this wrapper or after ts_parser_parse() has returned.
-    Py_XDECREF(wrapper_payload->previous_return_value);
-    wrapper_payload->previous_return_value = NULL;
+    Py_XDECREF(wrapper_payload->previous_retval);
+    wrapper_payload->previous_retval = NULL;
 
     // Form arguments to callable.
     PyObject *byte_offset_obj = PyLong_FromUnsignedLong(byte_offset);
@@ -85,68 +85,65 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
 
     // Store return value in payload so its reference count can be decremented and
     // return string representation of bytes.
-    wrapper_payload->previous_return_value = rv;
+    wrapper_payload->previous_retval = rv;
     *bytes_read = (uint32_t)PyBytes_Size(rv);
     return PyBytes_AsString(rv);
+}
+
+static bool parser_progress_callback(TSParseState *state) {
+    PyObject *result = PyObject_CallFunction((PyObject *)state->payload, "Ip",
+                                             state->current_byte_offset, state->has_error);
+    return PyObject_IsTrue(result);
 }
 
 PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *source_or_callback;
     PyObject *old_tree_obj = NULL;
+    PyObject *encoding_obj = NULL;
+    PyObject *progress_callback_obj = NULL;
     bool keep_text = true;
-    const char *encoding = "utf8";
-    Py_ssize_t encoding_len = 4;
-    char *keywords[] = {"", "old_tree", "encoding", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O!s#:parse", keywords, &source_or_callback,
-                                     state->tree_type, &old_tree_obj, &encoding, &encoding_len)) {
+    char *keywords[] = {"", "old_tree", "encoding", "progress_callback", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O!OO:parse", keywords, &source_or_callback,
+                                     state->tree_type, &old_tree_obj, &encoding_obj,
+                                     &progress_callback_obj)) {
         return NULL;
     }
 
     const TSTree *old_tree = old_tree_obj ? ((Tree *)old_tree_obj)->tree : NULL;
-
-    TSInputEncoding input_encoding;
-    if (strcmp(encoding, "utf8") == 0) {
-        input_encoding = TSInputEncodingUTF8;
-    } else if (strcmp(encoding, "utf16") == 0) {
-        input_encoding = TSInputEncodingUTF16;
-    } else {
-        // try to normalize the encoding and check again
-        PyObject *encodings = PyImport_ImportModule("encodings");
-        if (encodings == NULL) {
-            goto encoding_error;
-        }
-        PyObject *normalize_encoding = PyObject_GetAttrString(encodings, "normalize_encoding");
-        Py_DECREF(encodings);
-        if (normalize_encoding == NULL) {
-            goto encoding_error;
-        }
-        PyObject *arg = PyUnicode_DecodeASCII(encoding, encoding_len, NULL);
-        if (arg == NULL) {
-            goto encoding_error;
-        }
-        PyObject *normalized_obj = PyObject_CallOneArg(normalize_encoding, arg);
-        Py_DECREF(arg);
-        Py_DECREF(normalize_encoding);
-        if (normalized_obj == NULL) {
-            goto encoding_error;
-        }
-        const char *normalized_str = PyUnicode_AsUTF8(normalized_obj);
-        if (strcmp(normalized_str, "utf8") == 0 || strcmp(normalized_str, "utf_8") == 0) {
-            Py_DECREF(normalized_obj);
+    TSInputEncoding input_encoding = TSInputEncodingUTF8;
+    if (encoding_obj != NULL) {
+        if (!PyUnicode_CheckExact(encoding_obj)) {
+            PyErr_Format(PyExc_TypeError, "encoding must be str, not %s",
+                         encoding_obj->ob_type->tp_name);
+            return NULL;
+        } else if (PyUnicode_CompareWithASCIIString(encoding_obj, "utf8") == 0) {
             input_encoding = TSInputEncodingUTF8;
-        } else if (strcmp(normalized_str, "utf16") == 0 || strcmp(normalized_str, "utf_16") == 0) {
-            Py_DECREF(normalized_obj);
-            input_encoding = TSInputEncodingUTF16;
+        } else if (PyUnicode_CompareWithASCIIString(encoding_obj, "utf16le") == 0) {
+            input_encoding = TSInputEncodingUTF16LE;
+        } else if (PyUnicode_CompareWithASCIIString(encoding_obj, "utf16be") == 0) {
+            input_encoding = TSInputEncodingUTF16BE;
+        } else if (PyUnicode_CompareWithASCIIString(encoding_obj, "utf16") == 0) {
+            PyObject *byteorder = PySys_GetObject("byteorder");
+            bool little_endian = PyUnicode_CompareWithASCIIString(byteorder, "little") == 0;
+            input_encoding = little_endian ? TSInputEncodingUTF16LE : TSInputEncodingUTF16BE;
         } else {
-            Py_DECREF(normalized_obj);
-            goto encoding_error;
+            PyErr_Format(PyExc_ValueError,
+                         "encoding must be 'utf8', 'utf16', 'utf16le', or 'utf16be', not '%s'",
+                         PyUnicode_AsUTF8(encoding_obj));
+            return NULL;
         }
     }
 
     TSTree *new_tree = NULL;
     Py_buffer source_view;
     if (PyObject_GetBuffer(source_or_callback, &source_view, PyBUF_SIMPLE) > -1) {
+        if (progress_callback_obj != NULL) {
+            const char *warning = "The progress_callback is ignored when parsing a bytestring";
+            if (PyErr_WarnEx(PyExc_UserWarning, warning, 1) < 0) {
+                return NULL;
+            }
+        }
         // parse a buffer
         const char *source_bytes = (const char *)source_view.buf;
         uint32_t length = (uint32_t)source_view.len;
@@ -160,20 +157,34 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         ReadWrapperPayload payload = {
             .state = state,
             .read_cb = source_or_callback,
-            .previous_return_value = NULL,
+            .previous_retval = NULL,
         };
         TSInput input = {
             .payload = &payload,
             .read = parser_read_wrapper,
             .encoding = input_encoding,
+            .decode = NULL,
         };
-        new_tree = ts_parser_parse(self->parser, old_tree, input);
-        Py_XDECREF(payload.previous_return_value);
+        if (progress_callback_obj == NULL) {
+            new_tree = ts_parser_parse(self->parser, old_tree, input);
+        } else if (!PyCallable_Check(progress_callback_obj)) {
+            PyErr_Format(PyExc_TypeError, "progress_callback must be a callable, not %s",
+                         progress_callback_obj->ob_type->tp_name);
+            return NULL;
+        } else {
+            TSParseOptions options = {
+                .payload = progress_callback_obj,
+                .progress_callback = parser_progress_callback,
+            };
+            new_tree = ts_parser_parse_with_options(self->parser, old_tree, input, options);
+        }
+        Py_XDECREF(payload.previous_retval);
 
         source_or_callback = Py_None;
         keep_text = false;
     } else {
-        PyErr_SetString(PyExc_TypeError, "source must be a bytestring or a callable");
+        PyErr_Format(PyExc_TypeError, "source must be a bytestring or a callable, not %s",
+                     source_or_callback->ob_type->tp_name);
         return NULL;
     }
 
@@ -194,10 +205,6 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     tree->source = keep_text ? source_or_callback : Py_None;
     Py_INCREF(tree->source);
     return PyObject_Init((PyObject *)tree, state->tree_type);
-
-encoding_error:
-    PyErr_Format(PyExc_ValueError, "encoding must be 'utf8' or 'utf16', not '%s'", encoding);
-    return NULL;
 }
 
 PyObject *parser_reset(Parser *self, void *Py_UNUSED(payload)) {
@@ -213,16 +220,24 @@ PyObject *parser_print_dot_graphs(Parser *self, PyObject *arg) {
         if (fd < 0) {
             return NULL;
         }
+        Py_BEGIN_ALLOW_THREADS
         ts_parser_print_dot_graphs(self->parser, fd);
+        Py_END_ALLOW_THREADS
     }
     Py_RETURN_NONE;
 }
 
 PyObject *parser_get_timeout_micros(Parser *self, void *Py_UNUSED(payload)) {
+    if (DEPRECATE("Use the progress_callback in parse()") < 0) {
+        return NULL;
+    }
     return PyLong_FromUnsignedLong(ts_parser_timeout_micros(self->parser));
 }
 
 int parser_set_timeout_micros(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
+    if (DEPRECATE("Use the progress_callback in parse()") < 0) {
+        return -1;
+    }
     if (arg == NULL || arg == Py_None) {
         ts_parser_set_timeout_micros(self->parser, 0);
         return 0;
@@ -329,7 +344,7 @@ int parser_set_logger(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
         return 0;
     }
     if (!PyCallable_Check(arg)) {
-        PyErr_Format(PyExc_TypeError, "logger must be assigned a Callable object, not %s",
+        PyErr_Format(PyExc_TypeError, "logger must be assigned a callable object, not %s",
                      arg->ob_type->tp_name);
         return -1;
     }
@@ -359,11 +374,11 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
     }
 
     Language *language = (Language *)arg;
-    if (language->version < TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION ||
-        TREE_SITTER_LANGUAGE_VERSION < language->version) {
+    if (language->abi_version < TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION ||
+        TREE_SITTER_LANGUAGE_VERSION < language->abi_version) {
         PyErr_Format(PyExc_ValueError,
                      "Incompatible Language version %u. Must be between %u and %u",
-                     language->version, TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION,
+                     language->abi_version, TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION,
                      TREE_SITTER_LANGUAGE_VERSION);
         return -1;
     }

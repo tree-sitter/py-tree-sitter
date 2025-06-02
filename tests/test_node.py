@@ -1,10 +1,11 @@
+from typing import cast
 from unittest import TestCase
 
 import tree_sitter_python
 import tree_sitter_javascript
 import tree_sitter_json
 
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Node, Parser
 
 JSON_EXAMPLE = b"""
 
@@ -48,8 +49,8 @@ class TestNode(TestCase):
         fn_node = tree.root_node.children[0]
 
         self.assertIsNone(self.python.field_id_for_name("noname"))
-        name_field = self.python.field_id_for_name("name")
-        alias_field = self.python.field_id_for_name("alias")
+        name_field = cast(int, self.python.field_id_for_name("name"))
+        alias_field = cast(int, self.python.field_id_for_name("alias"))
         self.assertIsNone(root_node.child_by_field_id(alias_field))
         self.assertIsNone(root_node.child_by_field_id(name_field))
         self.assertIsNone(fn_node.child_by_field_id(alias_field))
@@ -59,7 +60,7 @@ class TestNode(TestCase):
     def test_child_by_field_name(self):
         parser = Parser(self.python)
         tree = parser.parse(b"while a:\n  pass")
-        while_node = tree.root_node.child(0)
+        while_node = cast(Node, tree.root_node.child(0))
         self.assertIsNotNone(while_node)
         self.assertEqual(while_node.type, "while_statement")
         self.assertEqual(while_node.child_by_field_name("body"), while_node.child(3))
@@ -68,7 +69,7 @@ class TestNode(TestCase):
         parser = Parser(self.javascript)
         tree = parser.parse(b"<div a={1} b={2} />")
         jsx_node = tree.root_node.children[0].children[0]
-        attribute_field = self.javascript.field_id_for_name("attribute")
+        attribute_field = cast(int, self.javascript.field_id_for_name("attribute"))
         attributes = jsx_node.children_by_field_id(attribute_field)
         self.assertListEqual([a.type for a in attributes], ["jsx_attribute", "jsx_attribute"])
 
@@ -91,13 +92,13 @@ class TestNode(TestCase):
         parser = Parser(self.javascript)
         tree = parser.parse(b"  if (a) b")
 
-        node = tree.root_node_with_offset(6, (2, 2))
+        node = cast(Node, tree.root_node_with_offset(6, (2, 2)))
         self.assertIsNotNone(node)
         self.assertEqual(node.byte_range, (8, 16))
         self.assertEqual(node.start_point, (2, 4))
         self.assertEqual(node.end_point, (2, 12))
 
-        child = node.child(0).child(2)
+        child = cast(Node, cast(Node, node.child(0)).child(2))
         self.assertIsNotNone(child)
         self.assertEqual(child.type, "expression_statement")
         self.assertEqual(child.byte_range, (15, 16))
@@ -108,7 +109,7 @@ class TestNode(TestCase):
         cursor.goto_first_child()
         cursor.goto_first_child()
         cursor.goto_next_sibling()
-        child = cursor.node
+        child = cast(Node, cursor.node)
         self.assertIsNotNone(child)
         self.assertEqual(child.type, "parenthesized_expression")
         self.assertEqual(child.byte_range, (11, 14))
@@ -142,6 +143,7 @@ class TestNode(TestCase):
         # Leaf node exactly matches the given bounds - byte query
         colon_node = array_node.descendant_for_byte_range(colon_index, colon_index + 1)
         self.assertIsNotNone(colon_node)
+        colon_node = cast(Node, colon_node)
         self.assertEqual(colon_node.type, ":")
         self.assertEqual(colon_node.start_byte, colon_index)
         self.assertEqual(colon_node.end_byte, colon_index + 1)
@@ -151,6 +153,7 @@ class TestNode(TestCase):
         # Leaf node exactly matches the given bounds - point query
         colon_node = array_node.descendant_for_point_range((6, 7), (6, 8))
         self.assertIsNotNone(colon_node)
+        colon_node = cast(Node, colon_node)
         self.assertEqual(colon_node.type, ":")
         self.assertEqual(colon_node.start_byte, colon_index)
         self.assertEqual(colon_node.end_byte, colon_index + 1)
@@ -160,6 +163,7 @@ class TestNode(TestCase):
         # The given point is between two adjacent leaf nodes - byte query
         colon_node = array_node.descendant_for_byte_range(colon_index, colon_index)
         self.assertIsNotNone(colon_node)
+        colon_node = cast(Node, colon_node)
         self.assertEqual(colon_node.type, ":")
         self.assertEqual(colon_node.start_byte, colon_index)
         self.assertEqual(colon_node.end_byte, colon_index + 1)
@@ -169,6 +173,7 @@ class TestNode(TestCase):
         # The given point is between two adjacent leaf nodes - point query
         colon_node = array_node.descendant_for_point_range((6, 7), (6, 7))
         self.assertIsNotNone(colon_node)
+        colon_node = cast(Node, colon_node)
         self.assertEqual(colon_node.type, ":")
         self.assertEqual(colon_node.start_byte, colon_index)
         self.assertEqual(colon_node.end_byte, colon_index + 1)
@@ -179,6 +184,7 @@ class TestNode(TestCase):
         string_index = JSON_EXAMPLE.index(b'"x"')
         string_node = array_node.descendant_for_byte_range(string_index, string_index + 2)
         self.assertIsNotNone(string_node)
+        string_node = cast(Node, string_node)
         self.assertEqual(string_node.type, "string")
         self.assertEqual(string_node.start_byte, string_index)
         self.assertEqual(string_node.end_byte, string_index + 3)
@@ -188,6 +194,7 @@ class TestNode(TestCase):
         # Leaf node starts at the lower bound, ends after the upper bound - point query
         string_node = array_node.descendant_for_point_range((6, 4), (6, 6))
         self.assertIsNotNone(string_node)
+        string_node = cast(Node, string_node)
         self.assertEqual(string_node.type, "string")
         self.assertEqual(string_node.start_byte, string_index)
         self.assertEqual(string_node.end_byte, string_index + 3)
@@ -198,6 +205,7 @@ class TestNode(TestCase):
         null_index = JSON_EXAMPLE.index(b"null")
         null_node = array_node.descendant_for_byte_range(null_index + 1, null_index + 4)
         self.assertIsNotNone(null_node)
+        null_node = cast(Node, null_node)
         self.assertEqual(null_node.type, "null")
         self.assertEqual(null_node.start_byte, null_index)
         self.assertEqual(null_node.end_byte, null_index + 4)
@@ -207,6 +215,7 @@ class TestNode(TestCase):
         # Leaf node starts before the lower bound, ends at the upper bound - point query
         null_node = array_node.descendant_for_point_range((6, 11), (6, 13))
         self.assertIsNotNone(null_node)
+        null_node = cast(Node, null_node)
         self.assertEqual(null_node.type, "null")
         self.assertEqual(null_node.start_byte, null_index)
         self.assertEqual(null_node.end_byte, null_index + 4)
@@ -216,6 +225,7 @@ class TestNode(TestCase):
         # The bounds span multiple leaf nodes - return the smallest node that does span it.
         pair_node = array_node.descendant_for_byte_range(string_index + 2, string_index + 4)
         self.assertIsNotNone(pair_node)
+        pair_node = cast(Node, pair_node)
         self.assertEqual(pair_node.type, "pair")
         self.assertEqual(pair_node.start_byte, string_index)
         self.assertEqual(pair_node.end_byte, string_index + 9)
@@ -227,6 +237,7 @@ class TestNode(TestCase):
         # No leaf spans the given range - return the smallest node that does span it.
         pair_node = array_node.descendant_for_point_range((6, 6), (6, 8))
         self.assertIsNotNone(pair_node)
+        pair_node = cast(Node, pair_node)
         self.assertEqual(pair_node.type, "pair")
         self.assertEqual(pair_node.start_byte, string_index)
         self.assertEqual(pair_node.end_byte, string_index + 9)
@@ -286,7 +297,7 @@ class TestNode(TestCase):
         tree = parser.parse(b"foo(/* hi */);")
 
         root_node = tree.root_node
-        comment_node = root_node.descendant_for_byte_range(7, 7)
+        comment_node = cast(Node, root_node.descendant_for_byte_range(7, 7))
         self.assertIsNotNone(comment_node)
 
         self.assertEqual(root_node.type, "program")
@@ -403,13 +414,14 @@ class TestNode(TestCase):
             + "(list_splat (identifier))))))))",
         )
 
-        outer_expr_node = root_node.child(0).child(0)
+        outer_expr_node = cast(Node, root_node.child(0)).child(0)
         self.assertIsNotNone(outer_expr_node)
+        outer_expr_node = cast(Node, outer_expr_node)
         self.assertEqual(outer_expr_node.type, "parenthesized_expression")
 
-        inner_expr_node = (
-            outer_expr_node.named_child(0).child_by_field_name("arguments").named_child(0)
-        )
+        inner_expr_node = cast(Node, outer_expr_node.named_child(0))
+        inner_expr_node = cast(Node, inner_expr_node.child_by_field_name("arguments"))
+        inner_expr_node = cast(Node, inner_expr_node.named_child(0))
         self.assertIsNotNone(inner_expr_node)
 
         self.assertEqual(inner_expr_node.type, "parenthesized_expression")

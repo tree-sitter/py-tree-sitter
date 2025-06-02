@@ -127,6 +127,26 @@ PyObject *node_named_child(Node *self, PyObject *args) {
     return node_new_internal(state, child, self->tree);
 }
 
+PyObject *node_first_child_for_byte(Node *self, PyObject *args) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    uint32_t byte;
+    if (!PyArg_ParseTuple(args, "I:first_child_for_byte", &byte)) {
+        return NULL;
+    }
+    TSNode child = ts_node_first_child_for_byte(self->node, byte);
+    return node_new_internal(state, child, self->tree);
+}
+
+PyObject *node_first_named_child_for_byte(Node *self, PyObject *args) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    uint32_t byte;
+    if (!PyArg_ParseTuple(args, "I:first_named_child_for_byte", &byte)) {
+        return NULL;
+    }
+    TSNode child = ts_node_first_named_child_for_byte(self->node, byte);
+    return node_new_internal(state, child, self->tree);
+}
+
 PyObject *node_child_by_field_id(Node *self, PyObject *args) {
     ModuleState *state = GET_MODULE_STATE(self);
     TSFieldId field_id;
@@ -298,27 +318,10 @@ PyObject *node_named_descendant_for_point_range(Node *self, PyObject *args) {
     return node_new_internal(state, descendant, self->tree);
 }
 
-PyObject *node_child_containing_descendant(Node *self, PyObject *args) {
-    ModuleState *state = GET_MODULE_STATE(self);
-    TSNode descendant;
-    if (!PyArg_ParseTuple(args, "O!:child_containing_descendant", &descendant, state->node_type)) {
-        return NULL;
-    }
-    if (REPLACE("child_containing_descendant", "child_with_descendant") < 0) {
-        return NULL;
-    }
-
-    TSNode child = ts_node_child_containing_descendant(self->node, descendant);
-    if (ts_node_is_null(child)) {
-        Py_RETURN_NONE;
-    }
-    return node_new_internal(state, child, self->tree);
-}
-
 PyObject *node_child_with_descendant(Node *self, PyObject *args) {
     ModuleState *state = GET_MODULE_STATE(self);
     TSNode descendant;
-    if (!PyArg_ParseTuple(args, "O!:child_with_descendant", &descendant, state->node_type)) {
+    if (!PyArg_ParseTuple(args, "O!:child_with_descendant", state->node_type, &descendant)) {
         return NULL;
     }
 
@@ -478,7 +481,7 @@ PyObject *node_get_named_children(Node *self, void *payload) {
     for (uint32_t i = 0, j = 0; i < length; ++i) {
         PyObject *child = PyList_GetItem(self->children, i);
         if (ts_node_is_named(((Node *)child)->node)) {
-            if (PyList_SetItem(result, j++, Py_NewRef(child))) {
+            if (PyList_SetItem(result, j++, Py_NewRef(child)) < 0) {
                 Py_DECREF(result);
                 return NULL;
             }
@@ -617,15 +620,22 @@ PyDoc_STRVAR(node_named_child_doc,
              "child." DOC_CAUTION "This method is fairly fast, but its cost is technically "
              "``log(i)``, so if you might be iterating over a long list of children, "
              "you should use :attr:`children` or :meth:`walk` instead.");
+PyDoc_STRVAR(node_first_child_for_byte_doc,
+             "first_child_for_byte(self, byte, /)\n--\n\n"
+             "Get the node's first child that contains or starts after the given byte offset.");
+PyDoc_STRVAR(node_first_named_child_for_byte_doc,
+             "first_named_child_for_byte(self, byte, /)\n--\n\n"
+             "Get the node's first *named* child that contains "
+             "or starts after the given byte offset.");
 PyDoc_STRVAR(node_child_by_field_id_doc,
              "child_by_field_id(self, id, /)\n--\n\n"
              "Get the first child with the given numerical field id." DOC_HINT
-             "You can convert a field name to an id using :meth:`Language.field_id_for_name`."
-             DOC_SEE_ALSO ":meth:`child_by_field_name`");
+             "You can convert a field name to an id using "
+             ":meth:`Language.field_id_for_name`." DOC_SEE_ALSO ":meth:`child_by_field_name`");
 PyDoc_STRVAR(node_children_by_field_id_doc,
              "children_by_field_id(self, id, /)\n--\n\n"
-             "Get a list of children with the given numerical field id."
-             DOC_SEE_ALSO ":meth:`children_by_field_name`");
+             "Get a list of children with the given numerical field id." DOC_SEE_ALSO
+             ":meth:`children_by_field_name`");
 PyDoc_STRVAR(node_child_by_field_name_doc, "child_by_field_name(self, name, /)\n--\n\n"
                                            "Get the first child with the given field name.");
 PyDoc_STRVAR(node_children_by_field_name_doc, "children_by_field_name(self, name, /)\n--\n\n"
@@ -648,13 +658,8 @@ PyDoc_STRVAR(node_descendant_for_point_range_doc,
 PyDoc_STRVAR(node_named_descendant_for_point_range_doc,
              "named_descendant_for_point_range(self, start_point, end_point, /)\n--\n\n"
              "Get the smallest *named* node within this node that spans the given point range.");
-PyDoc_STRVAR(node_child_containing_descendant_doc,
-             "child_containing_descendant(self, descendant, /)\n--\n\n"
-             "Get the child of the node that contains the given descendant." DOC_ATTENTION
-             "This will not return the descendant if it is a direct child of this node.");
-PyDoc_STRVAR(node_child_with_descendant_doc,
-             "child_with_descendant(self, descendant, /)\n--\n\n"
-             "Get the node that contains the given descendant.");
+PyDoc_STRVAR(node_child_with_descendant_doc, "child_with_descendant(self, descendant, /)\n--\n\n"
+                                             "Get the node that contains the given descendant.");
 
 static PyMethodDef node_methods[] = {
     {
@@ -680,6 +685,18 @@ static PyMethodDef node_methods[] = {
         .ml_meth = (PyCFunction)node_named_child,
         .ml_flags = METH_VARARGS,
         .ml_doc = node_named_child_doc,
+    },
+    {
+        .ml_name = "first_child_for_byte",
+        .ml_meth = (PyCFunction)node_first_child_for_byte,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = node_first_child_for_byte_doc,
+    },
+    {
+        .ml_name = "first_named_child_for_byte",
+        .ml_meth = (PyCFunction)node_first_named_child_for_byte,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = node_first_named_child_for_byte_doc,
     },
     {
         .ml_name = "child_by_field_id",
@@ -740,12 +757,6 @@ static PyMethodDef node_methods[] = {
         .ml_meth = (PyCFunction)node_named_descendant_for_point_range,
         .ml_flags = METH_VARARGS,
         .ml_doc = node_named_descendant_for_point_range_doc,
-    },
-    {
-        .ml_name = "child_containing_descendant",
-        .ml_meth = (PyCFunction)node_child_containing_descendant,
-        .ml_flags = METH_VARARGS,
-        .ml_doc = node_child_containing_descendant_doc,
     },
     {
         .ml_name = "child_with_descendant",
