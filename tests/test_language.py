@@ -2,7 +2,7 @@ from sys import maxsize
 from typing import cast
 from unittest import TestCase
 
-from tree_sitter import Language, Query
+from tree_sitter import Language
 
 import tree_sitter_html
 import tree_sitter_javascript
