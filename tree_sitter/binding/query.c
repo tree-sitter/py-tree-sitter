@@ -8,6 +8,15 @@ bool query_satisfies_predicates(Query *query, TSQueryMatch match, Tree *tree, Py
 
 #define QUERY_ERROR(...) PyErr_Format(state->query_error, __VA_ARGS__)
 
+#define CHECK_INDEX(query, index)                                                                  \
+    do {                                                                                           \
+        uint32_t count = ts_query_pattern_count(query);                                            \
+        if ((index) >= count) {                                                                    \
+            PyErr_Format(PyExc_IndexError, "Index %u exceeds count %u", index, count);             \
+            return NULL;                                                                           \
+        }                                                                                          \
+    } while (0)
+
 static inline bool is_valid_identifier_char(char ch) { return Py_ISALNUM(ch) || ch == '_'; }
 
 static inline bool is_valid_predicate_char(char ch) {
@@ -533,11 +542,7 @@ PyObject *query_pattern_settings(Query *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I:pattern_settings", &pattern_index)) {
         return NULL;
     }
-    uint32_t count = ts_query_pattern_count(self->query);
-    if (pattern_index >= count) {
-        PyErr_Format(PyExc_IndexError, "Index %u exceeds count %u", pattern_index, count);
-        return NULL;
-    }
+    CHECK_INDEX(self->query, pattern_index);
     PyObject *item = PyList_GetItem(self->settings, pattern_index);
     return Py_NewRef(item);
 }
@@ -547,11 +552,7 @@ PyObject *query_pattern_assertions(Query *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I:pattern_assertions", &pattern_index)) {
         return NULL;
     }
-    uint32_t count = ts_query_pattern_count(self->query);
-    if (pattern_index >= count) {
-        PyErr_Format(PyExc_IndexError, "Index %u exceeds count %u", pattern_index, count);
-        return NULL;
-    }
+    CHECK_INDEX(self->query, pattern_index);
     PyObject *item = PyList_GetItem(self->assertions, pattern_index);
     return Py_NewRef(item);
 }
@@ -561,6 +562,7 @@ PyObject *query_disable_pattern(Query *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I:disable_pattern", &pattern_index)) {
         return NULL;
     }
+    CHECK_INDEX(self->query, pattern_index);
     ts_query_disable_pattern(self->query, pattern_index);
     return Py_NewRef(self);
 }
@@ -580,6 +582,7 @@ PyObject *query_start_byte_for_pattern(Query *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I:start_byte_for_pattern", &pattern_index)) {
         return NULL;
     }
+    CHECK_INDEX(self->query, pattern_index);
     start_byte = ts_query_start_byte_for_pattern(self->query, pattern_index);
     return PyLong_FromSize_t(start_byte);
 }
@@ -589,6 +592,7 @@ PyObject *query_end_byte_for_pattern(Query *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I:end_byte_for_pattern", &pattern_index)) {
         return NULL;
     }
+    CHECK_INDEX(self->query, pattern_index);
     end_byte = ts_query_end_byte_for_pattern(self->query, pattern_index);
     return PyLong_FromSize_t(end_byte);
 }
@@ -598,6 +602,7 @@ PyObject *query_is_pattern_rooted(Query *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "I:is_pattern_rooted", &pattern_index)) {
         return NULL;
     }
+    CHECK_INDEX(self->query, pattern_index);
     bool result = ts_query_is_pattern_rooted(self->query, pattern_index);
     return PyBool_FromLong(result);
 }
