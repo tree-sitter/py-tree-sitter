@@ -282,7 +282,7 @@ class Parser:
     @overload
     def parse(
         self,
-        read_callback: Callable[[int, Point], bytes | None],
+        read_callback: Callable[[int, Point], ByteString | None],
         /,
         old_tree: Tree | None = None,
         encoding: Literal["utf8", "utf16", "utf16le", "utf16be"] = "utf8",
