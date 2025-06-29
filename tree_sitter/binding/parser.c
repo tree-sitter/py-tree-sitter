@@ -5,7 +5,7 @@
 
 typedef struct {
     PyObject *read_cb;
-    PyObject *previous_retval;
+    Py_buffer *previous_retval;
     ModuleState *state;
 } ReadWrapperPayload;
 
@@ -43,14 +43,17 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
                                        uint32_t *bytes_read) {
     ReadWrapperPayload *wrapper_payload = (ReadWrapperPayload *)payload;
     PyObject *read_cb = wrapper_payload->read_cb;
+    Py_buffer *source_view = wrapper_payload->previous_retval;
 
     // We assume that the parser only needs the return value until the next time
     // this function is called or when ts_parser_parse() returns. We store the
-    // return value from the callable in wrapper_payload->previous_return_value so
-    // that its reference count will be decremented either during the next call to
+    // buffer from the callable in wrapper_payload->previous_return_value so
+    // that it will be released either during the next call to
     // this wrapper or after ts_parser_parse() has returned.
-    Py_XDECREF(wrapper_payload->previous_retval);
-    wrapper_payload->previous_retval = NULL;
+    if (source_view->obj) {
+        PyBuffer_Release(wrapper_payload->previous_retval);
+        source_view->obj = NULL;
+    }
 
     // Form arguments to callable.
     PyObject *byte_offset_obj = PyLong_FromUnsignedLong(byte_offset);
@@ -75,19 +78,18 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
         return NULL;
     }
 
-    // If something other than None is returned, it must be a bytes object.
-    if (!PyBytes_Check(rv)) {
+    // Store buffer in payload.
+    // If something other than None is returned, it must support the buffer protocol.
+    if (PyObject_GetBuffer(rv, source_view, PyBUF_SIMPLE) < 0) {
         Py_XDECREF(rv);
         PyErr_SetString(PyExc_TypeError, "read callable must return a bytestring");
         *bytes_read = 0;
         return NULL;
     }
 
-    // Store return value in payload so its reference count can be decremented and
-    // return string representation of bytes.
-    wrapper_payload->previous_retval = rv;
-    *bytes_read = (uint32_t)PyBytes_Size(rv);
-    return PyBytes_AsString(rv);
+    *bytes_read = (uint32_t)source_view->len;
+    const char *source_bytes = (const char *)source_view->buf;
+    return source_bytes;
 }
 
 static bool parser_progress_callback(TSParseState *state) {
@@ -153,11 +155,12 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     } else if (PyCallable_Check(source_or_callback)) {
         // clear the GetBuffer error
         PyErr_Clear();
+        source_view.obj = NULL;
         // parse a callable
         ReadWrapperPayload payload = {
             .state = state,
             .read_cb = source_or_callback,
-            .previous_retval = NULL,
+            .previous_retval = &source_view,
         };
         TSInput input = {
             .payload = &payload,
@@ -178,7 +181,10 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
             };
             new_tree = ts_parser_parse_with_options(self->parser, old_tree, input, options);
         }
-        Py_XDECREF(payload.previous_retval);
+        if (source_view.obj) {
+            PyBuffer_Release(&source_view);
+            source_view.obj = NULL;
+        }
 
     } else {
         PyErr_Format(PyExc_TypeError, "source must be a bytestring or a callable, not %s",

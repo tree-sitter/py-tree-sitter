@@ -122,16 +122,32 @@ class TestParser(TestCase):
                 return None
             return source_lines[row][column:].encode("utf8")
 
-        tree = parser.parse(read_callback)
-        self.assertEqual(
-            str(tree.root_node),
-            "(module (function_definition"
-            + " name: (identifier)"
-            + " parameters: (parameters)"
-            + " body: (block (expression_statement (call"
-            + " function: (identifier)"
-            + " arguments: (argument_list))))))",
-        )
+        def modify_return(cb, ret_type):
+            def wrapped(*args):
+                rv = cb(*args)
+                return ret_type(rv) if rv is not None else None
+            return wrapped
+
+        def assert_nodes_equal(tree: Tree):
+            self.assertEqual(
+                str(tree.root_node),
+                "(module (function_definition"
+                + " name: (identifier)"
+                + " parameters: (parameters)"
+                + " body: (block (expression_statement (call"
+                + " function: (identifier)"
+                + " arguments: (argument_list))))))",
+            )
+
+        with self.subTest(type="bytes"):
+            tree = parser.parse(read_callback)
+            assert_nodes_equal(tree)
+        with self.subTest(type="memoryview"):
+            tree = parser.parse(modify_return(read_callback, memoryview))
+            assert_nodes_equal(tree)
+        with self.subTest(type="bytearray"):
+            tree = parser.parse(modify_return(read_callback, bytearray))
+            assert_nodes_equal(tree)
 
     def test_parse_utf16_encoding(self):
         source_code = bytes("'😎' && '🐍'", "utf16")
