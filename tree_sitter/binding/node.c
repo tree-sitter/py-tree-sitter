@@ -320,12 +320,12 @@ PyObject *node_named_descendant_for_point_range(Node *self, PyObject *args) {
 
 PyObject *node_child_with_descendant(Node *self, PyObject *args) {
     ModuleState *state = GET_MODULE_STATE(self);
-    TSNode descendant;
+    PyObject *descendant;
     if (!PyArg_ParseTuple(args, "O!:child_with_descendant", state->node_type, &descendant)) {
         return NULL;
     }
 
-    TSNode child = ts_node_child_with_descendant(self->node, descendant);
+    TSNode child = ts_node_child_with_descendant(self->node, ((Node *) descendant)->node);
     if (ts_node_is_null(child)) {
         Py_RETURN_NONE;
     }
