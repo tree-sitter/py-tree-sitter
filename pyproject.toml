@@ -59,7 +59,7 @@ indent-style = "space"
 [tool.cibuildwheel]
 build-frontend = "build"
 test-extras = ["tests"]
-test-command = "python -munittest discover -s {project}/tests"
+test-command = "python -munittest discover -s {project}/tests -v"
 
 [tool.mypy]
 exclude = ["tree_sitter/core"]
