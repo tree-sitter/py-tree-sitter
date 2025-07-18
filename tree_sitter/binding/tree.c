@@ -83,6 +83,10 @@ PyObject *tree_copy(Tree *self, PyObject *Py_UNUSED(args)) {
     }
 
     copied->tree = ts_tree_copy(self->tree);
+    copied->language = self->language;
+    Py_XINCREF(self->language);
+    copied->source = self->source;
+    Py_XINCREF(self->source);
     return PyObject_Init((PyObject *)copied, state->tree_type);
 }
 
