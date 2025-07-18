@@ -4,6 +4,7 @@ PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree);
 
 void tree_dealloc(Tree *self) {
     ts_tree_delete(self->tree);
+    Py_XDECREF(self->language);
     Py_XDECREF(self->source);
     Py_TYPE(self)->tp_free(self);
 }
