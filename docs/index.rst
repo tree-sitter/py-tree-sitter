@@ -36,6 +36,7 @@ Classes
    tree_sitter.Parser
    tree_sitter.Point
    tree_sitter.Query
+   tree_sitter.QueryCursor
    tree_sitter.QueryError
    tree_sitter.QueryPredicate
    tree_sitter.Range
