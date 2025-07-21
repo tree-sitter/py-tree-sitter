@@ -1,4 +1,4 @@
-Query
+QueryCursor
 =====
 
 .. autoclass:: tree_sitter.QueryCursor
