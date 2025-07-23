@@ -292,7 +292,7 @@ PyDoc_STRVAR(query_cursor_captures_doc,
              "captures(self, node, /, predicate=None, progress_callback=None)\n--\n\n"
              "Get a list of *captures* within the given node.\n\n" DOC_RETURNS
              "A dict where the keys are the names of the captures and the values are "
-             "lists of the captured nodes." DOC_HINT "This method returns all of the"
+             "lists of the captured nodes." DOC_HINT "This method returns all of the "
              "captures while :meth:`matches` only returns the last match.");
 
 static PyMethodDef query_cursor_methods[] = {
