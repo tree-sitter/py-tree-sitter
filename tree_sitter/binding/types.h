@@ -76,6 +76,7 @@ typedef struct {
     PyObject_HEAD
     PyObject *predicate;
     PyObject *arguments;
+	uint32_t pattern_index;
 } QueryPredicateGeneric;
 
 typedef struct {

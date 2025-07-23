@@ -161,7 +161,8 @@ bool query_satisfies_predicates(Query *query, TSQueryMatch match, Tree *tree, Py
             }
             QueryPredicateGeneric *predicate = (QueryPredicateGeneric *)item;
             PyObject *result = PyObject_CallFunction(callable, "OOIO", predicate->predicate,
-                                                     predicate->arguments, i, captures);
+                                                     predicate->arguments,
+													 predicate->pattern_index, captures);
             if (result == NULL) {
                 is_satisfied = false;
                 break;
