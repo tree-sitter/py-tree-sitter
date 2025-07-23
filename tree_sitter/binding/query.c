@@ -437,6 +437,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     PyObject_New(QueryPredicateGeneric, state->query_predicate_generic_type);
                 predicate->predicate = PyUnicode_FromStringAndSize(predicate_name, length);
                 predicate->arguments = PyList_New(predicate_len - 1);
+				predicate->pattern_index = i;
                 for (uint32_t k = 1; k < predicate_len; ++k) {
                     PyObject *item;
                     if ((predicate_step + k)->type == TSQueryPredicateStepTypeCapture) {
