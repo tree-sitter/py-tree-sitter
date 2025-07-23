@@ -1,4 +1,4 @@
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Parser, Query, QueryCursor
 import tree_sitter_python
 
 PY_LANGUAGE = Language(tree_sitter_python.language())
@@ -140,7 +140,8 @@ for changed_range in tree.changed_ranges(new_tree):
 
 
 # querying the tree
-query = PY_LANGUAGE.query(
+query = Query(
+    PY_LANGUAGE,
     """
 (function_definition
   name: (identifier) @function.def
@@ -149,11 +150,12 @@ query = PY_LANGUAGE.query(
 (call
   function: (identifier) @function.call
   arguments: (argument_list) @function.args)
-"""
+""",
 )
 
 # ...with captures
-captures = query.captures(tree.root_node)
+query_cursor = QueryCursor(query)
+captures = query_cursor.captures(tree.root_node)
 assert len(captures) == 4
 assert captures["function.def"][0] == function_name_node
 assert captures["function.block"][0] == function_body_node
@@ -161,7 +163,7 @@ assert captures["function.call"][0] == function_call_name_node
 assert captures["function.args"][0] == function_call_args_node
 
 # ...with matches
-matches = query.matches(tree.root_node)
+matches = query_cursor.matches(tree.root_node)
 assert len(matches) == 2
 
 # first match

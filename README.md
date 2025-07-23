@@ -251,7 +251,8 @@ for changed_range in tree.changed_ranges(new_tree):
 You can search for patterns in a syntax tree using a [tree query]:
 
 ```python
-query = PY_LANGUAGE.query(
+query = Query(
+    PY_LANGUAGE,
     """
 (function_definition
   name: (identifier) @function.def
@@ -260,14 +261,15 @@ query = PY_LANGUAGE.query(
 (call
   function: (identifier) @function.call
   arguments: (argument_list) @function.args)
-"""
+""",
 )
 ```
 
 #### Captures
 
 ```python
-captures = query.captures(tree.root_node)
+query_cursor = QueryCursor(query)
+captures = query_cursor.captures(tree.root_node)
 assert len(captures) == 4
 assert captures["function.def"][0] == function_name_node
 assert captures["function.block"][0] == function_body_node
@@ -278,7 +280,7 @@ assert captures["function.args"][0] == function_call_args_node
 #### Matches
 
 ```python
-matches = query.matches(tree.root_node)
+matches = query_cursor.matches(tree.root_node)
 assert len(matches) == 2
 
 # first match
@@ -290,7 +292,7 @@ assert matches[1][1]["function.call"] == [function_call_name_node]
 assert matches[1][1]["function.args"] == [function_call_args_node]
 ```
 
-The difference between the two methods is that `Query.matches()` groups captures into matches,
+The difference between the two methods is that `QueryCursor.matches()` groups captures into matches,
 which is much more useful when your captures within a query relate to each other.
 
 To try out and explore the code referenced in this README, check out [examples/usage.py].
