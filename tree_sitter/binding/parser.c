@@ -101,10 +101,7 @@ static bool parser_progress_callback(TSParseState *state) {
 PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *source_or_callback;
-    PyObject *old_tree_obj = NULL;
-    PyObject *encoding_obj = NULL;
-    PyObject *progress_callback_obj = NULL;
-    bool keep_text = true;
+    PyObject *old_tree_obj = NULL, *encoding_obj = NULL, *progress_callback_obj = NULL;
     char *keywords[] = {"", "old_tree", "encoding", "progress_callback", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O!OO:parse", keywords, &source_or_callback,
                                      state->tree_type, &old_tree_obj, &encoding_obj,
@@ -206,7 +203,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     }
     tree->tree = new_tree;
     tree->language = self->language;
-    tree->source = keep_text ? source_or_callback : Py_None;
+    tree->source = source_or_callback;
     Py_INCREF(tree->source);
     Py_INCREF(tree->language);
     return PyObject_Init((PyObject *)tree, state->tree_type);
