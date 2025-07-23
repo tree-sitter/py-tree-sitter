@@ -49,7 +49,7 @@ jobs:
           CIBW_ARCHS: ${{matrix.cibw_arch}}
           CIBW_SKIP: "*-musllinux_aarch64"
           # FIXME: stop skipping when the tests stop crashing
-          CIBW_TEST_SKIP: "*-win_* *linux_aarch64"
+          CIBW_TEST_SKIP: "*-win_*"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:

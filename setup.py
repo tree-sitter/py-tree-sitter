@@ -1,6 +1,20 @@
-from sys import platform
+from os import name as os_name
+from platform import machine
 
 from setuptools import Extension, setup  # type: ignore
+
+if os_name != "nt":
+    cflags = [
+        "-std=c11",
+        "-fvisibility=hidden",
+        "-Wno-cast-function-type",
+        "-Werror=implicit-function-declaration",
+    ]
+    # FIXME: GCC optimizer bug workaround for #330 & #386
+    if machine().startswith("aarch64"):
+        cflags.append("--param=early-inlining-insns=9")
+else:
+    cflags = ["/std:c11", "/wd4244"]
 
 setup(
     packages=["tree_sitter"],
@@ -36,18 +50,7 @@ setup(
                 ("PY_SSIZE_T_CLEAN", None),
                 ("TREE_SITTER_HIDE_SYMBOLS", None),
             ],
-            undef_macros=[
-                "TREE_SITTER_FEATURE_WASM",
-            ],
-            extra_compile_args=[
-                "-std=c11",
-                "-fvisibility=hidden",
-                "-Wno-cast-function-type",
-                "-Werror=implicit-function-declaration",
-            ] if platform != "win32" else [
-                "/std:c11",
-                "/wd4244",
-            ],
+            extra_compile_args=cflags,
         )
     ],
 )
