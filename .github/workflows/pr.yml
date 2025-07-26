@@ -1,0 +1,30 @@
+name: Pull request
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: The pull request title
+        type: string
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create app token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{vars.BACKPORT_APP}}
+          private-key: ${{secrets.BACKPORT_KEY}}
+      - name: Open pull request
+        run: >-
+          gh pr create -d -B master -H "$GITHUB_REF_NAME"
+          "${PR_TITLE:+--title=}${PR_TITLE:---fill-first}"
+        env:
+          GH_REPO: ${{github.repository}}
+          GH_TOKEN: ${{steps.app-token.outputs.token}}
+          PR_TITLE: ${{github.event.inputs.title}}
