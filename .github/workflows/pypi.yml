@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Set up Python
@@ -40,7 +40,7 @@ jobs:
           - { os: macos-13,         cibw_arch: x86_64 }
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Build wheels
