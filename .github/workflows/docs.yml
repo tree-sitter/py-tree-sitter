@@ -39,7 +39,7 @@ jobs:
       - name: Build docs
         run: sphinx-build -M html docs docs/_build
       - name: Upload docs artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: docs/_build/html
       - name: Deploy to GitHub Pages
