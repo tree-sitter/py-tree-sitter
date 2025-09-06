@@ -52,6 +52,4 @@ jobs:
         env:
           CFLAGS: -Wextra -Og -g -fno-omit-frame-pointer
       - name: Test
-        run: python -munittest -v
-        # FIXME: remove when the tests stop crashing
-        continue-on-error: ${{runner.os == 'Windows'}}
+        
