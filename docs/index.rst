@@ -21,6 +21,10 @@ Constants
 
    The earliest ABI version that is supported by the current version of the library.
 
+.. autodata:: tree_sitter.__version__
+
+   The version of the tree-sitter package.
+
 
 Classes
 -------

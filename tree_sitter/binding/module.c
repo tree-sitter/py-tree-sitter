@@ -145,6 +145,7 @@ PyMODINIT_FUNC PyInit__binding(void) {
     PyModule_AddIntConstant(module, "LANGUAGE_VERSION", TREE_SITTER_LANGUAGE_VERSION);
     PyModule_AddIntConstant(module, "MIN_COMPATIBLE_LANGUAGE_VERSION",
                             TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION);
+    PyModule_AddStringConstant(module, "__version__", PY_TS_VERSION);
 
 #ifdef Py_GIL_DISABLED
     PyUnstable_Module_SetGIL(module, Py_MOD_GIL_USED);
