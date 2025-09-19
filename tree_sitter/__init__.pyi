@@ -403,3 +403,5 @@ class Range:
 LANGUAGE_VERSION: Final[int]
 
 MIN_COMPATIBLE_LANGUAGE_VERSION: Final[int]
+
+__version__: Final[str]

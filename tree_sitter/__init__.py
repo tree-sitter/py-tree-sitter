@@ -17,6 +17,7 @@ from ._binding import (
     TreeCursor,
     LANGUAGE_VERSION,
     MIN_COMPATIBLE_LANGUAGE_VERSION,
+    __version__
 )
 
 LogType.__doc__ = "The type of a log message."
@@ -64,4 +65,5 @@ __all__ = [
     "TreeCursor",
     "LANGUAGE_VERSION",
     "MIN_COMPATIBLE_LANGUAGE_VERSION",
+    "__version__"
 ]
