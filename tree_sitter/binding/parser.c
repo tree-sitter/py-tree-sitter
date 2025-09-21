@@ -98,6 +98,25 @@ static bool parser_progress_callback(TSParseState *state) {
     return PyObject_IsTrue(result);
 }
 
+static uint32_t parser_decode_singlebyte_encoding(
+    const uint8_t *bytes, uint32_t length, int32_t *codepoint
+) {
+    *codepoint = bytes[0];
+    return 1;
+}
+
+static const char *parser_read_from_buffer(
+    void *payload, uint32_t byte_offset, TSPoint position, uint32_t *bytes_read
+) {
+    Py_buffer *view = (Py_buffer *)payload;
+    if (byte_offset >= (uint32_t)view->len) {
+        *bytes_read = 0;
+        return NULL;
+    }
+    *bytes_read = (uint32_t)view->len - byte_offset;
+    return (const char *)view->buf + byte_offset;
+}
+
 PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *source_or_callback;
@@ -111,9 +130,13 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
 
     const TSTree *old_tree = old_tree_obj ? ((Tree *)old_tree_obj)->tree : NULL;
     TSInputEncoding input_encoding = TSInputEncodingUTF8;
+    bool custom_encoding = false;
     if (encoding_obj != NULL) {
-        if (!PyUnicode_CheckExact(encoding_obj)) {
-            PyErr_Format(PyExc_TypeError, "encoding must be str, not %s",
+        if (encoding_obj == Py_None) {
+            input_encoding = TSInputEncodingCustom;
+            custom_encoding = true;
+        } else if (!PyUnicode_CheckExact(encoding_obj)) {
+            PyErr_Format(PyExc_TypeError, "encoding must be str or None, not %s",
                          encoding_obj->ob_type->tp_name);
             return NULL;
         } else if (PyUnicode_CompareWithASCIIString(encoding_obj, "utf8") == 0) {
@@ -128,7 +151,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
             input_encoding = little_endian ? TSInputEncodingUTF16LE : TSInputEncodingUTF16BE;
         } else {
             PyErr_Format(PyExc_ValueError,
-                         "encoding must be 'utf8', 'utf16', 'utf16le', or 'utf16be', not '%s'",
+                         "encoding must be 'utf8', 'utf16', 'utf16le', 'utf16be', or None, not '%s'",
                          PyUnicode_AsUTF8(encoding_obj));
             return NULL;
         }
@@ -145,10 +168,21 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
             }
         }
         // parse a buffer
-        const char *source_bytes = (const char *)source_view.buf;
-        uint32_t length = (uint32_t)source_view.len;
-        new_tree = ts_parser_parse_string_encoding(self->parser, old_tree, source_bytes, length,
-                                                   input_encoding);
+        if (custom_encoding) {
+            TSInput input = {
+                .payload = &source_view,
+                .read = parser_read_from_buffer,
+                .encoding = TSInputEncodingCustom,
+                .decode = parser_decode_singlebyte_encoding,
+            };
+            new_tree = ts_parser_parse(self->parser, old_tree, input);
+        } else {
+            const char *source_bytes = (const char *)source_view.buf;
+            uint32_t length = (uint32_t)source_view.len;
+            new_tree = ts_parser_parse_string_encoding(
+                self->parser, old_tree, source_bytes, length, input_encoding
+            );
+        }
         PyBuffer_Release(&source_view);
     } else if (PyCallable_Check(source_or_callback)) {
         // clear the GetBuffer error
@@ -164,7 +198,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
             .payload = &payload,
             .read = parser_read_wrapper,
             .encoding = input_encoding,
-            .decode = NULL,
+            .decode = custom_encoding ? parser_decode_singlebyte_encoding : NULL,
         };
         if (progress_callback_obj == NULL) {
             new_tree = ts_parser_parse(self->parser, old_tree, input);
