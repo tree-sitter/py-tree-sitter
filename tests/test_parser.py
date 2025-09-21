@@ -165,6 +165,44 @@ class TestParser(TestCase):
         self.assertEqual(snake.decode("utf16"), "🐍")
         self.assertIs(tree.language, self.javascript)
 
+    def test_parse_no_encoding_buffer(self):
+        # invalid utf8: 5-byte sequence
+        string_value_1 = b"\xf8\xa1\xa1\xa1\xa1"
+        try:
+            string_value_1.decode("utf8")
+            raise Exception(f"string_value_1 is valid utf8: {string_value_1}")
+        except UnicodeDecodeError:
+            pass
+        source_code = b"'" + string_value_1 + b"'"
+        parser = Parser(self.javascript)
+        tree = parser.parse(source_code, encoding=None)
+        root_node = tree.root_node
+        string_node = root_node.children[0].children[0].children[1]
+        string_value_2 = source_code[string_node.start_byte:string_node.end_byte]
+        self.assertEqual(string_node.type, "string_fragment")
+        self.assertEqual(string_value_1, string_value_2)
+        self.assertIs(tree.language, self.javascript)
+
+    def test_parse_no_encoding_callback(self):
+        # invalid utf8: 5-byte sequence
+        string_value_1 = b"\xf8\xa1\xa1\xa1\xa1"
+        try:
+            string_value_1.decode("utf8")
+            raise Exception(f"string_value_1 is valid utf8: {string_value_1}")
+        except UnicodeDecodeError:
+            pass
+        source_code = b"'" + string_value_1 + b"'"
+        parser = Parser(self.javascript)
+        def read(byte_position, _):
+            return source_code[byte_position:]
+        tree = parser.parse(read, encoding=None)
+        root_node = tree.root_node
+        string_node = root_node.children[0].children[0].children[1]
+        string_value_2 = source_code[string_node.start_byte:string_node.end_byte]
+        self.assertEqual(string_node.type, "string_fragment")
+        self.assertEqual(string_value_1, string_value_2)
+        self.assertIs(tree.language, self.javascript)
+
     def test_parse_invalid_encoding(self):
         parser = Parser(self.python)
         with self.assertRaises(ValueError):
