@@ -140,6 +140,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         if (progress_callback_obj != NULL) {
             const char *warning = "The progress_callback is ignored when parsing a bytestring";
             if (PyErr_WarnEx(PyExc_UserWarning, warning, 1) < 0) {
+                PyBuffer_Release(&source_view);
                 return NULL;
             }
         }
