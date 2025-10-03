@@ -32,12 +32,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: windows-2022,     cibw_arch: AMD64 }
+          - { os: windows-2025,     cibw_arch: AMD64 }
           - { os: windows-11-arm,   cibw_arch: ARM64 }
           - { os: ubuntu-24.04,     cibw_arch: x86_64 }
           - { os: ubuntu-24.04-arm, cibw_arch: aarch64 }
           - { os: macos-15,         cibw_arch: arm64 }
-          - { os: macos-13,         cibw_arch: x86_64 }
+          - { os: macos-15-intel,   cibw_arch: x86_64 }
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
