@@ -28,8 +28,8 @@ jobs:
           - ubuntu-24.04
           - ubuntu-24.04-arm
           - macos-15
-          - macos-13
-          - windows-2022
+          - macos-15-intel
+          - windows-2025
           - windows-11-arm
         exclude:
           - os: windows-11-arm
