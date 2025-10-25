@@ -21,7 +21,7 @@ jobs:
           pip install build
           python -mbuild -n -s
       - name: Upload sources
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dist-sources
           path: dist/*.tar.gz
@@ -51,7 +51,7 @@ jobs:
           # FIXME: stop skipping when the tests stop crashing
           CIBW_TEST_SKIP: "*-win_*"
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dist-wheels-${{matrix.os}}-${{matrix.cibw_arch}}
           path: wheelhouse/*.whl
@@ -62,7 +62,7 @@ jobs:
     needs: [build-sdist, build-wheels]
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           path: dist
           pattern: dist-*
