@@ -3,6 +3,11 @@ from platform import machine
 from setuptools import Extension, setup  # type: ignore
 from setuptools.command.build_ext import build_ext
 
+with open("pyproject.toml") as f:
+    next(f)  # skip [project]
+    next(f)  # skip name = "tree-sitter"
+    version = next(f).replace("version = ", "", 1)
+
 
 class BuildExt(build_ext):
     def build_extension(self, ext: Extension):
@@ -57,6 +62,7 @@ setup(
                 ("_DEFAULT_SOURCE", None),
                 ("PY_SSIZE_T_CLEAN", None),
                 ("TREE_SITTER_HIDE_SYMBOLS", None),
+                ("PY_TS_VERSION", version),
             ],
         )
     ],
