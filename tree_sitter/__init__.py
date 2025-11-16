@@ -23,7 +23,7 @@ LogType.__doc__ = "The type of a log message."
 
 Point.__doc__ = "A position in a multi-line text document, in terms of rows and columns."
 Point.row.__doc__ = "The zero-based row of the document."
-Point.column.__doc__ = "The zero-based column of the document."
+Point.column.__doc__ = "The zero-based column of the document. Measured in bytes"
 
 
 class QueryPredicate(_Protocol):
