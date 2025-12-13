@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
@@ -21,7 +21,7 @@ jobs:
           pip install build
           python -mbuild -n -s
       - name: Upload sources
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-sources
           path: dist/*.tar.gz
@@ -40,7 +40,7 @@ jobs:
           - { os: macos-15-intel,   cibw_arch: x86_64 }
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Build wheels
@@ -51,7 +51,7 @@ jobs:
           # FIXME: stop skipping when the tests stop crashing
           CIBW_TEST_SKIP: "*-win_*"
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-wheels-${{matrix.os}}-${{matrix.cibw_arch}}
           path: wheelhouse/*.whl
@@ -62,7 +62,7 @@ jobs:
     needs: [build-sdist, build-wheels]
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: dist
           pattern: dist-*
