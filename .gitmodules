@@ -1,4 +1,4 @@
 [submodule "tree-sitter"]
     url = https://github.com/tree-sitter/tree-sitter
     path = tree_sitter/core
-    branch = release-0.25
+    branch = release-0.26
