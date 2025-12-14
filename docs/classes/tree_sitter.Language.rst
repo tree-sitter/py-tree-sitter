@@ -16,13 +16,7 @@ Language
    .. automethod:: node_kind_is_named
    .. automethod:: node_kind_is_supertype
    .. automethod:: node_kind_is_visible
-   .. automethod:: query
-
-      .. deprecated:: 0.25.0
-         Use the :class:`Query` constructor instead.
    .. automethod:: subtypes
-
-      .. versionadded:: 0.25.0
 
    Special Methods
    ---------------
@@ -41,21 +35,9 @@ Language
    ----------
 
    .. autoattribute:: abi_version
-
-      .. versionadded:: 0.25.0
    .. autoattribute:: field_count
    .. autoattribute:: name
-
-      .. versionadded:: 0.25.0
    .. autoattribute:: node_kind_count
    .. autoattribute:: parse_state_count
    .. autoattribute:: semantic_version
-
-      .. versionadded:: 0.25.0
    .. autoattribute:: supertypes
-
-      .. versionadded:: 0.25.0
-   .. autoattribute:: version
-
-      .. deprecated:: 0.25.0
-         Use :attr:`abi_version` instead.

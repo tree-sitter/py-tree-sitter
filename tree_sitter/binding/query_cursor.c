@@ -1,7 +1,5 @@
 #include "types.h"
 
-#include <string.h>
-
 PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree);
 
 bool query_satisfies_predicates(Query *query, TSQueryMatch match, Tree *tree, PyObject *callable);
@@ -25,16 +23,14 @@ int query_cursor_init(QueryCursor *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *query = NULL;
     uint32_t match_limit = UINT32_MAX;
-    uint64_t timeout_micros = 0;
-    char *keywords[] = {"query", "match_limit", "timeout_micros", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!|$II:__init__", keywords, state->query_type,
-                                     &query, &match_limit, &timeout_micros)) {
+    char *keywords[] = {"query", "match_limit", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!|$I:__init__", keywords, state->query_type,
+                                     &query, &match_limit)) {
         return -1;
     }
 
     self->query = Py_NewRef(query);
     ts_query_cursor_set_match_limit(self->cursor, match_limit);
-    ts_query_cursor_set_timeout_micros(self->cursor, timeout_micros);
 
     return 0;
 }
@@ -237,32 +233,7 @@ int query_cursor_set_match_limit(QueryCursor *self, PyObject *arg, void *Py_UNUS
         return -1;
     }
 
-    ts_query_cursor_set_timeout_micros(self->cursor, PyLong_AsSize_t(arg));
-    return 0;
-}
-
-PyObject *query_cursor_get_timeout_micros(QueryCursor *self, void *Py_UNUSED(payload)) {
-    if (DEPRECATE("Use the progress_callback in matches() or captures()") < 0) {
-        return NULL;
-    }
-    return PyLong_FromUnsignedLong(ts_query_cursor_timeout_micros(self->cursor));
-}
-
-int query_cursor_set_timeout_micros(QueryCursor *self, PyObject *arg, void *Py_UNUSED(payload)) {
-    if (DEPRECATE("Use the progress_callback in matches() or captures()") < 0) {
-        return -1;
-    }
-    if (arg == NULL || arg == Py_None) {
-        ts_query_cursor_set_timeout_micros(self->cursor, 0);
-        return 0;
-    }
-    if (!PyLong_Check(arg)) {
-        PyErr_Format(PyExc_TypeError, "'timeout_micros' must be assigned an int, not %s",
-                     arg->ob_type->tp_name);
-        return -1;
-    }
-
-    ts_query_cursor_set_timeout_micros(self->cursor, PyLong_AsSize_t(arg));
+    ts_query_cursor_set_match_limit(self->cursor, PyLong_AsSize_t(arg));
     return 0;
 }
 
@@ -330,11 +301,6 @@ static PyMethodDef query_cursor_methods[] = {
 };
 
 static PyGetSetDef query_cursor_accessors[] = {
-    {"timeout_micros", (getter)query_cursor_get_timeout_micros,
-     (setter)query_cursor_set_timeout_micros,
-     PyDoc_STR("The maximum duration in microseconds that query "
-               "execution should be allowed to take before halting."),
-     NULL},
     {"match_limit", (getter)query_cursor_get_match_limit, (setter)query_cursor_set_match_limit,
      PyDoc_STR("The maximum number of in-progress matches."), NULL},
     {"did_exceed_match_limit", (getter)query_cursor_get_did_exceed_match_limit, NULL,

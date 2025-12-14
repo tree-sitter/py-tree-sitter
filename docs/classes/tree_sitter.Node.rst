@@ -18,11 +18,7 @@ Node
    .. automethod:: field_name_for_child
    .. automethod:: field_name_for_named_child
    .. automethod:: first_child_for_byte
-
-      .. versionadded:: 0.25.0
    .. automethod:: first_named_child_for_byte
-
-      .. versionadded:: 0.25.0
    .. automethod:: named_child
    .. automethod:: named_descendant_for_byte_range
    .. automethod:: named_descendant_for_point_range
