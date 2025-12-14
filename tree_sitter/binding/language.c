@@ -9,7 +9,7 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
     if (PyCapsule_CheckExact(language)) {
         self->language = PyCapsule_GetPointer(language, "tree_sitter.Language");
     } else {
-        Py_uintptr_t language_id = PyLong_AsSize_t(language);
+        Py_uintptr_t language_id = PyLong_AsUnsignedLong(language);
         if (language_id == 0 || (language_id % sizeof(TSLanguage *)) != 0) {
             if (!PyErr_Occurred()) {
                 PyErr_SetString(PyExc_ValueError, "invalid language ID");
@@ -143,7 +143,7 @@ PyObject *language_id_for_node_kind(Language *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "s#p:id_for_node_kind", &kind, &length, &named)) {
         return NULL;
     }
-    TSSymbol symbol = ts_language_symbol_for_name(self->language, kind, length, named);
+    TSSymbol symbol = ts_language_symbol_for_name(self->language, kind, (uint32_t)length, named);
     if (symbol == 0) {
         Py_RETURN_NONE;
     }
@@ -195,7 +195,8 @@ PyObject *language_field_id_for_name(Language *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "s#:field_id_for_name", &field_name, &length)) {
         return NULL;
     }
-    TSFieldId field_id = ts_language_field_id_for_name(self->language, field_name, length);
+    TSFieldId field_id =
+        ts_language_field_id_for_name(self->language, field_name, (uint32_t)length);
     if (field_id == 0) {
         Py_RETURN_NONE;
     }

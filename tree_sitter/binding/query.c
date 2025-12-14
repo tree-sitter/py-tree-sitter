@@ -52,7 +52,8 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
     TSQueryError error_type;
     PyObject *pattern_predicates = NULL, *pattern_settings = NULL, *pattern_assertions = NULL;
     TSLanguage *language_id = ((Language *)language_obj)->language;
-    query->query = ts_query_new(language_id, source, source_len, &error_offset, &error_type);
+    query->query =
+        ts_query_new(language_id, source, (uint32_t)source_len, &error_offset, &error_type);
     query->predicates = NULL;
     query->settings = NULL;
     query->assertions = NULL;
@@ -437,7 +438,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     PyObject_New(QueryPredicateGeneric, state->query_predicate_generic_type);
                 predicate->predicate = PyUnicode_FromStringAndSize(predicate_name, length);
                 predicate->arguments = PyList_New(predicate_len - 1);
-				predicate->pattern_index = i;
+                predicate->pattern_index = i;
                 for (uint32_t k = 1; k < predicate_len; ++k) {
                     PyObject *item;
                     if ((predicate_step + k)->type == TSQueryPredicateStepTypeCapture) {
@@ -574,7 +575,7 @@ PyObject *query_disable_capture(Query *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "s#:disable_capture", &capture_name, &length)) {
         return NULL;
     }
-    ts_query_disable_capture(self->query, capture_name, length);
+    ts_query_disable_capture(self->query, capture_name, (uint32_t)length);
     return Py_NewRef(self);
 }
 
@@ -585,7 +586,7 @@ PyObject *query_start_byte_for_pattern(Query *self, PyObject *args) {
     }
     CHECK_INDEX(self->query, pattern_index);
     start_byte = ts_query_start_byte_for_pattern(self->query, pattern_index);
-    return PyLong_FromSize_t(start_byte);
+    return PyLong_FromUnsignedLong(start_byte);
 }
 
 PyObject *query_end_byte_for_pattern(Query *self, PyObject *args) {
@@ -595,7 +596,7 @@ PyObject *query_end_byte_for_pattern(Query *self, PyObject *args) {
     }
     CHECK_INDEX(self->query, pattern_index);
     end_byte = ts_query_end_byte_for_pattern(self->query, pattern_index);
-    return PyLong_FromSize_t(end_byte);
+    return PyLong_FromUnsignedLong(end_byte);
 }
 
 PyObject *query_is_pattern_rooted(Query *self, PyObject *args) {
@@ -627,15 +628,15 @@ PyObject *query_is_pattern_guaranteed_at_step(Query *self, PyObject *args) {
 }
 
 PyObject *query_get_pattern_count(Query *self, void *Py_UNUSED(payload)) {
-    return PyLong_FromSize_t(ts_query_pattern_count(self->query));
+    return PyLong_FromUnsignedLong(ts_query_pattern_count(self->query));
 }
 
 PyObject *query_get_capture_count(Query *self, void *Py_UNUSED(payload)) {
-    return PyLong_FromSize_t(ts_query_capture_count(self->query));
+    return PyLong_FromUnsignedLong(ts_query_capture_count(self->query));
 }
 
 PyObject *query_get_string_count(Query *self, void *Py_UNUSED(payload)) {
-    return PyLong_FromSize_t(ts_query_string_count(self->query));
+    return PyLong_FromUnsignedLong(ts_query_string_count(self->query));
 }
 
 PyDoc_STRVAR(query_disable_pattern_doc, "disable_pattern(self, index)\n--\n\n"
