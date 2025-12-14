@@ -56,6 +56,18 @@ PyObject *query_cursor_set_byte_range(QueryCursor *self, PyObject *args) {
     return Py_NewRef(self);
 }
 
+PyObject *query_cursor_set_containing_byte_range(QueryCursor *self, PyObject *args) {
+    uint32_t start_byte, end_byte;
+    if (!PyArg_ParseTuple(args, "II:set_containing_byte_range", &start_byte, &end_byte)) {
+        return NULL;
+    }
+    if (!ts_query_cursor_set_containing_byte_range(self->cursor, start_byte, end_byte)) {
+        PyErr_SetString(PyExc_ValueError, "Invalid byte range");
+        return NULL;
+    }
+    return Py_NewRef(self);
+}
+
 PyObject *query_cursor_set_point_range(QueryCursor *self, PyObject *args) {
     TSPoint start_point, end_point;
     if (!PyArg_ParseTuple(args, "(II)(II):set_point_range", &start_point.row, &start_point.column,
@@ -63,6 +75,19 @@ PyObject *query_cursor_set_point_range(QueryCursor *self, PyObject *args) {
         return NULL;
     }
     if (!ts_query_cursor_set_point_range(self->cursor, start_point, end_point)) {
+        PyErr_SetString(PyExc_ValueError, "Invalid point range");
+        return NULL;
+    }
+    return Py_NewRef(self);
+}
+
+PyObject *query_cursor_set_containing_point_range(QueryCursor *self, PyObject *args) {
+    TSPoint start_point, end_point;
+    if (!PyArg_ParseTuple(args, "(II)(II):set_containing_point_range", &start_point.row,
+                          &start_point.column, &end_point.row, &end_point.column)) {
+        return NULL;
+    }
+    if (!ts_query_cursor_set_containing_point_range(self->cursor, start_point, end_point)) {
         PyErr_SetString(PyExc_ValueError, "Invalid point range");
         return NULL;
     }
@@ -247,6 +272,14 @@ PyDoc_STRVAR(query_cursor_set_byte_range_doc,
              "The query cursor will return matches that intersect with the given byte range. "
              "This means that a match may be returned even if some of its captures fall outside "
              "the specified range, as long as at least part of the match overlaps with it.");
+PyDoc_STRVAR(query_cursor_set_containing_byte_range_doc,
+             "set_containing_byte_range(self, start, end)\n--\n\n"
+             "Set the byte range within which all matches must be fully contained." DOC_RAISES
+             "ValueError\n\n   If the start byte exceeds the end byte." DOC_NOTE
+             "In contrast to :meth:`set_byte_range`, this will restrict the query cursor to only "
+             "return matches where *all* nodes are *fully* contained within the given range.\n"
+             "Both methods can be used together, e.g. to search for any matches that intersect "
+             "line 5000, as long as they are fully contained within lines 4500-5500");
 PyDoc_STRVAR(query_cursor_set_point_range_doc,
              "set_point_range(self, start, end)\n--\n\n"
              "Set the range of points in which the query will be executed." DOC_RAISES
@@ -254,6 +287,14 @@ PyDoc_STRVAR(query_cursor_set_point_range_doc,
              "The query cursor will return matches that intersect with the given point range. "
              "This means that a match may be returned even if some of its captures fall outside "
              "the specified range, as long as at least part of the match overlaps with it.");
+PyDoc_STRVAR(query_cursor_set_containing_point_range_doc,
+             "set_containing_point_range(self, start, end)\n--\n\n"
+             "Set the point range within which all matches must be fully contained." DOC_RAISES
+             "ValueError\n\n   If the start point exceeds the end point." DOC_NOTE
+             "In contrast to :meth:`set_point_range`, this will restrict the query cursor to only "
+             "return matches where *all* nodes are *fully* contained within the given range.\n"
+             "Both methods can be used together, e.g. to search for any matches that intersect "
+             "line 5000, as long as they are fully contained within lines 4500-5500");
 PyDoc_STRVAR(query_cursor_matches_doc,
              "matches(self, node, /, predicate=None, progress_callback=None)\n--\n\n"
              "Get a list of *matches* within the given node." DOC_RETURNS
@@ -280,10 +321,22 @@ static PyMethodDef query_cursor_methods[] = {
         .ml_doc = query_cursor_set_byte_range_doc,
     },
     {
+        .ml_name = "set_containing_byte_range",
+        .ml_meth = (PyCFunction)query_cursor_set_containing_byte_range,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = query_cursor_set_containing_byte_range_doc,
+    },
+    {
         .ml_name = "set_point_range",
         .ml_meth = (PyCFunction)query_cursor_set_point_range,
         .ml_flags = METH_VARARGS,
         .ml_doc = query_cursor_set_point_range_doc,
+    },
+    {
+        .ml_name = "set_containing_point_range",
+        .ml_meth = (PyCFunction)query_cursor_set_containing_point_range,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = query_cursor_set_containing_point_range_doc,
     },
     {
         .ml_name = "matches",
@@ -311,8 +364,7 @@ static PyGetSetDef query_cursor_accessors[] = {
 };
 
 static PyType_Slot query_cursor_type_slots[] = {
-    {Py_tp_doc,
-     PyDoc_STR("A class for executing a :class:`Query` on a syntax :class:`Tree`.")},
+    {Py_tp_doc, PyDoc_STR("A class for executing a :class:`Query` on a syntax :class:`Tree`.")},
     {Py_tp_new, query_cursor_new},
     {Py_tp_init, query_cursor_init},
     {Py_tp_dealloc, query_cursor_dealloc},
