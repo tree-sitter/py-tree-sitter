@@ -46,21 +46,21 @@ PyObject *range_repr(Range *self) {
 
 Py_hash_t range_hash(Range *self) {
     // FIXME: replace with an efficient integer hashing algorithm
-    PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromSize_t(self->range.start_point.row),
+    PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_point.row),
                                        PyLong_FromLong(self->range.end_point.row));
     if (!row_tuple) {
         return -1;
     }
 
-    PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromSize_t(self->range.start_point.column),
-                                       PyLong_FromSize_t(self->range.end_point.column));
+    PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_point.column),
+                                       PyLong_FromUnsignedLong(self->range.end_point.column));
     if (!col_tuple) {
         Py_DECREF(row_tuple);
         return -1;
     }
 
-    PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromSize_t(self->range.start_byte),
-                                         PyLong_FromSize_t(self->range.end_byte));
+    PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_byte),
+                                         PyLong_FromUnsignedLong(self->range.end_byte));
     if (!bytes_tuple) {
         Py_DECREF(row_tuple);
         Py_DECREF(col_tuple);

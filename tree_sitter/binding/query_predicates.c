@@ -32,8 +32,7 @@ static inline PyObject *captures_for_match(ModuleState *state, TSQuery *query, T
     PyObject *captures = PyDict_New();
     for (uint32_t j = 0; j < match->capture_count; ++j) {
         TSQueryCapture capture = match->captures[j];
-        const char *capture_name =
-            ts_query_capture_name_for_id(query, capture.index, &name_length);
+        const char *capture_name = ts_query_capture_name_for_id(query, capture.index, &name_length);
         PyObject *capture_name_obj = PyUnicode_FromStringAndSize(capture_name, name_length);
         if (capture_name_obj == NULL) {
             return NULL;
@@ -160,9 +159,9 @@ bool query_satisfies_predicates(Query *query, TSQueryMatch match, Tree *tree, Py
                 break;
             }
             QueryPredicateGeneric *predicate = (QueryPredicateGeneric *)item;
-            PyObject *result = PyObject_CallFunction(callable, "OOIO", predicate->predicate,
-                                                     predicate->arguments,
-													 predicate->pattern_index, captures);
+            PyObject *result =
+                PyObject_CallFunction(callable, "OOIO", predicate->predicate, predicate->arguments,
+                                      predicate->pattern_index, captures);
             if (result == NULL) {
                 is_satisfied = false;
                 break;

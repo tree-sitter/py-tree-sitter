@@ -157,7 +157,7 @@ PyObject *query_cursor_matches(QueryCursor *self, PyObject *args, PyObject *kwar
             PyList_Append(capture_list, capture_node);
             Py_XDECREF(capture_node);
         }
-        PyObject *pattern_index = PyLong_FromSize_t(match.pattern_index);
+        PyObject *pattern_index = PyLong_FromUnsignedLong(match.pattern_index);
         PyObject *tuple_match = PyTuple_Pack(2, pattern_index, captures_for_match);
         Py_DECREF(pattern_index);
         Py_DECREF(captures_for_match);
@@ -240,7 +240,7 @@ PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwa
 }
 
 PyObject *query_cursor_get_did_exceed_match_limit(QueryCursor *self, void *Py_UNUSED(payload)) {
-    return PyLong_FromSize_t(ts_query_cursor_did_exceed_match_limit(self->cursor));
+    return PyLong_FromUnsignedLong(ts_query_cursor_did_exceed_match_limit(self->cursor));
 }
 
 PyObject *query_cursor_get_match_limit(QueryCursor *self, void *Py_UNUSED(payload)) {
@@ -258,7 +258,7 @@ int query_cursor_set_match_limit(QueryCursor *self, PyObject *arg, void *Py_UNUS
         return -1;
     }
 
-    ts_query_cursor_set_match_limit(self->cursor, PyLong_AsSize_t(arg));
+    ts_query_cursor_set_match_limit(self->cursor, PyLong_AsUnsignedLong(arg));
     return 0;
 }
 
