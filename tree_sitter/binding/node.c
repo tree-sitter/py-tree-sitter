@@ -1,5 +1,7 @@
 #include "types.h"
 
+PyObject *point_new_internal(ModuleState *state, TSPoint point);
+
 PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree) {
     Node *self = PyObject_New(Node, state->node_type);
     if (self == NULL) {
@@ -71,7 +73,7 @@ PyObject *node_edit(Node *self, PyObject *args, PyObject *kwargs) {
                                      &old_end_byte, &new_end_byte, &start_row, &start_column,
                                      &old_end_row, &old_end_column, &new_end_row,
                                      &new_end_column)) {
-        Py_RETURN_NONE;
+        return NULL;
     }
 
     TSInputEdit edit = {
@@ -427,12 +429,12 @@ PyObject *node_get_range(Node *self, void *Py_UNUSED(payload)) {
 
 PyObject *node_get_start_point(Node *self, void *Py_UNUSED(payload)) {
     TSPoint point = ts_node_start_point(self->node);
-    return POINT_NEW(GET_MODULE_STATE(self), point);
+    return point_new_internal(GET_MODULE_STATE(self), point);
 }
 
 PyObject *node_get_end_point(Node *self, void *Py_UNUSED(payload)) {
     TSPoint point = ts_node_end_point(self->node);
-    return POINT_NEW(GET_MODULE_STATE(self), point);
+    return point_new_internal(GET_MODULE_STATE(self), point);
 }
 
 PyObject *node_get_children(Node *self, void *Py_UNUSED(payload)) {
@@ -603,7 +605,7 @@ PyObject *node_get_text(Node *self, void *Py_UNUSED(payload)) {
                 Py_DECREF(collected_bytes);
                 return NULL;
             }
-            PyObject *position_obj = POINT_NEW(GET_MODULE_STATE(self), current_point);
+            PyObject *position_obj = point_new_internal(GET_MODULE_STATE(self), current_point);
             if (!position_obj) {
                 Py_DECREF(byte_offset_obj);
                 Py_DECREF(collected_bytes);

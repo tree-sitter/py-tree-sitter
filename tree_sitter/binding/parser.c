@@ -1,5 +1,7 @@
 #include "types.h"
 
+PyObject *point_new_internal(ModuleState *state, TSPoint point);
+
 #define SET_ATTRIBUTE_ERROR(name)                                                                  \
     (name != NULL && name != Py_None && parser_set_##name(self, name, NULL) < 0)
 
@@ -57,7 +59,7 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
 
     // Form arguments to callable.
     PyObject *byte_offset_obj = PyLong_FromUnsignedLong(byte_offset);
-    PyObject *position_obj = POINT_NEW(wrapper_payload->state, position);
+    PyObject *position_obj = point_new_internal(wrapper_payload->state, position);
     if (!position_obj || !byte_offset_obj) {
         *bytes_read = 0;
         return NULL;

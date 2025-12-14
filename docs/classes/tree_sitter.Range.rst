@@ -3,6 +3,13 @@ Range
 
 .. autoclass:: tree_sitter.Range
 
+   Methods
+   -------
+
+   .. automethod:: edit
+
+      .. versionadded:: 0.26.0
+
    Special Methods
    ---------------
 

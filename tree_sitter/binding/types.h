@@ -76,7 +76,7 @@ typedef struct {
     PyObject_HEAD
     PyObject *predicate;
     PyObject *arguments;
-	uint32_t pattern_index;
+    uint32_t pattern_index;
 } QueryPredicateGeneric;
 
 typedef struct {
@@ -133,9 +133,6 @@ typedef struct {
 #define IS_INSTANCE_OF(obj, type) PyObject_IsInstance((obj), (PyObject *)(type))
 
 #define IS_INSTANCE(obj, type_name) IS_INSTANCE_OF(obj, GET_MODULE_STATE(self)->type_name)
-
-#define POINT_NEW(state, point)                                                                    \
-    PyObject_CallFunction((PyObject *)(state)->point_type, "II", (point).row, (point).column)
 
 #define DEPRECATE(msg) PyErr_WarnEx(PyExc_DeprecationWarning, msg, 1)
 

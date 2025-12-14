@@ -1,14 +1,10 @@
 from enum import IntEnum
 from collections.abc import ByteString, Callable, Iterator, Sequence
-from typing import Annotated, Any, Final, Literal, NamedTuple, Protocol, Self, final, overload
+from typing import Annotated, Any, Final, Literal, Protocol, Self, final, overload
 from typing_extensions import deprecated
 
 class _SupportsFileno(Protocol):
     def fileno(self) -> int: ...
-
-class Point(NamedTuple):
-    row: int
-    column: int
 
 class LogType(IntEnum):
     PARSE: int
@@ -356,6 +352,24 @@ class LookaheadIterator(Iterator[tuple[int, str]]):
     def __next__(self) -> tuple[int, str]: ...
 
 @final
+class Point(tuple[int, int]):
+    def __new__(cls, row: int, column: int) -> Self: ...
+    @property
+    def row(self) -> int: ...
+    @property
+    def column(self) -> int: ...
+    def edit(
+        self,
+        start_byte: int,
+        old_end_byte: int,
+        new_end_byte: int,
+        start_point: Point | tuple[int, int],
+        old_end_point: Point | tuple[int, int],
+        new_end_point: Point | tuple[int, int],
+    ) -> tuple[Point, int]: ...
+    def __repr__(self) -> str: ...
+
+@final
 class Range:
     def __init__(
         self,
@@ -372,6 +386,15 @@ class Range:
     def start_byte(self) -> int: ...
     @property
     def end_byte(self) -> int: ...
+    def edit(
+        self,
+        start_byte: int,
+        old_end_byte: int,
+        new_end_byte: int,
+        start_point: Point | tuple[int, int],
+        old_end_point: Point | tuple[int, int],
+        new_end_point: Point | tuple[int, int],
+    ) -> None: ...
     def __eq__(self, other: Any, /) -> bool: ...
     def __ne__(self, other: Any, /) -> bool: ...
     def __repr__(self) -> str: ...

@@ -21,10 +21,6 @@ from ._binding import (
 
 LogType.__doc__ = "The type of a log message."
 
-Point.__doc__ = "A position in a multi-line text document, in terms of rows and columns."
-Point.row.__doc__ = "The zero-based row of the document."
-Point.column.__doc__ = "The zero-based column of the document."
-
 
 class QueryPredicate(_Protocol):
     """A custom query predicate that runs on a pattern."""

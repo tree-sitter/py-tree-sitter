@@ -39,6 +39,7 @@ setup(
                 "tree_sitter/binding/lookahead_iterator.c",
                 "tree_sitter/binding/node.c",
                 "tree_sitter/binding/parser.c",
+                "tree_sitter/binding/point.c",
                 "tree_sitter/binding/query.c",
                 "tree_sitter/binding/query_cursor.c",
                 "tree_sitter/binding/query_predicates.c",

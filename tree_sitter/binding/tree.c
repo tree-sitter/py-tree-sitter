@@ -54,24 +54,27 @@ PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
         "old_end_point", "new_end_point", NULL,
     };
 
-    int ok = PyArg_ParseTupleAndKeywords(
-        args, kwargs, "III(II)(II)(II):edit", keywords, &start_byte, &old_end_byte, &new_end_byte,
-        &start_row, &start_column, &old_end_row, &old_end_column, &new_end_row, &new_end_column);
-
-    if (ok) {
-        TSInputEdit edit = {
-            .start_byte = start_byte,
-            .old_end_byte = old_end_byte,
-            .new_end_byte = new_end_byte,
-            .start_point = {start_row, start_column},
-            .old_end_point = {old_end_row, old_end_column},
-            .new_end_point = {new_end_row, new_end_column},
-        };
-        ts_tree_edit(self->tree, &edit);
-        Py_XDECREF(self->source);
-        self->source = Py_None;
-        Py_INCREF(self->source);
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "III(II)(II)(II):edit", keywords, &start_byte,
+                                     &old_end_byte, &new_end_byte, &start_row, &start_column,
+                                     &old_end_row, &old_end_column, &new_end_row,
+                                     &new_end_column)) {
+        return NULL;
     }
+
+    TSInputEdit edit = {
+        .start_byte = start_byte,
+        .old_end_byte = old_end_byte,
+        .new_end_byte = new_end_byte,
+        .start_point = {start_row, start_column},
+        .old_end_point = {old_end_row, old_end_column},
+        .new_end_point = {new_end_row, new_end_column},
+    };
+
+    ts_tree_edit(self->tree, &edit);
+
+    Py_XDECREF(self->source);
+    self->source = Py_None;
+    Py_INCREF(self->source);
     Py_RETURN_NONE;
 }
 
