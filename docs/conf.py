@@ -22,7 +22,7 @@ source_suffix = {
 }
 master_doc = "index"
 language = "en"
-needs_sphinx = "8.1"
+needs_sphinx = "8.2"
 templates_path = ["_templates"]
 
 intersphinx_mapping = {
