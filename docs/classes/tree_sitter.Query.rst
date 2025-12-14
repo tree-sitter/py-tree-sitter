@@ -21,11 +21,7 @@ Query
    -------
 
    .. automethod:: capture_name
-
-      .. versionadded:: 0.25.0
    .. automethod:: capture_quantifier
-
-      .. versionadded:: 0.25.0
    .. automethod:: disable_capture
    .. automethod:: disable_pattern
    .. automethod:: end_byte_for_pattern
@@ -37,13 +33,9 @@ Query
    .. automethod:: start_byte_for_pattern
    .. automethod:: string_value
 
-      .. versionadded:: 0.25.0
-
    Attributes
    ----------
 
    .. autoattribute:: capture_count
    .. autoattribute:: pattern_count
    .. autoattribute:: string_count
-
-      .. versionadded:: 0.25.0

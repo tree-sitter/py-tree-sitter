@@ -1,9 +1,7 @@
 QueryCursor
-=====
+===========
 
 .. autoclass:: tree_sitter.QueryCursor
-
-   .. versionadded:: 0.25.0
 
    Methods
    -------
@@ -19,4 +17,3 @@ QueryCursor
 
    .. autoattribute:: did_exceed_match_limit
    .. autoattribute:: match_limit
-   .. autoattribute:: timeout_micros

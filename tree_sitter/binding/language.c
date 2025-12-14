@@ -63,13 +63,6 @@ PyObject *language_get_name(Language *self, void *Py_UNUSED(payload)) {
     return PyUnicode_FromString(self->name);
 }
 
-PyObject *language_get_version(Language *self, void *Py_UNUSED(payload)) {
-    if (REPLACE("version", "abi_version") < 0) {
-        return NULL;
-    }
-    return PyLong_FromUnsignedLong(self->abi_version);
-}
-
 PyObject *language_get_abi_version(Language *self, void *Py_UNUSED(payload)) {
     return PyLong_FromUnsignedLong(self->abi_version);
 }
@@ -237,19 +230,6 @@ PyObject *language_lookahead_iterator(Language *self, PyObject *args) {
     return PyObject_Init((PyObject *)iter, state->lookahead_iterator_type);
 }
 
-PyObject *language_query(Language *self, PyObject *args) {
-    ModuleState *state = GET_MODULE_STATE(self);
-    char *source;
-    Py_ssize_t length;
-    if (!PyArg_ParseTuple(args, "s#:query", &source, &length)) {
-        return NULL;
-    }
-    if (REPLACE("query()", "the Query() constructor") < 0) {
-        return NULL;
-    }
-    return PyObject_CallFunction((PyObject *)state->query_type, "Os#", self, source, length);
-}
-
 PyObject *language_copy(Language *self, PyObject *Py_UNUSED(args)) {
     ModuleState *state = GET_MODULE_STATE(self);
     Language *copied = PyObject_New(Language, state->language_type);
@@ -290,10 +270,6 @@ PyDoc_STRVAR(language_next_state_doc,
 PyDoc_STRVAR(language_lookahead_iterator_doc,
              "lookahead_iterator(self, state, /)\n--\n\n"
              "Create a new :class:`LookaheadIterator` for this language and parse state.");
-PyDoc_STRVAR(
-    language_query_doc,
-    "query(self, source, /)\n--\n\n"
-    "Create a new :class:`Query` from a string containing one or more S-expression patterns.");
 PyDoc_STRVAR(language_copy_doc, "copy(self, /)\n--\n\n"
                                 "Create a copy of the language.");
 PyDoc_STRVAR(language_copy2_doc, "__copy__(self, /)\n--\n\n"
@@ -361,12 +337,6 @@ static PyMethodDef language_methods[] = {
         .ml_doc = language_lookahead_iterator_doc,
     },
     {
-        .ml_name = "query",
-        .ml_meth = (PyCFunction)language_query,
-        .ml_flags = METH_VARARGS,
-        .ml_doc = language_query_doc,
-    },
-    {
         .ml_name = "copy",
         .ml_meth = (PyCFunction)language_copy,
         .ml_flags = METH_NOARGS,
@@ -381,10 +351,6 @@ static PyMethodDef language_methods[] = {
 
 static PyGetSetDef language_accessors[] = {
     {"name", (getter)language_get_name, NULL, PyDoc_STR("The name of the language."), NULL},
-    {"version", (getter)language_get_version, NULL,
-     PyDoc_STR("The ABI version number that indicates which version of "
-               "the Tree-sitter CLI was used to generate this language."),
-     NULL},
     {"abi_version", (getter)language_get_abi_version, NULL,
      PyDoc_STR("The ABI version number that indicates which version of "
                "the Tree-sitter CLI was used to generate this language."),

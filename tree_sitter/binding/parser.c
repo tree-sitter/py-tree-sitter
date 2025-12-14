@@ -230,31 +230,6 @@ PyObject *parser_print_dot_graphs(Parser *self, PyObject *arg) {
     Py_RETURN_NONE;
 }
 
-PyObject *parser_get_timeout_micros(Parser *self, void *Py_UNUSED(payload)) {
-    if (DEPRECATE("Use the progress_callback in parse()") < 0) {
-        return NULL;
-    }
-    return PyLong_FromUnsignedLong(ts_parser_timeout_micros(self->parser));
-}
-
-int parser_set_timeout_micros(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
-    if (DEPRECATE("Use the progress_callback in parse()") < 0) {
-        return -1;
-    }
-    if (arg == NULL || arg == Py_None) {
-        ts_parser_set_timeout_micros(self->parser, 0);
-        return 0;
-    }
-    if (!PyLong_Check(arg)) {
-        PyErr_Format(PyExc_TypeError, "'timeout_micros' must be assigned an int, not %s",
-                     arg->ob_type->tp_name);
-        return -1;
-    }
-
-    ts_parser_set_timeout_micros(self->parser, PyLong_AsSize_t(arg));
-    return 0;
-}
-
 PyObject *parser_get_included_ranges(Parser *self, void *Py_UNUSED(payload)) {
     uint32_t count;
     const TSRange *ranges = ts_parser_included_ranges(self->parser, &count);
@@ -397,11 +372,10 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
 
 int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
     ModuleState *state = GET_MODULE_STATE(self);
-    PyObject *language = NULL, *included_ranges = NULL, *timeout_micros = NULL, *logger = NULL;
-    char *keywords[] = {"language", "included_ranges", "timeout_micros", "logger", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!$OOO:__init__", keywords,
-                                     state->language_type, &language, &included_ranges,
-                                     &timeout_micros, &logger)) {
+    PyObject *language = NULL, *included_ranges = NULL, *logger = NULL;
+    char *keywords[] = {"language", "included_ranges", "logger", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O!$OO:__init__", keywords,
+                                     state->language_type, &language, &included_ranges, &logger)) {
         return -1;
     }
 
@@ -409,9 +383,6 @@ int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
         return -1;
     }
     if (SET_ATTRIBUTE_ERROR(included_ranges)) {
-        return -1;
-    }
-    if (SET_ATTRIBUTE_ERROR(timeout_micros)) {
         return -1;
     }
     if (SET_ATTRIBUTE_ERROR(logger)) {
@@ -469,8 +440,6 @@ static PyGetSetDef parser_accessors[] = {
      PyDoc_STR("The language that will be used for parsing."), NULL},
     {"included_ranges", (getter)parser_get_included_ranges, (setter)parser_set_included_ranges,
      PyDoc_STR("The ranges of text that the parser will include when parsing."), NULL},
-    {"timeout_micros", (getter)parser_get_timeout_micros, (setter)parser_set_timeout_micros,
-     PyDoc_STR("The duration in microseconds that parsing is allowed to take."), NULL},
     {"logger", (getter)parser_get_logger, (setter)parser_set_logger,
      PyDoc_STR("The logger that the parser should use during parsing."), NULL},
     {NULL},
