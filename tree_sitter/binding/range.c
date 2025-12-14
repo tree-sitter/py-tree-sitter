@@ -1,5 +1,7 @@
 #include "types.h"
 
+PyObject *point_new_internal(ModuleState *state, TSPoint point);
+
 int range_init(Range *self, PyObject *args, PyObject *kwargs) {
     uint32_t start_row, start_col, end_row, end_col, start_byte, end_byte;
     char *keywords[] = {
@@ -98,11 +100,11 @@ PyObject *range_compare(Range *self, PyObject *other, int op) {
 }
 
 PyObject *range_get_start_point(Range *self, void *Py_UNUSED(payload)) {
-    return POINT_NEW(GET_MODULE_STATE(self), self->range.start_point);
+    return point_new_internal(GET_MODULE_STATE(self), self->range.start_point);
 }
 
 PyObject *range_get_end_point(Range *self, void *Py_UNUSED(payload)) {
-    return POINT_NEW(GET_MODULE_STATE(self), self->range.end_point);
+    return point_new_internal(GET_MODULE_STATE(self), self->range.end_point);
 }
 
 PyObject *range_get_start_byte(Range *self, void *Py_UNUSED(payload)) {
@@ -112,6 +114,52 @@ PyObject *range_get_start_byte(Range *self, void *Py_UNUSED(payload)) {
 PyObject *range_get_end_byte(Range *self, void *Py_UNUSED(payload)) {
     return PyLong_FromUnsignedLong(self->range.end_byte);
 }
+
+PyObject *range_edit(Range *self, PyObject *args, PyObject *kwargs) {
+    uint32_t start_byte, start_row, start_column;
+    uint32_t old_end_byte, old_end_row, old_end_column;
+    uint32_t new_end_byte, new_end_row, new_end_column;
+    char *keywords[] = {
+        "start_byte",    "old_end_byte",  "new_end_byte", "start_point",
+        "old_end_point", "new_end_point", NULL,
+    };
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "III(II)(II)(II):edit", keywords, &start_byte,
+                                     &old_end_byte, &new_end_byte, &start_row, &start_column,
+                                     &old_end_row, &old_end_column, &new_end_row,
+                                     &new_end_column)) {
+        return NULL;
+    }
+
+    TSInputEdit edit = {
+        .start_byte = start_byte,
+        .old_end_byte = old_end_byte,
+        .new_end_byte = new_end_byte,
+        .start_point = {start_row, start_column},
+        .old_end_point = {old_end_row, old_end_column},
+        .new_end_point = {new_end_row, new_end_column},
+    };
+
+    ts_range_edit(&self->range, &edit);
+
+    Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(range_edit_doc,
+             "edit(self, /, start_byte, old_end_byte, new_end_byte, start_point, "
+             "old_end_point, new_end_point)\n--\n\n"
+             "Edit this range to keep it in-sync with source code that has been edited." DOC_TIP
+             "This is useful for editing ranges without requiring a tree or node instance.");
+
+static PyMethodDef range_methods[] = {
+    {
+        .ml_name = "edit",
+        .ml_meth = (PyCFunction)range_edit,
+        .ml_flags = METH_KEYWORDS | METH_VARARGS,
+        .ml_doc = range_edit_doc,
+    },
+    {NULL},
+};
 
 static PyGetSetDef range_accessors[] = {
     {"start_point", (getter)range_get_start_point, NULL, PyDoc_STR("The start point."), NULL},
@@ -129,6 +177,7 @@ static PyType_Slot range_type_slots[] = {
     {Py_tp_repr, range_repr},
     {Py_tp_hash, range_hash},
     {Py_tp_richcompare, range_compare},
+    {Py_tp_methods, range_methods},
     {Py_tp_getset, range_accessors},
     {0, NULL},
 };

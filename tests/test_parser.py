@@ -469,6 +469,9 @@ class TestParser(TestCase):
     def test_logging(self):
         from logging import getLogger
 
+        parse_logger = getLogger("tree_sitter.PARSE")
+        lex_logger = getLogger("tree_sitter.LEX")
+
         def logger(log_type: LogType, message: str):
             match log_type:
                 case LogType.PARSE:
@@ -476,8 +479,6 @@ class TestParser(TestCase):
                 case LogType.LEX:
                     lex_logger.info(message)
 
-        parse_logger = getLogger("tree_sitter.PARSE")
-        lex_logger = getLogger("tree_sitter.LEX")
         parser = Parser(self.python, logger=logger)
         with self.assertLogs("tree_sitter") as logs:
             parser.parse(b"foo")

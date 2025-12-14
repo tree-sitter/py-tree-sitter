@@ -68,6 +68,8 @@ def process_signature(_app, _what, name, _obj, _options, _signature, return_anno
         return "(query, *, match_limit=None, timeout_micros=None)", return_annotation
     if name == "tree_sitter.Parser":
         return "(language, *, included_ranges=None, timeout_micros=None)", return_annotation
+    if name == "tree_sitter.Point":
+        return "(row, column)", return_annotation
     if name == "tree_sitter.Range":
         return "(start_point, end_point, start_byte, end_byte)", return_annotation
     if name == "tree_sitter.QueryPredicate":
@@ -88,7 +90,7 @@ def process_docstring(_app, what, name, _obj, _options, lines):
 
 def process_bases(_app, name, _obj, _options, bases):
     if name == "tree_sitter.Point":
-        bases[-1] = ":class:`~typing.NamedTuple`"
+        bases[-1] = ":class:`tuple`"
     if name == "tree_sitter.LogType":
         bases[-1] = ":class:`~enum.IntEnum`"
     if name == "tree_sitter.LookaheadIterator":

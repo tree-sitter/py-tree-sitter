@@ -4,6 +4,7 @@ extern PyType_Spec language_type_spec;
 extern PyType_Spec lookahead_iterator_type_spec;
 extern PyType_Spec node_type_spec;
 extern PyType_Spec parser_type_spec;
+extern PyType_Spec point_type_spec;
 extern PyType_Spec query_cursor_type_spec;
 extern PyType_Spec query_predicate_anyof_type_spec;
 extern PyType_Spec query_predicate_eq_capture_type_spec;
@@ -71,6 +72,8 @@ PyMODINIT_FUNC PyInit__binding(void) {
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &lookahead_iterator_type_spec, NULL);
     state->node_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &node_type_spec, NULL);
     state->parser_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &parser_type_spec, NULL);
+    state->point_type = (PyTypeObject *)PyType_FromModuleAndSpec(module, &point_type_spec,
+                                                                 (PyObject *)&PyTuple_Type);
     state->query_predicate_anyof_type =
         (PyTypeObject *)PyType_FromModuleAndSpec(module, &query_predicate_anyof_type_spec, NULL);
     state->query_predicate_eq_capture_type = (PyTypeObject *)PyType_FromModuleAndSpec(
@@ -94,6 +97,7 @@ PyMODINIT_FUNC PyInit__binding(void) {
                                (PyObject *)state->lookahead_iterator_type) < 0) ||
         (PyModule_AddObjectRef(module, "Node", (PyObject *)state->node_type) < 0) ||
         (PyModule_AddObjectRef(module, "Parser", (PyObject *)state->parser_type) < 0) ||
+        (PyModule_AddObjectRef(module, "Point", (PyObject *)state->point_type) < 0) ||
         (PyModule_AddObjectRef(module, "Query", (PyObject *)state->query_type) < 0) ||
         (PyModule_AddObjectRef(module, "QueryCursor", (PyObject *)state->query_cursor_type) < 0) ||
         (PyModule_AddObjectRef(module, "QueryPredicateAnyof",
@@ -123,22 +127,6 @@ PyMODINIT_FUNC PyInit__binding(void) {
 
     state->re_compile = import_attribute("re", "compile");
     if (state->re_compile == NULL) {
-        goto cleanup;
-    }
-
-    PyObject *namedtuple = import_attribute("collections", "namedtuple");
-    if (namedtuple == NULL) {
-        goto cleanup;
-    }
-    PyObject *point_args = Py_BuildValue("s[ss]", "Point", "row", "column");
-    PyObject *point_kwargs = PyDict_New();
-    PyDict_SetItemString(point_kwargs, "module", PyUnicode_FromString("tree_sitter"));
-    state->point_type = (PyTypeObject *)PyObject_Call(namedtuple, point_args, point_kwargs);
-    Py_DECREF(point_args);
-    Py_DECREF(point_kwargs);
-    Py_DECREF(namedtuple);
-    if (state->point_type == NULL ||
-        PyModule_AddObjectRef(module, "Point", (PyObject *)state->point_type) < 0) {
         goto cleanup;
     }
 
