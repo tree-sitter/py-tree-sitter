@@ -48,20 +48,7 @@ static void module_free(void *self) {
     Py_XDECREF(state->re_compile);
 }
 
-static struct PyModuleDef module_definition = {
-    .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "_binding",
-    .m_doc = NULL,
-    .m_size = sizeof(ModuleState),
-    .m_free = module_free,
-};
-
-PyMODINIT_FUNC PyInit__binding(void) {
-    PyObject *module = PyModule_Create(&module_definition);
-    if (module == NULL) {
-        return NULL;
-    }
-
+static int module_exec(PyObject *module) {
     ModuleState *state = PyModule_GetState(module);
 
     ts_set_allocator(PyMem_Malloc, PyMem_Calloc, PyMem_Realloc, PyMem_Free);
@@ -113,7 +100,7 @@ PyMODINIT_FUNC PyInit__binding(void) {
         (PyModule_AddObjectRef(module, "Range", (PyObject *)state->range_type) < 0) ||
         (PyModule_AddObjectRef(module, "Tree", (PyObject *)state->tree_type) < 0) ||
         (PyModule_AddObjectRef(module, "TreeCursor", (PyObject *)state->tree_cursor_type) < 0)) {
-        goto cleanup;
+        return -1;
     }
 
     state->query_error = PyErr_NewExceptionWithDoc(
@@ -122,23 +109,24 @@ PyMODINIT_FUNC PyInit__binding(void) {
         PyExc_ValueError, NULL);
     if (state->query_error == NULL ||
         PyModule_AddObjectRef(module, "QueryError", state->query_error) < 0) {
-        goto cleanup;
+        return -1;
     }
 
     state->re_compile = import_attribute("re", "compile");
     if (state->re_compile == NULL) {
-        goto cleanup;
+        return -1;
     }
 
     PyObject *int_enum = import_attribute("enum", "IntEnum");
     if (int_enum == NULL) {
-        goto cleanup;
+        return -1;
     }
     state->log_type_type = (PyTypeObject *)PyObject_CallFunction(
         int_enum, "s{sisi}", "LogType", "PARSE", TSLogTypeParse, "LEX", TSLogTypeLex);
     if (state->log_type_type == NULL ||
         PyModule_AddObjectRef(module, "LogType", (PyObject *)state->log_type_type) < 0) {
-        goto cleanup;
+        Py_DECREF(int_enum);
+        return -1;
     };
     Py_DECREF(int_enum);
 
@@ -147,12 +135,26 @@ PyMODINIT_FUNC PyInit__binding(void) {
                             TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION);
     PyModule_AddStringConstant(module, "__version__", PY_TS_VERSION);
 
-#ifdef Py_GIL_DISABLED
-    PyUnstable_Module_SetGIL(module, Py_MOD_GIL_USED);
-#endif
-    return module;
+    return 0;
+}
 
-cleanup:
-    Py_XDECREF(module);
-    return NULL;
+static PyModuleDef_Slot module_slots[] = {
+#ifdef Py_GIL_DISABLED
+    {Py_mod_gil, Py_MOD_GIL_USED},
+#endif
+    {Py_mod_exec, module_exec},
+    {0, NULL}
+};
+
+static struct PyModuleDef module_definition = {
+    .m_base = PyModuleDef_HEAD_INIT,
+    .m_name = "_binding",
+    .m_doc = NULL,
+    .m_size = sizeof(ModuleState),
+    .m_slots = module_slots,
+    .m_free = module_free,
+};
+
+PyMODINIT_FUNC PyInit__binding(void) {
+    return PyModuleDef_Init(&module_definition);
 }
