@@ -21,7 +21,7 @@ jobs:
           pip install build
           python -mbuild -n -s
       - name: Upload sources
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: dist-sources
           path: dist/*.tar.gz
@@ -44,14 +44,14 @@ jobs:
         with:
           submodules: true
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.3
+        uses: pypa/cibuildwheel@v3.4
         env:
           CIBW_ARCHS: ${{matrix.cibw_arch}}
           CIBW_SKIP: "*-musllinux_aarch64 cp31?t-*"
           # FIXME: stop skipping when the tests stop crashing
           CIBW_TEST_SKIP: "*-win_*"
       - name: Upload wheels
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: dist-wheels-${{matrix.os}}-${{matrix.cibw_arch}}
           path: wheelhouse/*.whl
@@ -62,7 +62,7 @@ jobs:
     needs: [build-sdist, build-wheels]
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: dist
           pattern: dist-*
