@@ -37,8 +37,14 @@ jobs:
           - { os: ubuntu-24.04,     cibw_arch: x86_64 }
           - { os: ubuntu-24.04-arm, cibw_arch: aarch64 }
           - { os: macos-15,         cibw_arch: arm64 }
+          - { os: ubuntu-24.04,     cibw_arch: riscv64 }
           - { os: macos-15-intel,   cibw_arch: x86_64 }
     steps:
+      - name: Set up QEMU
+        if: matrix.cibw_arch == 'riscv64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/riscv64
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -47,9 +53,9 @@ jobs:
         uses: pypa/cibuildwheel@v3.3
         env:
           CIBW_ARCHS: ${{matrix.cibw_arch}}
-          CIBW_SKIP: "*-musllinux_aarch64 cp31?t-*"
+          CIBW_SKIP: "*-musllinux_aarch64 *-musllinux_riscv64 cp31?t-*"
           # FIXME: stop skipping when the tests stop crashing
-          CIBW_TEST_SKIP: "*-win_*"
+          CIBW_TEST_SKIP: "*-win_* *-linux_riscv64"
       - name: Upload wheels
         uses: actions/upload-artifact@v6
         with:
