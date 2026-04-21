@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.13t", "3.14", "3.14t"]
         os:
           - ubuntu-24.04
           - ubuntu-24.04-arm
@@ -51,7 +51,17 @@ jobs:
         run: pip install -v -e .[tests]
         env:
           CFLAGS: -Wextra -Og -g -fno-omit-frame-pointer
+        if: ${{!endsWith(matrix.python, 't')}}
+      - name: Build (free-threaded)
+        run: pip install -v -e .
+        env:
+          CFLAGS: -Wextra -Og -g -fno-omit-frame-pointer
+        if: ${{endsWith(matrix.python, 't')}}
       - name: Test
         run: python -munittest -v
         # FIXME: remove when the tests stop crashing
         continue-on-error: ${{runner.os == 'Windows'}}
+        if: ${{!endsWith(matrix.python, 't')}}
+      - name: Test (free-threaded)
+        run: python -c "import tree_sitter; print(tree_sitter.__version__); p = tree_sitter.Parser(); print('OK')"
+        if: ${{endsWith(matrix.python, 't')}}
