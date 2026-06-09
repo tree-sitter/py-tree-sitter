@@ -4,3 +4,7 @@ prune tree_sitter/core
 graft tree_sitter/core/lib/src
 graft tree_sitter/core/lib/include/tree_sitter
 prune tree_sitter/core/lib/src/wasm
+
+graft docs
+graft examples
+graft tests
