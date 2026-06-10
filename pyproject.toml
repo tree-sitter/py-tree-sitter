@@ -1,6 +1,6 @@
 [project]
 name = "tree-sitter"
-version = "0.25.2"
+version = "0.26.9"
 description = "Python bindings to the Tree-sitter parsing library"
 keywords = ["incremental", "parsing", "tree-sitter"]
 classifiers = [
@@ -42,8 +42,11 @@ tests = [
 ]
 
 [build-system]
-requires = ["setuptools>=43"]
-build-backend = "setuptools.build_meta"
+requires = ["conan-py-build"]
+build-backend = "conan_py_build.build"
+
+[tool.conan-py-build]
+wheel.packages = ["tree_sitter"]
 
 [tool.ruff]
 target-version = "py310"
@@ -52,8 +55,6 @@ indent-width = 4
 extend-exclude = [
     ".github",
     "__pycache__",
-    "setup.py",
-    "tree_sitter/core",
 ]
 
 [tool.ruff.format]
@@ -64,9 +65,6 @@ indent-style = "space"
 build-frontend = "build"
 test-extras = ["tests"]
 test-command = "python -munittest discover -s {project}/tests -v"
-
-[tool.mypy]
-exclude = ["tree_sitter/core"]
 
 [tool.rstcheck]
 ignore_directives = [

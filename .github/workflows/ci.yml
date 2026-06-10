@@ -2,15 +2,19 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, conan-py-build]
     paths:
       - tree_sitter/**
       - tests/**
+      - CMakeLists.txt
+      - conanfile.py
       - .github/workflows/ci.yml
   pull_request:
     paths:
       - tree_sitter/**
       - tests/**
+      - CMakeLists.txt
+      - conanfile.py
       - .github/workflows/ci.yml
   workflow_dispatch:
 
@@ -38,8 +42,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: true
       - name: Set up Python ${{matrix.python}}
         uses: actions/setup-python@v6
         with:
@@ -48,10 +50,8 @@ jobs:
         continue-on-error: true
         run: pipx run ruff check . --output-format=github
       - name: Build
-        run: pip install -v -e .[tests]
-        env:
-          CFLAGS: -Wextra -Og -g -fno-omit-frame-pointer
+        run: pip install -v .[tests]
       - name: Test
-        run: python -munittest -v
+        run: cd tests && python -munittest -v
         # FIXME: remove when the tests stop crashing
         continue-on-error: ${{runner.os == 'Windows'}}

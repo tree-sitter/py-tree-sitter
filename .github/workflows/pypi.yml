@@ -2,7 +2,14 @@ name: Upload to PyPI
 
 on:
   push:
-    tags: ["v*"]
+    branches: [conan-py-build]
+    paths:
+      - tree_sitter/**
+      - CMakeLists.txt
+      - conanfile.py
+      - pyproject.toml
+      - .github/workflows/pypi.yml
+  workflow_dispatch:
 
 jobs:
   build-sdist:
@@ -10,15 +17,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: true
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Build sources
         run: |-
-          pip install build
+          pip install build conan-py-build
           python -mbuild -n -s
       - name: Upload sources
         uses: actions/upload-artifact@v7
@@ -47,15 +52,13 @@ jobs:
           platforms: linux/riscv64
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: true
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4
         env:
           CIBW_ARCHS: ${{matrix.cibw_arch}}
           CIBW_SKIP: "*-musllinux_aarch64 *-musllinux_riscv64 cp31?t-*"
           # FIXME: stop skipping when the tests stop crashing
-          CIBW_TEST_SKIP: "*-win_* *-linux_riscv64"
+          CIBW_TEST_SKIP: "*-win_* *-manylinux_riscv64"
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
@@ -63,24 +66,24 @@ jobs:
           path: wheelhouse/*.whl
           retention-days: 2
 
-  release:
-    runs-on: ubuntu-latest
-    needs: [build-sdist, build-wheels]
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: dist
-          pattern: dist-*
-          merge-multiple: true
-      - name: Check artifacts
-        run: ls -l dist
-      - name: Upload to pypi
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{secrets.PYPI_API_TOKEN}}
-      - name: Create GitHub release
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes
-        env:
-          GH_TOKEN: ${{github.token}}
-          GH_REPO: ${{github.repository}}
+  # release:
+  #   runs-on: ubuntu-latest
+  #   needs: [build-sdist, build-wheels]
+  #   steps:
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v8
+  #       with:
+  #         path: dist
+  #         pattern: dist-*
+  #         merge-multiple: true
+  #     - name: Check artifacts
+  #       run: ls -l dist
+  #     - name: Upload to pypi
+  #       uses: pypa/gh-action-pypi-publish@release/v1
+  #       with:
+  #         password: ${{secrets.PYPI_API_TOKEN}}
+  #     - name: Create GitHub release
+  #       run: gh release create "$GITHUB_REF_NAME" --generate-notes
+  #       env:
+  #         GH_TOKEN: ${{github.token}}
+  #         GH_REPO: ${{github.repository}}
