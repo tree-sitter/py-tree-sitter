@@ -47,10 +47,6 @@ else()
     endif()
 endif()
 
-set_target_properties(_binding PROPERTIES
-    PREFIX ""
-)
-
 if(APPLE)
     set_target_properties(_binding PROPERTIES
         LINK_FLAGS "-undefined dynamic_lookup"

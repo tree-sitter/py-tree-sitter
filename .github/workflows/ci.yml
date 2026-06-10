@@ -50,7 +50,7 @@ jobs:
         continue-on-error: true
         run: pipx run ruff check . --output-format=github
       - name: Build
-        run: pip install -v .[tests]
+        run: pip install -v --config-settings host-profile=./run-tests.profile .[tests]
       - name: Test
         run: cd tests && python -munittest -v
         # FIXME: remove when the tests stop crashing
