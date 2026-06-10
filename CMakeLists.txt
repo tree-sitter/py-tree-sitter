@@ -4,7 +4,7 @@ project(tree_sitter LANGUAGES C)
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(tree-sitter REQUIRED)
 
-Python3_add_library(_binding MODULE
+Python3_add_library(_binding MODULE WITH_SOABI
     tree_sitter/binding/language.c
     tree_sitter/binding/lookahead_iterator.c
     tree_sitter/binding/node.c
@@ -49,7 +49,6 @@ endif()
 
 set_target_properties(_binding PROPERTIES
     PREFIX ""
-    OUTPUT_NAME "_binding"
 )
 
 if(APPLE)
