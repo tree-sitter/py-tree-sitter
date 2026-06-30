@@ -1,6 +1,6 @@
 [project]
 name = "tree-sitter"
-version = "0.25.2"
+version = "0.26.0"
 description = "Python bindings to the Tree-sitter parsing library"
 keywords = ["incremental", "parsing", "tree-sitter"]
 classifiers = [
