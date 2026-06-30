@@ -636,6 +636,7 @@ PyObject *node_get_text(Node *self, void *Py_UNUSED(payload)) {
 
             size_t bytes_read = (size_t)PyBytes_Size(rv);
             const char *rv_str = PyBytes_AsString(rv);
+            Py_XDECREF(rv);
             for (size_t i = 0; i < bytes_read; ++i) {
                 if (rv_str[i] == '\n') {
                     ++current_point.row;
