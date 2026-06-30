@@ -54,8 +54,8 @@ jobs:
         env:
           CIBW_ARCHS: ${{matrix.cibw_arch}}
           CIBW_SKIP: "*-musllinux_aarch64 *-musllinux_riscv64 cp31?t-*"
-          # FIXME: stop skipping when the tests stop crashing
-          CIBW_TEST_SKIP: "*-win_* *-linux_riscv64"
+          # FIXME: stop skipping Windows when the tests stop crashing
+          CIBW_TEST_SKIP: "*-win_* *linux_riscv64"
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
