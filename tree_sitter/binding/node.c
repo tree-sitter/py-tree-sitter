@@ -625,6 +625,15 @@ PyObject *node_get_text(Node *self, void *Py_UNUSED(payload)) {
                 return NULL;
             }
 
+            Py_ssize_t bytes_read = PyByteArray_Size(rv_bytearray);
+            char *rv_str = PyByteArray_AsString(rv_bytearray);
+            if (bytes_read < 0 || rv_str == NULL) {
+                Py_DECREF(rv_bytearray);
+                Py_DECREF(collected_bytes);
+                Py_XDECREF(rv);
+                return NULL;
+            }
+
             PyObject *new_collected_bytes = PyByteArray_Concat(collected_bytes, rv_bytearray);
             Py_DECREF(rv_bytearray);
             Py_DECREF(collected_bytes);
@@ -634,10 +643,8 @@ PyObject *node_get_text(Node *self, void *Py_UNUSED(payload)) {
             }
             collected_bytes = new_collected_bytes;
 
-            size_t bytes_read = (size_t)PyBytes_Size(rv);
-            const char *rv_str = PyBytes_AsString(rv);
             Py_XDECREF(rv);
-            for (size_t i = 0; i < bytes_read; ++i) {
+            for (Py_ssize_t i = 0; i < bytes_read; ++i) {
                 if (rv_str[i] == '\n') {
                     ++current_point.row;
                     current_point.column = 0;
@@ -645,7 +652,7 @@ PyObject *node_get_text(Node *self, void *Py_UNUSED(payload)) {
                     ++current_point.column;
                 }
             }
-            current_offset += bytes_read;
+            current_offset += (size_t)bytes_read;
         }
 
         PyObject *start_byte = PyLong_FromSize_t(0);
