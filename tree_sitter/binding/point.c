@@ -19,6 +19,8 @@ PyObject *point_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
 
     PyObject *row_obj = PyLong_FromUnsignedLong(row), *col_obj = PyLong_FromUnsignedLong(column);
     PyObject *self = PyTuple_Pack(2, row_obj, col_obj);
+    Py_XDECREF(row_obj);
+    Py_XDECREF(col_obj);
     if (!self) {
         return NULL;
     }
