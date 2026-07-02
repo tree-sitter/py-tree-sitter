@@ -17,15 +17,13 @@ PyObject *point_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
         return NULL;
     }
 
-    PyObject *row_obj = PyLong_FromUnsignedLong(row), *col_obj = PyLong_FromUnsignedLong(column);
-    PyObject *self = PyTuple_Pack(2, row_obj, col_obj);
-    Py_XDECREF(row_obj);
-    Py_XDECREF(col_obj);
+    PyObject *self = PyTuple_New(2);
     if (!self) {
         return NULL;
     }
-    Py_SET_TYPE(self, type);
-    return self;
+    PyTuple_SET_ITEM(self, 0, PyLong_FromUnsignedLong(row));
+    PyTuple_SET_ITEM(self, 1, PyLong_FromUnsignedLong(column));
+    return PyObject_Init(self, type);
 }
 
 PyObject *point_repr(PyObject *self) {
