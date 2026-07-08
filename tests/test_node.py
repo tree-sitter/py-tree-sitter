@@ -465,6 +465,24 @@ class TestNode(TestCase):
         close_delim_node = list_node.children[4]
         self.assertEqual(close_delim_node.text, b"]")
 
+    def test_text_with_callback_source(self):
+        parser = Parser(self.python)
+        source_code = b"def foo():\n    return 1\n"
+        source_lines = source_code.splitlines(keepends=True)
+
+        def callback_slice(factory, _, point):
+            row, column = point
+            if row >= len(source_lines):
+                return None
+            if column >= len(source_lines[row]):
+                return None
+            return factory(source_lines[row][column:])
+
+        for factory in (bytes, bytearray, memoryview):
+            with self.subTest(type=factory.__name__):
+                tree = parser.parse(lambda *args, factory=factory: callback_slice(factory, *args))
+                self.assertEqual(tree.root_node.text, source_code)
+
     def test_hash(self):
         parser = Parser(self.python)
         source_code = b"def foo():\n  bar()\n  bar()"
