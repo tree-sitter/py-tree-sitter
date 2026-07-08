@@ -35,13 +35,23 @@ static inline PyObject *captures_for_match(ModuleState *state, TSQuery *query, T
         const char *capture_name = ts_query_capture_name_for_id(query, capture.index, &name_length);
         PyObject *capture_name_obj = PyUnicode_FromStringAndSize(capture_name, name_length);
         if (capture_name_obj == NULL) {
+            Py_DECREF(captures);
             return NULL;
         }
         PyObject *nodes = nodes_for_capture_index(state, capture.index, match, tree);
+        if (nodes == NULL) {
+            Py_DECREF(captures);
+            Py_DECREF(capture_name_obj);
+            return NULL;
+        }
         if (PyDict_SetItem(captures, capture_name_obj, nodes) == -1) {
+            Py_DECREF(captures);
+            Py_DECREF(capture_name_obj);
+            Py_DECREF(nodes);
             return NULL;
         }
         Py_DECREF(capture_name_obj);
+        Py_DECREF(nodes);
     }
     return captures;
 }
