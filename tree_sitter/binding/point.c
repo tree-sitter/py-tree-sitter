@@ -17,13 +17,13 @@ PyObject *point_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
         return NULL;
     }
 
-    PyObject *row_obj = PyLong_FromUnsignedLong(row), *col_obj = PyLong_FromUnsignedLong(column);
-    PyObject *self = PyTuple_Pack(2, row_obj, col_obj);
+    PyObject *self = PyTuple_New(2);
     if (!self) {
         return NULL;
     }
-    Py_SET_TYPE(self, type);
-    return self;
+    PyTuple_SET_ITEM(self, 0, PyLong_FromUnsignedLong(row));
+    PyTuple_SET_ITEM(self, 1, PyLong_FromUnsignedLong(column));
+    return PyObject_Init(self, type);
 }
 
 PyObject *point_repr(PyObject *self) {
@@ -33,11 +33,11 @@ PyObject *point_repr(PyObject *self) {
 }
 
 PyObject *point_get_row(PyObject *self, void *Py_UNUSED(payload)) {
-    return PyTuple_GetItem(self, 0);
+    return Py_NewRef(PyTuple_GET_ITEM(self, 0));
 }
 
 PyObject *point_get_column(PyObject *self, void *Py_UNUSED(payload)) {
-    return PyTuple_GetItem(self, 1);
+    return Py_NewRef(PyTuple_GET_ITEM(self, 1));
 }
 
 PyObject *point_edit(PyObject *self, PyObject *args, PyObject *kwargs) {
