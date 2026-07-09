@@ -1,3 +1,4 @@
+import sys
 from typing import cast
 from unittest import TestCase
 
@@ -115,6 +116,42 @@ class TestNode(TestCase):
         self.assertEqual(child.byte_range, (11, 14))
         self.assertEqual(child.start_point, (2, 7))
         self.assertEqual(child.end_point, (2, 10))
+
+    def test_point_getters_return_new_references(self):
+        # Regression test for the reference-counting bug fixed in #466: the
+        # `Point.row` / `Point.column` getters must return a *new* reference per
+        # the C-API contract, not a borrowed one. Returning a borrowed reference
+        # leaves the underlying row/column int one refcount too low, which frees
+        # it prematurely and corrupts the allocator free list — surfacing much
+        # later as a hard SIGSEGV while indexing real files. It only bites for
+        # non-immortal ints, i.e. row/column values past the small-int cache, so
+        # this uses a node whose start point is well beyond it.
+        if not hasattr(sys, "getrefcount"):
+            self.skipTest("reference-count semantics are CPython-specific")
+
+        parser = Parser(self.python)
+        tree = parser.parse(b"\n" * 500 + b" " * 500 + b"name123\n")
+        node = cast(Node, tree.root_node.descendant_for_byte_range(1000, 1006))
+        point = node.start_point
+        # Tuple subscripting (point[i]) returns a correctly-owned reference, so
+        # it is safe to use for measuring the row/column ints' refcounts. Both
+        # values are 500 — comfortably past the small-int / immortal cache, so a
+        # missing incref is observable rather than masked.
+        self.assertLess(sys.getrefcount(point[0]), 2**30, "row must be a non-immortal int")
+        self.assertLess(sys.getrefcount(point[1]), 2**30, "column must be a non-immortal int")
+
+        for index, name in ((0, "row"), (1, "column")):
+            before = sys.getrefcount(point[index])
+            held = getattr(point, name)
+            after = sys.getrefcount(point[index])
+            # Assert the getter took its own reference *before* ``held`` is
+            # dropped: with the borrowed-reference bug this fails here, avoiding
+            # the eventual over-decref (which would otherwise free the int early
+            # and corrupt the allocator).
+            self.assertEqual(
+                after, before + 1, f"Point.{name} must return a new reference, not a borrowed one"
+            )
+            self.assertEqual(held, 500)
 
     def test_descendant_count(self):
         parser = Parser(self.json)
