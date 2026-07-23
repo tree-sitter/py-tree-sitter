@@ -97,7 +97,12 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
 static bool parser_progress_callback(TSParseState *state) {
     PyObject *result = PyObject_CallFunction((PyObject *)state->payload, "Ip",
                                              state->current_byte_offset, state->has_error);
-    return PyObject_IsTrue(result);
+    if (result == NULL) {
+        return false;
+    }
+    int truth = PyObject_IsTrue(result);
+    Py_DECREF(result);
+    return truth > 0;
 }
 
 PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
