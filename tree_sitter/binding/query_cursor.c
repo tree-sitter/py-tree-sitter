@@ -97,7 +97,12 @@ PyObject *query_cursor_set_containing_point_range(QueryCursor *self, PyObject *a
 static bool query_cursor_progress_callback(TSQueryCursorState *state) {
     PyObject *result =
         PyObject_CallFunction((PyObject *)state->payload, "I", state->current_byte_offset);
-    return PyObject_IsTrue(result);
+    if (result == NULL) {
+        return false;
+    }
+    int truth = PyObject_IsTrue(result);
+    Py_DECREF(result);
+    return truth > 0;
 }
 
 PyObject *query_cursor_matches(QueryCursor *self, PyObject *args, PyObject *kwargs) {
