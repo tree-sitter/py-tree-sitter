@@ -310,7 +310,12 @@ static void log_callback(void *payload, TSLogType log_type, const char *buffer) 
     LoggerPayload *logger_payload = (LoggerPayload *)payload;
     PyObject *log_type_enum =
         PyObject_CallFunction((PyObject *)logger_payload->log_type_type, "i", log_type);
-    PyObject_CallFunction(logger_payload->callback, "Os", log_type_enum, buffer);
+    if (log_type_enum == NULL) {
+        return;
+    }
+    PyObject *result = PyObject_CallFunction(logger_payload->callback, "Os", log_type_enum, buffer);
+    Py_DECREF(log_type_enum);
+    Py_XDECREF(result);
 }
 
 int parser_set_logger(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
