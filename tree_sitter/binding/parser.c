@@ -60,18 +60,24 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
     // Form arguments to callable.
     PyObject *byte_offset_obj = PyLong_FromUnsignedLong(byte_offset);
     PyObject *position_obj = point_new_internal(wrapper_payload->state, position);
-    if (!position_obj || !byte_offset_obj) {
+    if (byte_offset_obj == NULL || position_obj == NULL) {
+        Py_XDECREF(byte_offset_obj);
+        Py_XDECREF(position_obj);
         *bytes_read = 0;
         return NULL;
     }
 
     PyObject *args = PyTuple_Pack(2, byte_offset_obj, position_obj);
-    Py_XDECREF(byte_offset_obj);
-    Py_XDECREF(position_obj);
+    Py_DECREF(byte_offset_obj);
+    Py_DECREF(position_obj);
+    if (args == NULL) {
+        *bytes_read = 0;
+        return NULL;
+    }
 
     // Call callable.
     PyObject *rv = PyObject_Call(read_cb, args, NULL);
-    Py_XDECREF(args);
+    Py_DECREF(args);
 
     // If error or None returned, we're done parsing.
     if (rv == NULL || rv == Py_None) {
