@@ -409,3 +409,18 @@ class TestQuery(TestCase):
         self.assertEqual(captures[0][0], "func-call")
         self.assertEqual(captures[0][1][0].start_point, (1, 2))
         self.assertEqual(captures[0][1][0].end_point, (1, 5))
+
+    def test_pattern_assertions(self):
+        # The polarity of #is?/#is-not? must not depend on the property name.
+        for predicate, expected in [
+            ('(#is? "local")', (None, True)),
+            ('(#is-not? "local")', (None, False)),
+            ('(#is? "def")', (None, True)),
+            ('(#is-not? "def")', (None, False)),
+            ('(#is? "builtin" "yes")', ("yes", True)),
+            ('(#is-not? "builtin" "yes")', ("yes", False)),
+        ]:
+            with self.subTest(predicate=predicate):
+                query = Query(self.python, f"((identifier) @foo {predicate})")
+                property_name = predicate.split('"')[1]
+                self.assertEqual(query.pattern_assertions(0), {property_name: expected})
