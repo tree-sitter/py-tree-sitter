@@ -95,10 +95,13 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
 }
 
 static bool parser_progress_callback(TSParseState *state) {
-    PyObject *result = PyObject_CallFunction((PyObject *)state->payload, "Ip",
-                                             state->current_byte_offset, state->has_error);
+    // Py_BuildValue only accepts the "p" format since Python 3.14
+    PyObject *result =
+        PyObject_CallFunction((PyObject *)state->payload, "IO", state->current_byte_offset,
+                              state->has_error ? Py_True : Py_False);
     if (result == NULL) {
-        return false;
+        // stop parsing so that the exception is raised immediately
+        return true;
     }
     int truth = PyObject_IsTrue(result);
     Py_DECREF(result);
