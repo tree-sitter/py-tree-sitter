@@ -444,13 +444,32 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     if ((predicate_step + k)->type == TSQueryPredicateStepTypeCapture) {
                         const char *arg_value = ts_query_capture_name_for_id(
                             query->query, (predicate_step + k)->value_id, &length);
-                        item = PyTuple_Pack(2, PyUnicode_FromStringAndSize(arg_value, length),
-                                            PyUnicode_FromString("capture"));
+                        PyObject *value = PyUnicode_FromStringAndSize(arg_value, length);
+                        PyObject *kind = PyUnicode_FromString("capture");
+                        if (value == NULL || kind == NULL) {
+                            Py_XDECREF(value);
+                            Py_XDECREF(kind);
+                            goto error;
+                        }
+                        item = PyTuple_Pack(2, value, kind);
+                        Py_DECREF(value);
+                        Py_DECREF(kind);
                     } else {
                         const char *arg_value = ts_query_string_value_for_id(
                             query->query, (predicate_step + k)->value_id, &length);
-                        item = PyTuple_Pack(2, PyUnicode_FromStringAndSize(arg_value, length),
-                                            PyUnicode_FromString("string"));
+                        PyObject *value = PyUnicode_FromStringAndSize(arg_value, length);
+                        PyObject *kind = PyUnicode_FromString("string");
+                        if (value == NULL || kind == NULL) {
+                            Py_XDECREF(value);
+                            Py_XDECREF(kind);
+                            goto error;
+                        }
+                        item = PyTuple_Pack(2, value, kind);
+                        Py_DECREF(value);
+                        Py_DECREF(kind);
+                    }
+                    if (item == NULL) {
+                        goto error;
                     }
                     PyList_SetItem(predicate->arguments, k - 1, item);
                 }
