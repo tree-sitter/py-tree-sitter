@@ -372,9 +372,9 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     goto error;
                 }
 
+                PyObject *is_positive = PyBool_FromLong(length == 3); // is?
                 const char *first_arg = ts_query_string_value_for_id(
                     query->query, (predicate_step + 1)->value_id, &length);
-                PyObject *is_positive = PyBool_FromLong(length == 3); // is?
                 if (predicate_len == 2) {
                     PyObject *assertion = PyTuple_Pack(2, Py_None, is_positive);
                     Py_DECREF(is_positive);
