@@ -65,6 +65,24 @@ class TestNode(TestCase):
         self.assertEqual(while_node.type, "while_statement")
         self.assertEqual(while_node.child_by_field_name("body"), while_node.child(3))
 
+    def test_first_child_for_byte(self):
+        parser = Parser(self.json)
+        tree = parser.parse(b"[123, false]")
+        array_node = cast(Node, tree.root_node.child(0))
+        number_node = cast(Node, array_node.named_child(0))
+        false_node = cast(Node, array_node.named_child(1))
+
+        self.assertEqual(array_node.first_child_for_byte(0), array_node.child(0))
+        self.assertEqual(array_node.first_child_for_byte(2), number_node)
+        self.assertEqual(array_node.first_child_for_byte(4), array_node.child(2))
+        self.assertEqual(array_node.first_named_child_for_byte(0), number_node)
+        self.assertEqual(array_node.first_named_child_for_byte(4), false_node)
+
+        self.assertIsNone(array_node.first_child_for_byte(12))
+        self.assertIsNone(array_node.first_named_child_for_byte(11))
+        self.assertIsNone(number_node.first_child_for_byte(0))
+        self.assertIsNone(number_node.first_named_child_for_byte(0))
+
     def test_children_by_field_id(self):
         parser = Parser(self.javascript)
         tree = parser.parse(b"<div a={1} b={2} />")
