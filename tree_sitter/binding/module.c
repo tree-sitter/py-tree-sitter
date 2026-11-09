@@ -136,11 +136,11 @@ PyMODINIT_FUNC PyInit__binding(void) {
     }
     state->log_type_type = (PyTypeObject *)PyObject_CallFunction(
         int_enum, "s{sisi}", "LogType", "PARSE", TSLogTypeParse, "LEX", TSLogTypeLex);
+    Py_DECREF(int_enum);
     if (state->log_type_type == NULL ||
         PyModule_AddObjectRef(module, "LogType", (PyObject *)state->log_type_type) < 0) {
         goto cleanup;
     };
-    Py_DECREF(int_enum);
 
     PyModule_AddIntConstant(module, "LANGUAGE_VERSION", TREE_SITTER_LANGUAGE_VERSION);
     PyModule_AddIntConstant(module, "MIN_COMPATIBLE_LANGUAGE_VERSION",
