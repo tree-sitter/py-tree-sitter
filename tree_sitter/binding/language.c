@@ -239,6 +239,8 @@ PyObject *language_copy(Language *self, PyObject *Py_UNUSED(args)) {
     if (copied == NULL) {
         return NULL;
     }
+    copied->name = self->name;
+    copied->abi_version = self->abi_version;
     copied->language = (TSLanguage *)ts_language_copy(self->language);
     return PyObject_Init((PyObject *)copied, state->language_type);
 }
