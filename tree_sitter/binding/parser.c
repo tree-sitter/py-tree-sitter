@@ -378,7 +378,8 @@ int parser_set_logger(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
 
 int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
     if (arg == NULL || arg == Py_None) {
-        self->language = NULL;
+        ts_parser_set_language(self->parser, NULL);
+        Py_CLEAR(self->language);
         return 0;
     }
     if (!IS_INSTANCE(arg, language_type)) {
