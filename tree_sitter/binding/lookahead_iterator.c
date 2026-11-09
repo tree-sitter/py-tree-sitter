@@ -24,6 +24,7 @@ PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *Py_UNUS
             return NULL;
         }
         language->language = language_id;
+        language->name = ts_language_name(language->language);
         language->abi_version = ts_language_abi_version(language->language);
         self->language = PyObject_Init((PyObject *)language, state->language_type);
     }

@@ -170,6 +170,7 @@ PyObject *tree_cursor_copy(TreeCursor *self, PyObject *Py_UNUSED(args)) {
         return NULL;
     }
 
+    copied->node = NULL;
     copied->tree = Py_NewRef(self->tree);
     copied->cursor = ts_tree_cursor_copy(&self->cursor);
     return PyObject_Init((PyObject *)copied, state->tree_cursor_type);
