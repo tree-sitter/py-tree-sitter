@@ -25,7 +25,7 @@ typedef struct {
 static void free_logger(const TSParser *parser) {
     TSLogger logger = ts_parser_logger(parser);
     if (logger.payload != NULL) {
-        PyMem_Free(logger.payload);
+        PyMem_RawFree(logger.payload);
     }
 }
 
@@ -300,7 +300,7 @@ int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payl
     }
 
     uint32_t length = (uint32_t)PyList_Size(arg);
-    TSRange *ranges = PyMem_Calloc(length, sizeof(TSRange));
+    TSRange *ranges = PyMem_RawCalloc(length, sizeof(TSRange));
     if (!ranges) {
         PyErr_Format(PyExc_MemoryError, "Failed to allocate memory for ranges of length %u",
                      length);
@@ -312,7 +312,7 @@ int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payl
         PyObject *range = PyList_GetItem(arg, i);
         if (!PyObject_IsInstance(range, (PyObject *)state->range_type)) {
             PyErr_Format(PyExc_TypeError, "Item at index %u is not a tree_sitter.Range object", i);
-            PyMem_Free(ranges);
+            PyMem_RawFree(ranges);
             return -1;
         }
         ranges[i] = ((Range *)range)->range;
@@ -320,11 +320,11 @@ int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payl
 
     if (!ts_parser_set_included_ranges(self->parser, ranges, length)) {
         PyErr_SetString(PyExc_ValueError, "Included ranges cannot overlap");
-        PyMem_Free(ranges);
+        PyMem_RawFree(ranges);
         return -1;
     }
 
-    PyMem_Free(ranges);
+    PyMem_RawFree(ranges);
     return 0;
 }
 
@@ -373,7 +373,7 @@ int parser_set_logger(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
     Py_XSETREF(self->logger, Py_NewRef(arg));
 
     ModuleState *state = GET_MODULE_STATE(self);
-    LoggerPayload *payload = PyMem_Malloc(sizeof(LoggerPayload));
+    LoggerPayload *payload = PyMem_RawMalloc(sizeof(LoggerPayload));
     payload->callback = self->logger;
     payload->log_type_type = state->log_type_type;
     TSLogger logger = {payload, log_callback};

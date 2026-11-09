@@ -85,10 +85,10 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     end += 1;
                 }
 
-                char *capture = PyMem_Calloc(end + 1, sizeof(char));
+                char *capture = PyMem_RawCalloc(end + 1, sizeof(char));
                 memcpy(capture, &source[error_offset], end);
                 QUERY_ERROR("Invalid capture name at row %u, column %u: %s", row, column, capture);
-                PyMem_Free(capture);
+                PyMem_RawFree(capture);
                 break;
             }
             case TSQueryErrorNodeType: {
@@ -96,10 +96,10 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     end += 1;
                 }
 
-                char *node = PyMem_Calloc(end + 1, sizeof(char));
+                char *node = PyMem_RawCalloc(end + 1, sizeof(char));
                 memcpy(node, &source[error_offset], end);
                 QUERY_ERROR("Invalid node type at row %u, column %u: %s", row, column, node);
-                PyMem_Free(node);
+                PyMem_RawFree(node);
                 break;
             }
             case TSQueryErrorField: {
@@ -107,10 +107,10 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     end += 1;
                 }
 
-                char *field = PyMem_Calloc(end + 1, sizeof(char));
+                char *field = PyMem_RawCalloc(end + 1, sizeof(char));
                 memcpy(field, &source[error_offset], end);
                 QUERY_ERROR("Invalid field name at row %u, column %u: %s", row, column, field);
-                PyMem_Free(field);
+                PyMem_RawFree(field);
                 break;
             }
             case TSQueryErrorStructure: {
