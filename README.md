@@ -57,7 +57,7 @@ def foo():
     if bar:
         baz()
 """,
-        "utf8"
+        "utf8",
     )
 )
 ```
@@ -109,16 +109,16 @@ Inspect the resulting `Tree`:
 
 ```python
 root_node = tree.root_node
-assert root_node.type == 'module'
+assert root_node.type == "module"
 assert root_node.start_point == (1, 0)
 assert root_node.end_point == (4, 0)
 
 function_node = root_node.children[0]
-assert function_node.type == 'function_definition'
-assert function_node.child_by_field_name('name').type == 'identifier'
+assert function_node.type == "function_definition"
+assert function_node.child_by_field_name("name").type == "identifier"
 
 function_name_node = function_node.children[1]
-assert function_name_node.type == 'identifier'
+assert function_name_node.type == "identifier"
 assert function_name_node.start_point == (1, 4)
 assert function_name_node.end_point == (1, 7)
 
@@ -139,16 +139,16 @@ assert function_call_args_node.type == "argument_list"
 
 assert str(root_node) == (
     "(module "
-        "(function_definition "
-            "name: (identifier) "
-            "parameters: (parameters) "
-            "body: (block "
-                "(if_statement "
-                    "condition: (identifier) "
-                    "consequence: (block "
-                        "(expression_statement (call "
-                            "function: (identifier) "
-                            "arguments: (argument_list))))))))"
+    "(function_definition "
+    "name: (identifier) "
+    "parameters: (parameters) "
+    "body: (block "
+    "(if_statement "
+    "condition: (identifier) "
+    "consequence: (block "
+    "(expression_statement (call "
+    "function: (identifier) "
+    "arguments: (argument_list))))))))"
 )
 ```
 
@@ -158,15 +158,17 @@ Or, to use the byte offset with UTF-16 encoding:
 parser.language = JAVASCRIPT
 source_code = bytes("'😎' && '🐍'", "utf16")
 
+
 def read(byte_position, _):
-    return source_code[byte_position: byte_position + 2]
+    return source_code[byte_position : byte_position + 2]
+
 
 tree = parser.parse(read, encoding="utf16")
 root_node = tree.root_node
 statement_node = root_node.children[0]
 binary_node = statement_node.children[0]
 snake_node = binary_node.children[2]
-snake = source_code[snake_node.start_byte:snake_node.end_byte]
+snake = source_code[snake_node.start_byte : snake_node.end_byte]
 
 assert binary_node.type == "binary_expression"
 assert snake_node.type == "string"

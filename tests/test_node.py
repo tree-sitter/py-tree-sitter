@@ -1,9 +1,9 @@
 from typing import cast
 from unittest import TestCase
 
-import tree_sitter_python
 import tree_sitter_javascript
 import tree_sitter_json
+import tree_sitter_python
 
 from tree_sitter import Language, Node, Parser
 

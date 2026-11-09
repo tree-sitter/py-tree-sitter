@@ -1,6 +1,8 @@
-from typing import Generator
-from tree_sitter import Language, Parser, Tree, Node
+from collections.abc import Generator
+
 import tree_sitter_python
+
+from tree_sitter import Language, Node, Parser, Tree
 
 PY_LANGUAGE = Language(tree_sitter_python.language())
 
@@ -25,7 +27,7 @@ def traverse_tree(tree: Tree) -> Generator[Node, None, None]:
             break
 
 
-node_names = map(lambda node: node.type, traverse_tree(tree))
+node_names = (node.type for node in traverse_tree(tree))
 
 assert list(node_names) == [
     "module",

@@ -3,6 +3,8 @@
 from typing import Protocol as _Protocol
 
 from ._binding import (
+    LANGUAGE_VERSION,
+    MIN_COMPATIBLE_LANGUAGE_VERSION,
     Language,
     LogType,
     LookaheadIterator,
@@ -15,9 +17,7 @@ from ._binding import (
     Range,
     Tree,
     TreeCursor,
-    LANGUAGE_VERSION,
-    MIN_COMPATIBLE_LANGUAGE_VERSION,
-    __version__
+    __version__,
 )
 
 LogType.__doc__ = "The type of a log message."
@@ -25,6 +25,7 @@ LogType.__doc__ = "The type of a log message."
 
 class QueryPredicate(_Protocol):
     """A custom query predicate that runs on a pattern."""
+
     def __call__(self, predicate, args, pattern_index, captures):
         """
         Parameters
@@ -50,6 +51,8 @@ class QueryPredicate(_Protocol):
 
 
 __all__ = [
+    "LANGUAGE_VERSION",
+    "MIN_COMPATIBLE_LANGUAGE_VERSION",
     "Language",
     "LogType",
     "LookaheadIterator",
@@ -63,7 +66,5 @@ __all__ = [
     "Range",
     "Tree",
     "TreeCursor",
-    "LANGUAGE_VERSION",
-    "MIN_COMPATIBLE_LANGUAGE_VERSION",
-    "__version__"
+    "__version__",
 ]

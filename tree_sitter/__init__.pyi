@@ -1,7 +1,8 @@
+from collections.abc import Callable, Iterator, Sequence
 from enum import IntEnum
-from collections.abc import ByteString, Callable, Iterator, Sequence
 from typing import Annotated, Any, Final, Literal, Protocol, Self, final, overload
-from typing_extensions import deprecated
+
+from typing_extensions import Buffer, deprecated
 
 class _SupportsFileno(Protocol):
     def fileno(self) -> int: ...
@@ -245,7 +246,7 @@ class Parser:
     @overload
     def parse(
         self,
-        source: ByteString,
+        source: Buffer,
         /,
         old_tree: Tree | None = None,
         encoding: Literal["utf8", "utf16", "utf16le", "utf16be"] = "utf8",
@@ -253,7 +254,7 @@ class Parser:
     @overload
     def parse(
         self,
-        read_callback: Callable[[int, Point], ByteString | None],
+        read_callback: Callable[[int, Point], Buffer | None],
         /,
         old_tree: Tree | None = None,
         encoding: Literal["utf8", "utf16", "utf16le", "utf16be"] = "utf8",
@@ -289,10 +290,7 @@ class Query:
     def is_pattern_guaranteed_at_step(self, index: int, /) -> bool: ...
     def capture_name(self, index: int, /) -> str: ...
     def capture_quantifier(
-        self,
-        pattern_index: int,
-        capture_index: int,
-        /
+        self, pattern_index: int, capture_index: int, /
     ) -> Literal["", "?", "*", "+"]: ...
     def string_value(self, index: int, /) -> str: ...
     def disable_capture(self, name: str, /) -> None: ...

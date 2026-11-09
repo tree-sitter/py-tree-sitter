@@ -2,13 +2,13 @@ from sys import maxsize
 from typing import cast
 from unittest import TestCase
 
-from tree_sitter import Language
-
 import tree_sitter_html
 import tree_sitter_javascript
 import tree_sitter_json
 import tree_sitter_python
 import tree_sitter_rust
+
+from tree_sitter import Language
 
 
 class TestLanguage(TestCase):

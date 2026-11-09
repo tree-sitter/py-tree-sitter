@@ -17,9 +17,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.githubpages",
 ]
-source_suffix = {
-    ".rst": "restructuredtext"
-}
+source_suffix = {".rst": "restructuredtext"}
 master_doc = "index"
 language = "en"
 needs_sphinx = "8.2"
