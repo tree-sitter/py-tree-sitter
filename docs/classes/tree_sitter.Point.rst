@@ -9,8 +9,6 @@ Point
 
    .. automethod:: edit
 
-      .. versionadded:: 0.26.0
-
    Special Methods
    ---------------
 

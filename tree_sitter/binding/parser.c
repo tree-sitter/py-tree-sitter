@@ -437,11 +437,12 @@ int parser_init(Parser *self, PyObject *args, PyObject *kwargs) {
 
 PyDoc_STRVAR(
     parser_parse_doc,
-    "parse(self, source, /, old_tree=None, encoding=\"utf8\")\n--\n\n"
+    "parse(self, source, /, old_tree=None, encoding=\"utf8\", progress_callback=None)\n--\n\n"
     "Parse a slice of a bytestring or bytes provided in chunks by a callback.\n\n"
     "The callback function takes a byte offset and position and returns a bytestring starting "
     "at that offset and position. The slices can be of any length. If the given position "
-    "is at the end of the text, the callback should return an empty slice." DOC_RETURNS
+    "is at the end of the text, the callback should return an empty slice.\n\n"
+    "Parsing halts if the progress callback returns ``True``." DOC_RETURNS
     "A :class:`Tree` if parsing succeeded or ``None`` if the parser does not have an "
     "assigned language or the timeout expired.");
 PyDoc_STRVAR(
