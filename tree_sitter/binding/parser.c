@@ -161,6 +161,12 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     TSTree *new_tree = NULL;
     Py_buffer source_view;
     if (PyObject_GetBuffer(source_or_callback, &source_view, PyBUF_SIMPLE) > -1) {
+        if (source_view.len > UINT32_MAX) {
+            PyErr_Format(PyExc_BufferError, "buffer length %zd exceeds the maximum %u",
+                         source_view.len, UINT32_MAX);
+                PyBuffer_Release(&source_view);
+            return NULL;
+        }
         if (progress_callback_obj != NULL) {
             const char *warning = "The progress_callback is ignored when parsing a bytestring";
             if (PyErr_WarnEx(PyExc_UserWarning, warning, 1) < 0) {
