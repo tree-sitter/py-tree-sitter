@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         os:
           - ubuntu-24.04
           - ubuntu-24.04-arm
@@ -31,9 +31,6 @@ jobs:
           - macos-15-intel
           - windows-2025
           - windows-11-arm
-        exclude:
-          - os: windows-11-arm
-            python: "3.10"
     runs-on: ${{matrix.os}}
     steps:
       - name: Checkout repository
