@@ -1,5 +1,11 @@
 #include "types.h"
 
+#ifndef _WIN32
+#include <unistd.h>
+#else
+#include <io.h>
+#endif
+
 PyObject *point_new_internal(ModuleState *state, TSPoint point);
 
 #define SET_ATTRIBUTE_ERROR(name)                                                                  \
@@ -238,6 +244,14 @@ PyObject *parser_print_dot_graphs(Parser *self, PyObject *arg) {
         int fd = PyObject_AsFileDescriptor(arg);
         if (fd < 0) {
             return NULL;
+        }
+#ifndef _WIN32
+        fd = dup(fd);
+#else
+        fd = _dup(fd);
+#endif
+        if (fd < 0) {
+            return PyErr_SetFromErrno(PyExc_OSError);
         }
         Py_BEGIN_ALLOW_THREADS
         ts_parser_print_dot_graphs(self->parser, fd);
