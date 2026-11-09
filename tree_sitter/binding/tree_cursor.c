@@ -6,7 +6,9 @@ void tree_cursor_dealloc(TreeCursor *self) {
     ts_tree_cursor_delete(&self->cursor);
     Py_XDECREF(self->node);
     Py_XDECREF(self->tree);
-    Py_TYPE(self)->tp_free(self);
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 PyObject *tree_cursor_get_node(TreeCursor *self, void *Py_UNUSED(payload)) {

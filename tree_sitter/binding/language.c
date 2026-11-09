@@ -32,7 +32,9 @@ int language_init(Language *self, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
 
 void language_dealloc(Language *self) {
     ts_language_delete(self->language);
-    Py_TYPE(self)->tp_free(self);
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 PyObject *language_repr(Language *self) {

@@ -5,7 +5,9 @@ void lookahead_iterator_dealloc(LookaheadIterator *self) {
         ts_lookahead_iterator_delete(self->lookahead_iterator);
     }
     Py_XDECREF(self->language);
-    Py_TYPE(self)->tp_free(self);
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 PyObject *lookahead_iterator_repr(LookaheadIterator *self) {

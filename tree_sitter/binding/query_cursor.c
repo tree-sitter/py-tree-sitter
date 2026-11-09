@@ -7,7 +7,9 @@ bool query_satisfies_predicates(Query *query, TSQueryMatch match, Tree *tree, Py
 void query_cursor_dealloc(QueryCursor *self) {
     ts_query_cursor_delete(self->cursor);
     Py_XDECREF(self->query);
-    Py_TYPE(self)->tp_free(self);
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 PyObject *query_cursor_new(PyTypeObject *cls, PyObject *Py_UNUSED(args),

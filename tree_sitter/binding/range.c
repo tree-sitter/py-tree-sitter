@@ -33,7 +33,11 @@ int range_init(Range *self, PyObject *args, PyObject *kwargs) {
     return 0;
 }
 
-void range_dealloc(Range *self) { Py_TYPE(self)->tp_free(self); }
+void range_dealloc(Range *self) {
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
+}
 
 PyObject *range_repr(Range *self) {
     const char *format_string =
