@@ -653,6 +653,19 @@ PyObject *query_is_pattern_guaranteed_at_step(Query *self, PyObject *args) {
     return PyBool_FromLong(result);
 }
 
+PyObject *query_copy(Query *self, PyObject *Py_UNUSED(args)) {
+    ModuleState *state = GET_MODULE_STATE(self);
+    Query *copied = PyObject_New(Query, state->query_type);
+    if (copied == NULL) {
+        return NULL;
+    }
+    copied->query = ts_query_copy(self->query);
+    copied->assertions = Py_NewRef(self->assertions);
+    copied->predicates = Py_NewRef(self->predicates);
+    copied->settings = Py_NewRef(self->settings);
+    return PyObject_Init((PyObject *)copied, state->query_type);
+}
+
 PyObject *query_get_pattern_count(Query *self, void *Py_UNUSED(payload)) {
     return PyLong_FromUnsignedLong(ts_query_pattern_count(self->query));
 }
@@ -708,6 +721,10 @@ PyDoc_STRVAR(query_is_pattern_non_local_doc,
 PyDoc_STRVAR(query_is_pattern_guaranteed_at_step_doc,
              "is_pattern_guaranteed_at_step(self, index)\n--\n\n"
              "Check if a pattern is guaranteed to match once a given byte offset is reached.");
+PyDoc_STRVAR(query_copy_doc, "copy(self, /)\n--\n\n"
+                                "Create a copy of the query.");
+PyDoc_STRVAR(query_copy2_doc, "__copy__(self, /)\n--\n\n"
+                                 "Use :func:`copy.copy` to create a copy of the query.");
 
 static PyMethodDef query_methods[] = {
     {
@@ -788,6 +805,16 @@ static PyMethodDef query_methods[] = {
         .ml_flags = METH_VARARGS,
         .ml_doc = query_is_pattern_guaranteed_at_step_doc,
     },
+    {
+        .ml_name = "copy",
+        .ml_meth = (PyCFunction)query_copy,
+        .ml_flags = METH_NOARGS,
+        .ml_doc = query_copy_doc,
+    },
+    {.ml_name = "__copy__",
+     .ml_meth = (PyCFunction)query_copy,
+     .ml_flags = METH_NOARGS,
+     .ml_doc = query_copy2_doc},
     {NULL},
 };
 

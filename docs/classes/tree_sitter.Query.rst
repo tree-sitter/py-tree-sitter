@@ -22,6 +22,9 @@ Query
 
    .. automethod:: capture_name
    .. automethod:: capture_quantifier
+   .. automethod:: copy
+
+      .. versionadded:: 0.27.0
    .. automethod:: disable_capture
    .. automethod:: disable_pattern
    .. automethod:: end_byte_for_pattern
@@ -32,6 +35,13 @@ Query
    .. automethod:: pattern_settings
    .. automethod:: start_byte_for_pattern
    .. automethod:: string_value
+
+   Special Methods
+   ---------------
+
+   .. automethod:: __copy__
+
+      .. versionadded:: 0.27.0
 
    Attributes
    ----------
