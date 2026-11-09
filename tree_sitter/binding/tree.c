@@ -119,11 +119,14 @@ PyObject *tree_changed_ranges(Tree *self, PyObject *args, PyObject *kwargs) {
 
     PyObject *result = PyList_New(length);
     if (result == NULL) {
+        PyMem_Free(ranges);
         return NULL;
     }
     for (unsigned i = 0; i < length; ++i) {
         Range *range = PyObject_New(Range, state->range_type);
         if (range == NULL) {
+            Py_DECREF(result);
+            PyMem_Free(ranges);
             return NULL;
         }
         range->range = ranges[i];
@@ -141,11 +144,14 @@ PyObject *tree_get_included_ranges(Tree *self, PyObject *Py_UNUSED(args)) {
 
     PyObject *result = PyList_New(length);
     if (result == NULL) {
+        PyMem_Free(ranges);
         return NULL;
     }
     for (unsigned i = 0; i < length; ++i) {
         Range *range = PyObject_New(Range, state->range_type);
         if (range == NULL) {
+            Py_DECREF(result);
+            PyMem_Free(ranges);
             return NULL;
         }
         range->range = ranges[i];
