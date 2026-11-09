@@ -24,7 +24,7 @@ needs_sphinx = "8.2"
 templates_path = ["_templates"]
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.10/", None),
+    "python": ("https://docs.python.org/3.11/", None),
 }
 
 autoclass_content = "class"
