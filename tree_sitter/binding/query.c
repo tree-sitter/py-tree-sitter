@@ -30,7 +30,9 @@ void query_dealloc(Query *self) {
     Py_XDECREF(self->predicates);
     Py_XDECREF(self->settings);
     Py_XDECREF(self->assertions);
-    Py_TYPE(self)->tp_free(self);
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwargs)) {

@@ -16,7 +16,9 @@ PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree) {
 void node_dealloc(Node *self) {
     Py_XDECREF(self->children);
     Py_XDECREF(self->tree);
-    Py_TYPE(self)->tp_free(self);
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 PyObject *node_repr(Node *self) {

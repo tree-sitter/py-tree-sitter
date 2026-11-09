@@ -6,7 +6,9 @@ void tree_dealloc(Tree *self) {
     ts_tree_delete(self->tree);
     Py_XDECREF(self->language);
     Py_XDECREF(self->source);
-    Py_TYPE(self)->tp_free(self);
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 PyObject *tree_get_root_node(Tree *self, void *Py_UNUSED(payload)) {

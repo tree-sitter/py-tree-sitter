@@ -38,7 +38,9 @@ void parser_dealloc(Parser *self) {
     ts_parser_delete(self->parser);
     Py_XDECREF(self->language);
     Py_XDECREF(self->logger);
-    Py_TYPE(self)->tp_free(self);
+    PyTypeObject *tp = Py_TYPE(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPoint position,
