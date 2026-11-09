@@ -170,7 +170,11 @@ PyObject *query_cursor_matches(QueryCursor *self, PyObject *args, PyObject *kwar
         Py_XDECREF(tuple_match);
     }
 
-    return PyErr_Occurred() == NULL ? result : NULL;
+    if (PyErr_Occurred()) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    return result;
 }
 
 PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwargs) {
@@ -241,7 +245,11 @@ PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwa
         Py_DECREF(list);
     }
 
-    return PyErr_Occurred() == NULL ? result : NULL;
+    if (PyErr_Occurred() != NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    return result;
 }
 
 PyObject *query_cursor_get_did_exceed_match_limit(QueryCursor *self, void *Py_UNUSED(payload)) {
