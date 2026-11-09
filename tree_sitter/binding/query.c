@@ -34,11 +34,6 @@ void query_dealloc(Query *self) {
 }
 
 PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwargs)) {
-    Query *query = (Query *)cls->tp_alloc(cls, 0);
-    if (query == NULL) {
-        return NULL;
-    }
-
     PyObject *language_obj;
     char *source;
     Py_ssize_t source_len;
@@ -52,6 +47,10 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
     TSQueryError error_type;
     PyObject *pattern_predicates = NULL, *pattern_settings = NULL, *pattern_assertions = NULL;
     TSLanguage *language_id = ((Language *)language_obj)->language;
+    Query *query = (Query *)cls->tp_alloc(cls, 0);
+    if (query == NULL) {
+        return NULL;
+    }
     query->query =
         ts_query_new(language_id, source, (uint32_t)source_len, &error_offset, &error_type);
     query->predicates = NULL;
@@ -167,6 +166,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
             goto error;
         }
 
+        PyObject *predicate_obj = NULL;
         const TSQueryPredicateStep *predicate_step =
             ts_query_predicates_for_pattern(query->query, i, &steps);
         for (uint32_t j = 0; j < steps; ++j) {
@@ -205,7 +205,6 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     goto error;
                 }
 
-                PyObject *predicate_obj;
                 bool is_any = strncmp("any", predicate_name, 3) == 0;
                 bool is_positive = strncmp(predicate_name, "eq?", length) == 0 ||
                                    strncmp(predicate_name, "any-eq?", length) == 0;
@@ -216,8 +215,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     predicate->capture2_id = (predicate_step + 2)->value_id;
                     predicate->is_any = is_any;
                     predicate->is_positive = is_positive;
-                    predicate_obj = PyObject_Init((PyObject *)predicate,
-                                                  state->query_predicate_eq_capture_type);
+                    predicate_obj = (PyObject *)predicate;
                 } else {
                     QueryPredicateEqString *predicate =
                         PyObject_New(QueryPredicateEqString, state->query_predicate_eq_string_type);
@@ -227,11 +225,8 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     predicate->string_value = PyBytes_FromStringAndSize(second_arg, length);
                     predicate->is_any = is_any;
                     predicate->is_positive = is_positive;
-                    predicate_obj =
-                        PyObject_Init((PyObject *)predicate, state->query_predicate_eq_string_type);
+                    predicate_obj = (PyObject *)predicate;
                 }
-                PyList_Append(pattern_predicates, predicate_obj);
-                Py_XDECREF(predicate_obj);
             } else if (strncmp(predicate_name, "match?", length) == 0 ||
                        strncmp(predicate_name, "not-match?", length) == 0 ||
                        strncmp(predicate_name, "any-match?", length) == 0 ||
@@ -302,14 +297,15 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
 
                 QueryPredicateMatch *predicate =
                     PyObject_New(QueryPredicateMatch, state->query_predicate_match_type);
+                if (predicate == NULL) {
+                    Py_DECREF(pattern);
+                    goto error;
+                }
                 predicate->capture_id = (predicate_step + 1)->value_id;
                 predicate->pattern = pattern;
                 predicate->is_any = is_any;
                 predicate->is_positive = is_positive;
-                PyObject *predicate_obj =
-                    PyObject_Init((PyObject *)predicate, state->query_predicate_match_type);
-                PyList_Append(pattern_predicates, predicate_obj);
-                Py_XDECREF(predicate_obj);
+                predicate_obj = (PyObject *)predicate;
             } else if (strncmp(predicate_name, "any-of?", length) == 0 ||
                        strncmp(predicate_name, "not-any-of?", length) == 0) {
                 if (predicate_len < 3) {
@@ -347,13 +343,14 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
 
                 QueryPredicateAnyOf *predicate =
                     PyObject_New(QueryPredicateAnyOf, state->query_predicate_anyof_type);
+                if (predicate == NULL) {
+                    Py_DECREF(values);
+                    goto error;
+                }
                 predicate->capture_id = (predicate_step + 1)->value_id;
                 predicate->is_positive = is_positive;
                 predicate->values = values;
-                PyObject *predicate_obj =
-                    PyObject_Init((PyObject *)predicate, state->query_predicate_anyof_type);
-                PyList_Append(pattern_predicates, predicate_obj);
-                Py_XDECREF(predicate_obj);
+                predicate_obj = (PyObject *)predicate;
             } else if (strncmp(predicate_name, "is?", length) == 0 ||
                        strncmp(predicate_name, "is-not?", length) == 0) {
                 if (predicate_len == 1 || predicate_len > 3) {
@@ -395,6 +392,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
                     QUERY_ERROR("Invalid predicate in pattern at row %u: "
                                 "second argument to #%s must be a string literal, got @%s",
                                 row, predicate_name, second_arg);
+                    Py_DECREF(is_positive);
                     goto error;
                 }
 
@@ -436,28 +434,45 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
             } else {
                 QueryPredicateGeneric *predicate =
                     PyObject_New(QueryPredicateGeneric, state->query_predicate_generic_type);
+                if (predicate == NULL) {
+                    goto error;
+                }
                 predicate->predicate = PyUnicode_FromStringAndSize(predicate_name, length);
                 predicate->arguments = PyList_New(predicate_len - 1);
+                if (predicate->predicate == NULL || predicate->arguments == NULL) {
+                    Py_DECREF(predicate);
+                    goto error;
+                }
                 predicate->pattern_index = i;
                 for (uint32_t k = 1; k < predicate_len; ++k) {
                     PyObject *item;
                     if ((predicate_step + k)->type == TSQueryPredicateStepTypeCapture) {
                         const char *arg_value = ts_query_capture_name_for_id(
                             query->query, (predicate_step + k)->value_id, &length);
-                        item = PyTuple_Pack(2, PyUnicode_FromStringAndSize(arg_value, length),
-                                            PyUnicode_FromString("capture"));
+                        item = Py_BuildValue("(s#s)", arg_value, (Py_ssize_t)length, "capture");
                     } else {
                         const char *arg_value = ts_query_string_value_for_id(
                             query->query, (predicate_step + k)->value_id, &length);
-                        item = PyTuple_Pack(2, PyUnicode_FromStringAndSize(arg_value, length),
-                                            PyUnicode_FromString("string"));
+                        item = Py_BuildValue("(s#s)", arg_value, (Py_ssize_t)length, "string");
                     }
-                    PyList_SetItem(predicate->arguments, k - 1, item);
+                    if (item == NULL) {
+                        Py_DECREF(predicate);
+                        goto error;
+                    }
+                    if (PyList_SetItem(predicate->arguments, k - 1, item) < 0) {
+                        Py_DECREF(predicate);
+                        goto error;
+                    }
                 }
-                PyObject *predicate_obj =
-                    PyObject_Init((PyObject *)predicate, state->query_predicate_generic_type);
-                PyList_Append(pattern_predicates, predicate_obj);
-                Py_XDECREF(predicate_obj);
+                predicate_obj = (PyObject *)predicate;
+            }
+
+            if (predicate_obj != NULL) {
+                int rc = PyList_Append(pattern_predicates, predicate_obj);
+                Py_DECREF(predicate_obj);
+                if (rc < 0) {
+                    goto error;
+                }
             }
 
             j += predicate_len;
@@ -467,6 +482,7 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
         PyList_SetItem(query->predicates, i, pattern_predicates);
         PyList_SetItem(query->settings, i, pattern_settings);
         PyList_SetItem(query->assertions, i, pattern_assertions);
+        pattern_predicates = NULL, pattern_settings = NULL, pattern_assertions = NULL;
     }
 
     return (PyObject *)query;
