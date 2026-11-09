@@ -1,9 +1,9 @@
 from typing import cast
 from unittest import TestCase
 
-from tree_sitter import Language, LookaheadIterator, Node, Parser
-
 import tree_sitter_rust
+
+from tree_sitter import Language, LookaheadIterator, Node, Parser
 
 
 class TestLookaheadIterator(TestCase):
@@ -22,9 +22,7 @@ class TestLookaheadIterator(TestCase):
         next_state = node.next_parse_state
 
         self.assertNotEqual(next_state, 0)
-        self.assertEqual(
-            next_state, self.rust.next_state(node.parse_state, node.grammar_id)
-        )
+        self.assertEqual(next_state, self.rust.next_state(node.parse_state, node.grammar_id))
         self.assertLess(next_state, self.rust.parse_state_count)
         self.assertEqual(cursor.goto_next_sibling(), True)  # type_identifier
         node = cast(Node, cursor.node)
@@ -43,7 +41,4 @@ class TestLookaheadIterator(TestCase):
         )
 
         lookahead.reset(next_state, self.rust)
-        self.assertTupleEqual(
-            (self.rust.id_for_node_kind("//", False), "//"),
-            next(lookahead)
-        )
+        self.assertTupleEqual((self.rust.id_for_node_kind("//", False), "//"), next(lookahead))

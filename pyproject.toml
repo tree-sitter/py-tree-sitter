@@ -56,6 +56,9 @@ extend-exclude = [
     "tree_sitter/core",
 ]
 
+[tool.ruff.lint]
+ignore = ["PYI029"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

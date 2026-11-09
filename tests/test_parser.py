@@ -1,13 +1,13 @@
 from typing import cast
 from unittest import TestCase
 
-from tree_sitter import Language, LogType, Node, Parser, Range, Tree
-
 import tree_sitter_html
 import tree_sitter_javascript
 import tree_sitter_json
 import tree_sitter_python
 import tree_sitter_rust
+
+from tree_sitter import Language, LogType, Node, Parser, Range, Tree
 
 
 def simple_range(start, end):
@@ -32,9 +32,7 @@ class TestParser(TestCase):
         self.assertListEqual(parser.included_ranges, [self.max_range])
 
     def test_init_args(self):
-        parser = Parser(
-            language=self.python, included_ranges=[self.min_range]
-        )
+        parser = Parser(language=self.python, included_ranges=[self.min_range])
         self.assertEqual(parser.language, self.python)
         self.assertListEqual(parser.included_ranges, [self.min_range])
 
@@ -80,6 +78,7 @@ class TestParser(TestCase):
                 ]
 
         with self.subTest(setter="logger"):
+
             def logger(log_type, message):
                 print(log_type.name, message)
 
@@ -126,6 +125,7 @@ class TestParser(TestCase):
             def wrapped(*args):
                 rv = cb(*args)
                 return ret_type(rv) if rv is not None else None
+
             return wrapped
 
         def assert_nodes_equal(tree: Tree):

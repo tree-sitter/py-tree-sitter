@@ -1,5 +1,6 @@
-from tree_sitter import Language, Parser, Query, QueryCursor
 import tree_sitter_python
+
+from tree_sitter import Language, Parser, Query, QueryCursor
 
 PY_LANGUAGE = Language(tree_sitter_python.language())
 

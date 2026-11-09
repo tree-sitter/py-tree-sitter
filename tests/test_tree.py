@@ -1,10 +1,10 @@
 from typing import cast
 from unittest import TestCase
 
-from tree_sitter import Language, Node, Parser
-
 import tree_sitter_python
 import tree_sitter_rust
+
+from tree_sitter import Language, Node, Parser
 
 
 class TestTree(TestCase):

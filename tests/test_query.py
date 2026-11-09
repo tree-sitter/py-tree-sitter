@@ -1,8 +1,8 @@
 from re import error as RegexError
 from unittest import TestCase
 
-import tree_sitter_python
 import tree_sitter_javascript
+import tree_sitter_python
 
 from tree_sitter import Language, Parser, Query, QueryCursor, QueryError
 
@@ -196,7 +196,7 @@ class TestQuery(TestCase):
             ((function_declaration
                 name: (identifier) @function-name)
                 (#eq? @function-name fun1))
-            """
+            """,
         )
         cursor = QueryCursor(query1)
         captures1 = list(cursor.captures(root_node).items())
@@ -211,7 +211,7 @@ class TestQuery(TestCase):
             ((function_declaration
                 name: (identifier) @function-name)
                 (#not-eq? @function-name fun1))
-            """
+            """,
         )
         cursor = QueryCursor(query2)
         captures2 = list(cursor.captures(root_node).items())
@@ -241,7 +241,7 @@ class TestQuery(TestCase):
         """
 
         def read_callable_byte_offset(byte_offset, point):
-            return source[byte_offset: byte_offset + 1]
+            return source[byte_offset : byte_offset + 1]
 
         def read_callable_point(byte_offset, point):
             row, col = point
@@ -251,7 +251,7 @@ class TestQuery(TestCase):
             line = lines[row]
             if col >= len(line):
                 return b"\n"
-            return line[col:col + 1]
+            return line[col : col + 1]
 
         tree1 = parser.parse(read_callable_byte_offset)
         root_node1 = tree1.root_node
@@ -265,7 +265,7 @@ class TestQuery(TestCase):
             ((function_declaration
                 name: (identifier) @function-name)
                 (#match? @function-name "fun[12]"))
-            """
+            """,
         )
         cursor1 = QueryCursor(query1)
         captures1 = cursor1.captures(root_node1)
@@ -289,7 +289,7 @@ class TestQuery(TestCase):
             ((function_declaration
                 name: (identifier) @function-name)
                 (#not-eq? @function-name fun1))
-            """
+            """,
         )
         cursor2 = QueryCursor(query2)
         captures3 = cursor2.captures(root_node1)
@@ -314,7 +314,7 @@ class TestQuery(TestCase):
                 ((function_declaration
                     name: (identifier) @function-name)
                     (#eq? @function-name @function-name fun1))
-                """
+                """,
             )
 
         with self.assertRaises(QueryError):
@@ -324,7 +324,7 @@ class TestQuery(TestCase):
                 ((function_declaration
                     name: (identifier) @function-name)
                     (#eq? fun1 @function-name))
-                """
+                """,
             )
 
         with self.assertRaises(QueryError):
@@ -334,7 +334,7 @@ class TestQuery(TestCase):
                 ((function_declaration
                     name: (identifier) @function-name)
                     (#match? @function-name @function-name fun1))
-                """
+                """,
             )
 
         with self.assertRaises(QueryError):
@@ -344,7 +344,7 @@ class TestQuery(TestCase):
                 ((function_declaration
                     name: (identifier) @function-name)
                     (#match? fun1 @function-name))
-                """
+                """,
             )
 
         with self.assertRaises(QueryError):
@@ -354,7 +354,7 @@ class TestQuery(TestCase):
                 ((function_declaration
                     name: (identifier) @function-name)
                     (#match? @function-name @function-name))
-                """
+                """,
             )
 
         with self.assertRaises(QueryError) as ctx:
@@ -364,7 +364,7 @@ class TestQuery(TestCase):
                 ((function_declaration
                     name: (identifier) @function-name)
                     (#match? @function-name "?"))
-                """
+                """,
             )
         self.assertEqual(
             str(ctx.exception), "Invalid predicate in pattern at row 1: regular expression error"
@@ -380,7 +380,7 @@ class TestQuery(TestCase):
             """
             (function_definition name: (identifier) @func-def)
             (call function: (identifier) @func-call)
-            """
+            """,
         )
         cursor = QueryCursor(query)
         cursor.set_point_range((1, 0), (2, 0))
@@ -400,7 +400,7 @@ class TestQuery(TestCase):
             """
             (function_definition name: (identifier) @func-def)
             (call function: (identifier) @func-call)
-            """
+            """,
         )
         cursor = QueryCursor(query)
         cursor.set_byte_range(10, 20)
