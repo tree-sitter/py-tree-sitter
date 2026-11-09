@@ -36,7 +36,7 @@ PyObject *node_repr(Node *self) {
 PyObject *node_str(Node *self) {
     char *string = ts_node_string(self->node);
     PyObject *result = PyUnicode_FromString(string);
-    PyMem_Free(string);
+    PyMem_RawFree(string);
     return result;
 }
 
