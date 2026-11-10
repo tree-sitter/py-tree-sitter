@@ -39,7 +39,7 @@ PyObject *lookahead_iterator_get_current_symbol(LookaheadIterator *self, void *P
 PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self,
                                                      void *Py_UNUSED(payload)) {
     const char *name = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
-    return PyUnicode_FromString(name);
+    return name != NULL ? PyUnicode_FromString(name) : Py_None;
 }
 
 PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args, PyObject *kwargs) {
