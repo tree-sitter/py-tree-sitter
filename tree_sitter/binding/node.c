@@ -138,6 +138,9 @@ PyObject *node_first_child_for_byte(Node *self, PyObject *args) {
         return NULL;
     }
     TSNode child = ts_node_first_child_for_byte(self->node, byte);
+    if (ts_node_is_null(child)) {
+        Py_RETURN_NONE;
+    }
     return node_new_internal(state, child, self->tree);
 }
 
@@ -148,6 +151,9 @@ PyObject *node_first_named_child_for_byte(Node *self, PyObject *args) {
         return NULL;
     }
     TSNode child = ts_node_first_named_child_for_byte(self->node, byte);
+    if (ts_node_is_null(child)) {
+        Py_RETURN_NONE;
+    }
     return node_new_internal(state, child, self->tree);
 }
 
