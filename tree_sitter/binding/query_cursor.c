@@ -135,13 +135,13 @@ PyObject *query_cursor_matches(QueryCursor *self, PyObject *args, PyObject *kwar
     uint32_t name_length;
     Node *node = (Node *)node_obj;
     Query *query = (Query *)self->query;
+    TSQueryCursorOptions options = {
+        .payload = progress_callback_obj,
+        .progress_callback = query_cursor_progress_callback,
+    };
     if (progress_callback_obj == NULL) {
         ts_query_cursor_exec(self->cursor, query->query, node->node);
     } else {
-        TSQueryCursorOptions options = {
-            .payload = progress_callback_obj,
-            .progress_callback = query_cursor_progress_callback,
-        };
         ts_query_cursor_exec_with_options(self->cursor, query->query, node->node, &options);
     }
     while (ts_query_cursor_next_match(self->cursor, &match)) {
@@ -208,13 +208,13 @@ PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwa
     uint32_t name_length;
     Node *node = (Node *)node_obj;
     Query *query = (Query *)self->query;
+    TSQueryCursorOptions options = {
+        .payload = progress_callback_obj,
+        .progress_callback = query_cursor_progress_callback,
+    };
     if (progress_callback_obj == NULL) {
         ts_query_cursor_exec(self->cursor, query->query, node->node);
     } else {
-        TSQueryCursorOptions options = {
-            .payload = progress_callback_obj,
-            .progress_callback = query_cursor_progress_callback,
-        };
         ts_query_cursor_exec_with_options(self->cursor, query->query, node->node, &options);
     }
     while (ts_query_cursor_next_capture(self->cursor, &match, &capture_index)) {
