@@ -42,6 +42,7 @@ PyObject *parser_new(PyTypeObject *cls, PyObject *Py_UNUSED(args), PyObject *Py_
 void parser_dealloc(Parser *self) {
     free_logger(self->parser);
     ts_parser_delete(self->parser);
+    ts_parser_print_dot_graphs(self->parser, -1);
     Py_XDECREF(self->language);
     Py_XDECREF(self->logger);
     PyTypeObject *tp = Py_TYPE(self);
@@ -97,11 +98,12 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
     // Store buffer in payload.
     // If something other than None is returned, it must support the buffer protocol.
     if (PyObject_GetBuffer(rv, source_view, PyBUF_SIMPLE) < 0) {
-        Py_XDECREF(rv);
+        Py_DECREF(rv);
         PyErr_SetString(PyExc_TypeError, "read callable must return a bytestring");
         *bytes_read = 0;
         return NULL;
     }
+    Py_DECREF(rv);
 
     *bytes_read = (uint32_t)source_view->len;
     const char *source_bytes = (const char *)source_view->buf;
@@ -109,7 +111,6 @@ static const char *parser_read_wrapper(void *payload, uint32_t byte_offset, TSPo
 }
 
 static bool parser_progress_callback(TSParseState *state) {
-    // Py_BuildValue only accepts the "p" format since Python 3.14
     PyObject *result =
         PyObject_CallFunction((PyObject *)state->payload, "IO", state->current_byte_offset,
                               state->has_error ? Py_True : Py_False);
@@ -160,11 +161,11 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
 
     TSTree *new_tree = NULL;
     Py_buffer source_view;
-    if (PyObject_GetBuffer(source_or_callback, &source_view, PyBUF_SIMPLE) > -1) {
+    if (PyObject_GetBuffer(source_or_callback, &source_view, PyBUF_SIMPLE) >= 0) {
         if (source_view.len > UINT32_MAX) {
             PyErr_Format(PyExc_BufferError, "buffer length %zd exceeds the maximum %u",
                          source_view.len, UINT32_MAX);
-                PyBuffer_Release(&source_view);
+            PyBuffer_Release(&source_view);
             return NULL;
         }
         if (progress_callback_obj != NULL) {
@@ -230,6 +231,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
 
     Tree *tree = PyObject_New(Tree, state->tree_type);
     if (tree == NULL) {
+        ts_tree_delete(new_tree);
         return NULL;
     }
     tree->tree = new_tree;
@@ -237,7 +239,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
     tree->source = source_or_callback;
     Py_INCREF(tree->source);
     Py_INCREF(tree->language);
-    return PyObject_Init((PyObject *)tree, state->tree_type);
+    return (PyObject *)tree;
 }
 
 PyObject *parser_reset(Parser *self, void *Py_UNUSED(payload)) {
@@ -277,13 +279,20 @@ PyObject *parser_get_included_ranges(Parser *self, void *Py_UNUSED(payload)) {
 
     ModuleState *state = GET_MODULE_STATE(self);
     PyObject *list = PyList_New(count);
+    if (list == NULL) {
+        return NULL;
+    }
     for (uint32_t i = 0; i < count; ++i) {
         Range *range = PyObject_New(Range, state->range_type);
         if (range == NULL) {
+            Py_DECREF(list);
             return NULL;
         }
         range->range = ranges[i];
-        PyList_SET_ITEM(list, i, PyObject_Init((PyObject *)range, state->range_type));
+        if (PyList_SetItem(list, i, (PyObject *)range) < 0) {
+            Py_DECREF(list);
+            return NULL;
+        }
     }
     return list;
 }
@@ -302,7 +311,7 @@ int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payl
     uint32_t length = (uint32_t)PyList_Size(arg);
     TSRange *ranges = PyMem_RawCalloc(length, sizeof(TSRange));
     if (!ranges) {
-        PyErr_Format(PyExc_MemoryError, "Failed to allocate memory for ranges of length %u",
+        PyErr_Format(PyExc_MemoryError, "failed to allocate memory for ranges of length %u",
                      length);
         return -1;
     }
@@ -310,8 +319,12 @@ int parser_set_included_ranges(Parser *self, PyObject *arg, void *Py_UNUSED(payl
     ModuleState *state = GET_MODULE_STATE(self);
     for (uint32_t i = 0; i < length; ++i) {
         PyObject *range = PyList_GetItem(arg, i);
+        if (range == NULL) {
+            PyMem_RawFree(ranges);
+            return -1;
+        }
         if (!PyObject_IsInstance(range, (PyObject *)state->range_type)) {
-            PyErr_Format(PyExc_TypeError, "Item at index %u is not a tree_sitter.Range object", i);
+            PyErr_Format(PyExc_TypeError, "item at index %u is not a tree_sitter.Range object", i);
             PyMem_RawFree(ranges);
             return -1;
         }
@@ -374,6 +387,10 @@ int parser_set_logger(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
 
     ModuleState *state = GET_MODULE_STATE(self);
     LoggerPayload *payload = PyMem_RawMalloc(sizeof(LoggerPayload));
+    if (!payload) {
+        PyErr_Format(PyExc_MemoryError, "failed to allocate memory for logger payload");
+        return -1;
+    }
     payload->callback = self->logger;
     payload->log_type_type = state->log_type_type;
     TSLogger logger = {payload, log_callback};
@@ -399,14 +416,14 @@ int parser_set_language(Parser *self, PyObject *arg, void *Py_UNUSED(payload)) {
     if (language->abi_version < TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION ||
         TREE_SITTER_LANGUAGE_VERSION < language->abi_version) {
         PyErr_Format(PyExc_ValueError,
-                     "Incompatible Language version %u. Must be between %u and %u",
+                     "incompatible Language version %u. Must be between %u and %u",
                      language->abi_version, TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION,
                      TREE_SITTER_LANGUAGE_VERSION);
         return -1;
     }
 
     if (!ts_parser_set_language(self->parser, language->language)) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to set the parser language");
+        PyErr_SetString(PyExc_RuntimeError, "failed to set the parser language");
         return -1;
     }
 

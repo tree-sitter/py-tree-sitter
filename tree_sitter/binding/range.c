@@ -11,15 +11,13 @@ int range_init(Range *self, PyObject *args, PyObject *kwargs) {
                                      &start_col, &end_row, &end_col, &start_byte, &end_byte)) {
         return -1;
     }
-
     if (start_row > end_row || (start_row == end_row && start_col > end_col)) {
-        PyErr_Format(PyExc_ValueError, "Invalid point range: (%u, %u) to (%u, %u)", start_row,
+        PyErr_Format(PyExc_ValueError, "invalid point range: (%u, %u) to (%u, %u)", start_row,
                      start_col, end_row, end_col);
         return -1;
     }
-
     if (start_byte > end_byte) {
-        PyErr_Format(PyExc_ValueError, "Invalid byte range: %u to %u", start_byte, end_byte);
+        PyErr_Format(PyExc_ValueError, "invalid byte range: %u to %u", start_byte, end_byte);
         return -1;
     }
 
@@ -29,7 +27,6 @@ int range_init(Range *self, PyObject *args, PyObject *kwargs) {
     self->range.end_point.column = end_col;
     self->range.start_byte = start_byte;
     self->range.end_byte = end_byte;
-
     return 0;
 }
 
@@ -52,27 +49,27 @@ Py_hash_t range_hash(Range *self) {
     // FIXME: replace with an efficient integer hashing algorithm
     PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_point.row),
                                        PyLong_FromLong(self->range.end_point.row));
-    if (!row_tuple) {
+    if (row_tuple == NULL) {
         return -1;
     }
 
     PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_point.column),
                                        PyLong_FromUnsignedLong(self->range.end_point.column));
-    if (!col_tuple) {
+    if (col_tuple == NULL) {
         Py_DECREF(row_tuple);
         return -1;
     }
 
     PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_byte),
                                          PyLong_FromUnsignedLong(self->range.end_byte));
-    if (!bytes_tuple) {
+    if (bytes_tuple == NULL) {
         Py_DECREF(row_tuple);
         Py_DECREF(col_tuple);
         return -1;
     }
 
     PyObject *range_tuple = PyTuple_Pack(3, row_tuple, col_tuple, bytes_tuple);
-    if (!range_tuple) {
+    if (range_tuple == NULL) {
         Py_DECREF(row_tuple);
         Py_DECREF(col_tuple);
         Py_DECREF(bytes_tuple);
@@ -127,7 +124,6 @@ PyObject *range_edit(Range *self, PyObject *args, PyObject *kwargs) {
         "start_byte",    "old_end_byte",  "new_end_byte", "start_point",
         "old_end_point", "new_end_point", NULL,
     };
-
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "III(II)(II)(II):edit", keywords, &start_byte,
                                      &old_end_byte, &new_end_byte, &start_row, &start_column,
                                      &old_end_row, &old_end_column, &new_end_row,
@@ -143,9 +139,7 @@ PyObject *range_edit(Range *self, PyObject *args, PyObject *kwargs) {
         .old_end_point = {old_end_row, old_end_column},
         .new_end_point = {new_end_row, new_end_column},
     };
-
     ts_range_edit(&self->range, &edit);
-
     Py_RETURN_NONE;
 }
 

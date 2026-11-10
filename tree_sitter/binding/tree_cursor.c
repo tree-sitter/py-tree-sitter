@@ -19,6 +19,9 @@ PyObject *tree_cursor_get_node(TreeCursor *self, void *Py_UNUSED(payload)) {
         }
         ModuleState *state = GET_MODULE_STATE(self);
         self->node = node_new_internal(state, current_node, self->tree);
+        if (self->node == NULL) {
+            return NULL;
+        }
     }
     return Py_NewRef(self->node);
 }
@@ -144,6 +147,7 @@ PyObject *tree_cursor_reset(TreeCursor *self, PyObject *args) {
 
     Node *node = (Node *)node_obj;
     ts_tree_cursor_reset(&self->cursor, node->node);
+    Py_XSETREF(self->tree, Py_NewRef(node->tree));
     Py_XDECREF(self->node);
     self->node = NULL;
     Py_RETURN_NONE;
@@ -158,6 +162,7 @@ PyObject *tree_cursor_reset_to(TreeCursor *self, PyObject *args) {
 
     TreeCursor *cursor = (TreeCursor *)cursor_obj;
     ts_tree_cursor_reset_to(&self->cursor, &cursor->cursor);
+    Py_XSETREF(self->tree, Py_NewRef(cursor->tree));
     Py_XDECREF(self->node);
     self->node = NULL;
     Py_RETURN_NONE;
@@ -173,7 +178,7 @@ PyObject *tree_cursor_copy(TreeCursor *self, PyObject *Py_UNUSED(args)) {
     copied->node = NULL;
     copied->tree = Py_NewRef(self->tree);
     copied->cursor = ts_tree_cursor_copy(&self->cursor);
-    return PyObject_Init((PyObject *)copied, state->tree_cursor_type);
+    return (PyObject *)copied;
 }
 
 PyDoc_STRVAR(tree_cursor_goto_first_child_doc,

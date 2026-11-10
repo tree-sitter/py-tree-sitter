@@ -18,7 +18,7 @@ PyObject *point_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
     }
 
     PyObject *self = PyTuple_New(2);
-    if (!self) {
+    if (self == NULL) {
         return NULL;
     }
     PyTuple_SET_ITEM(self, 0, PyLong_FromUnsignedLong(row));
@@ -71,7 +71,14 @@ PyObject *point_edit(PyObject *self, PyObject *args, PyObject *kwargs) {
 
     ts_point_edit(&point, &new_start_byte, &edit);
     PyObject *new_point = point_new_internal(GET_MODULE_STATE(self), point);
-    return PyTuple_Pack(2, new_point, PyLong_FromUnsignedLong(new_start_byte));
+    if (new_point == NULL) {
+        return NULL;
+    }
+    PyObject *new_start_byte_obj = PyLong_FromUnsignedLong(new_start_byte);
+    PyObject *result = PyTuple_Pack(2, new_point, new_start_byte_obj);
+    Py_DECREF(new_point);
+    Py_XDECREF(new_start_byte_obj);
+    return result;
 }
 
 PyDoc_STRVAR(point_edit_doc,
