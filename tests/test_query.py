@@ -143,6 +143,32 @@ class TestQuery(TestCase):
             ],
         )
 
+    def test_matches_progress_callback(self):
+        tree = Parser(self.python).parse(b"x = 1\n" * 200000)
+        cursor = QueryCursor(Query(self.python, "(identifier) @id"))
+        calls = []
+
+        def progress(state):
+            calls.append(state)
+            return False
+
+        matches = cursor.matches(tree.root_node, progress_callback=progress)
+        self.assertEqual(len(matches), 200000)
+        self.assertGreater(len(calls), 0)
+
+    def test_captures_progress_callback(self):
+        tree = Parser(self.python).parse(b"x = 1\n" * 200000)
+        cursor = QueryCursor(Query(self.python, "(identifier) @id"))
+        calls = []
+
+        def progress(state):
+            calls.append(state)
+            return False
+
+        captures = cursor.captures(tree.root_node, progress_callback=progress)
+        self.assertEqual(len(captures["id"]), 200000)
+        self.assertGreater(len(calls), 0)
+
     def test_captures(self):
         parser = Parser(self.python)
         source = b"def foo():\n  bar()\ndef baz():\n  quux()\n"
