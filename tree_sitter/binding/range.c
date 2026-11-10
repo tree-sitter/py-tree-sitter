@@ -2,6 +2,30 @@
 
 PyObject *point_new_internal(ModuleState *state, TSPoint point);
 
+// Based on the xxHash implementation used by tuple.__hash__
+// https://github.com/python/cpython/blob/main/Objects/tupleobject.c
+#if SIZEOF_SIZE_T > 4
+#define XXPRIME_1 ((Py_uhash_t)11400714785074694791ULL)
+#define XXPRIME_2 ((Py_uhash_t)14029467366897019727ULL)
+#define XXPRIME_5 ((Py_uhash_t)2870177450012600261ULL)
+#define XXROTATE(x) ((x << 31) | (x >> 33))
+#else
+#define XXPRIME_1 ((Py_uhash_t)2654435761UL)
+#define XXPRIME_2 ((Py_uhash_t)2246822519UL)
+#define XXPRIME_5 ((Py_uhash_t)374761393UL)
+#define XXROTATE(x) ((x << 13) | (x >> 19))
+#endif
+
+static inline Py_uhash_t xxhash(const Py_uhash_t *lanes, size_t count) {
+    Py_uhash_t acc = XXPRIME_5;
+    for (size_t i = 0; i < count; ++i) {
+        acc += lanes[i] * XXPRIME_2;
+        acc = XXROTATE(acc) * XXPRIME_1;
+    }
+    acc += count ^ XXPRIME_5 ^ 3527539UL;
+    return acc == (Py_uhash_t)-1 ? 1546275796 : acc;
+}
+
 int range_init(Range *self, PyObject *args, PyObject *kwargs) {
     uint32_t start_row, start_col, end_row, end_col, start_byte, end_byte;
     char *keywords[] = {
@@ -46,43 +70,12 @@ PyObject *range_repr(Range *self) {
 }
 
 Py_hash_t range_hash(Range *self) {
-    // FIXME: replace with an efficient integer hashing algorithm
-    PyObject *row_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_point.row),
-                                       PyLong_FromLong(self->range.end_point.row));
-    if (row_tuple == NULL) {
-        return -1;
-    }
-
-    PyObject *col_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_point.column),
-                                       PyLong_FromUnsignedLong(self->range.end_point.column));
-    if (col_tuple == NULL) {
-        Py_DECREF(row_tuple);
-        return -1;
-    }
-
-    PyObject *bytes_tuple = PyTuple_Pack(2, PyLong_FromUnsignedLong(self->range.start_byte),
-                                         PyLong_FromUnsignedLong(self->range.end_byte));
-    if (bytes_tuple == NULL) {
-        Py_DECREF(row_tuple);
-        Py_DECREF(col_tuple);
-        return -1;
-    }
-
-    PyObject *range_tuple = PyTuple_Pack(3, row_tuple, col_tuple, bytes_tuple);
-    if (range_tuple == NULL) {
-        Py_DECREF(row_tuple);
-        Py_DECREF(col_tuple);
-        Py_DECREF(bytes_tuple);
-        return -1;
-    }
-
-    Py_hash_t hash = PyObject_Hash(range_tuple);
-
-    Py_DECREF(range_tuple);
-    Py_DECREF(row_tuple);
-    Py_DECREF(col_tuple);
-    Py_DECREF(bytes_tuple);
-    return hash;
+    const TSRange *range = &self->range;
+    Py_uhash_t rows[] = {range->start_point.row, range->end_point.row};
+    Py_uhash_t columns[] = {range->start_point.column, range->end_point.column};
+    Py_uhash_t bytes[] = {range->start_byte, range->end_byte};
+    Py_uhash_t hashes[] = {xxhash(rows, 2), xxhash(columns, 2), xxhash(bytes, 2)};
+    return (Py_hash_t)xxhash(hashes, 3);
 }
 
 PyObject *range_compare(Range *self, PyObject *other, int op) {

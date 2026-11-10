@@ -30,6 +30,7 @@ class TestParser(TestCase):
         parser = Parser()
         self.assertIsNone(parser.language)
         self.assertListEqual(parser.included_ranges, [self.max_range])
+        self.assertNotEqual(self.max_range, self.min_range)
 
     def test_init_args(self):
         parser = Parser(language=self.python, included_ranges=[self.min_range])
@@ -228,6 +229,7 @@ class TestParser(TestCase):
         self.assertEqual(script_content_node.type, "raw_text")
 
         parser.included_ranges = [script_content_node.range]
+        self.assertEqual(hash(script_content_node.range), hash(parser.included_ranges[0]))
         parser.language = self.javascript
         js_tree = parser.parse(source_code)
         self.assertEqual(
