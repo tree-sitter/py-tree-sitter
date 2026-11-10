@@ -35,6 +35,7 @@ static void module_free(void *self) {
     Py_XDECREF(state->node_type);
     Py_XDECREF(state->parser_type);
     Py_XDECREF(state->point_type);
+    Py_XDECREF(state->query_cursor_type);
     Py_XDECREF(state->query_predicate_anyof_type);
     Py_XDECREF(state->query_predicate_eq_capture_type);
     Py_XDECREF(state->query_predicate_eq_string_type);

@@ -15,19 +15,6 @@ PyObject *lookahead_iterator_repr(LookaheadIterator *self) {
 }
 
 PyObject *lookahead_iterator_get_language(LookaheadIterator *self, void *Py_UNUSED(payload)) {
-    TSLanguage *language_id =
-        (TSLanguage *)ts_lookahead_iterator_language(self->lookahead_iterator);
-    if (self->language == NULL || ((Language *)self->language)->language != language_id) {
-        ModuleState *state = GET_MODULE_STATE(self);
-        Language *language = PyObject_New(Language, state->language_type);
-        if (language == NULL) {
-            return NULL;
-        }
-        language->language = language_id;
-        language->name = ts_language_name(language->language);
-        language->abi_version = ts_language_abi_version(language->language);
-        self->language = PyObject_Init((PyObject *)language, state->language_type);
-    }
     return Py_NewRef(self->language);
 }
 
@@ -39,7 +26,10 @@ PyObject *lookahead_iterator_get_current_symbol(LookaheadIterator *self, void *P
 PyObject *lookahead_iterator_get_current_symbol_name(LookaheadIterator *self,
                                                      void *Py_UNUSED(payload)) {
     const char *name = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
-    return name != NULL ? PyUnicode_FromString(name) : Py_None;
+    if (name == NULL) {
+        Py_RETURN_NONE;
+    }
+    return PyUnicode_FromString(name);
 }
 
 PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args, PyObject *kwargs) {
@@ -58,6 +48,9 @@ PyObject *lookahead_iterator_reset(LookaheadIterator *self, PyObject *args, PyOb
     } else {
         TSLanguage *language_id = ((Language *)language_obj)->language;
         result = ts_lookahead_iterator_reset(self->lookahead_iterator, language_id, state_id);
+        if (result) {
+            Py_XSETREF(self->language, Py_NewRef(language_obj));
+        }
     }
     return PyBool_FromLong(result);
 }
@@ -80,18 +73,36 @@ PyObject *lookahead_iterator_next(LookaheadIterator *self) {
 
 PyObject *lookahead_iterator_names(LookaheadIterator *self) {
     PyObject *result = PyList_New(0);
+    if (result == NULL) {
+        return NULL;
+    }
     while (ts_lookahead_iterator_next(self->lookahead_iterator)) {
         const char *name = ts_lookahead_iterator_current_symbol_name(self->lookahead_iterator);
-        PyList_Append(result, PyUnicode_FromString(name));
+        PyObject *value = PyUnicode_FromString(name);
+        if (value == NULL || PyList_Append(result, value) < 0) {
+            Py_XDECREF(value);
+            Py_DECREF(result);
+            return NULL;
+        }
+        Py_DECREF(value);
     }
     return result;
 }
 
 PyObject *lookahead_iterator_symbols(LookaheadIterator *self) {
     PyObject *result = PyList_New(0);
+    if (result == NULL) {
+        return NULL;
+    }
     while (ts_lookahead_iterator_next(self->lookahead_iterator)) {
         TSSymbol symbol = ts_lookahead_iterator_current_symbol(self->lookahead_iterator);
-        PyList_Append(result, PyLong_FromLong(symbol));
+        PyObject *value = PyLong_FromLong(symbol);
+        if (PyList_Append(result, value) < 0) {
+            Py_DECREF(value);
+            Py_DECREF(result);
+            return NULL;
+        }
+        Py_DECREF(value);
     }
     return result;
 }

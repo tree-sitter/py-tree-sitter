@@ -31,9 +31,8 @@ int query_cursor_init(QueryCursor *self, PyObject *args, PyObject *kwargs) {
         return -1;
     }
 
-    self->query = Py_NewRef(query);
+    Py_XSETREF(self->query, Py_NewRef(query));
     ts_query_cursor_set_match_limit(self->cursor, match_limit);
-
     return 0;
 }
 
@@ -52,7 +51,7 @@ PyObject *query_cursor_set_byte_range(QueryCursor *self, PyObject *args) {
         return NULL;
     }
     if (!ts_query_cursor_set_byte_range(self->cursor, start_byte, end_byte)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid byte range");
+        PyErr_SetString(PyExc_ValueError, "invalid byte range");
         return NULL;
     }
     return Py_NewRef(self);
@@ -64,7 +63,7 @@ PyObject *query_cursor_set_containing_byte_range(QueryCursor *self, PyObject *ar
         return NULL;
     }
     if (!ts_query_cursor_set_containing_byte_range(self->cursor, start_byte, end_byte)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid byte range");
+        PyErr_SetString(PyExc_ValueError, "invalid byte range");
         return NULL;
     }
     return Py_NewRef(self);
@@ -77,7 +76,7 @@ PyObject *query_cursor_set_point_range(QueryCursor *self, PyObject *args) {
         return NULL;
     }
     if (!ts_query_cursor_set_point_range(self->cursor, start_point, end_point)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid point range");
+        PyErr_SetString(PyExc_ValueError, "invalid point range");
         return NULL;
     }
     return Py_NewRef(self);
@@ -90,7 +89,7 @@ PyObject *query_cursor_set_containing_point_range(QueryCursor *self, PyObject *a
         return NULL;
     }
     if (!ts_query_cursor_set_containing_point_range(self->cursor, start_point, end_point)) {
-        PyErr_SetString(PyExc_ValueError, "Invalid point range");
+        PyErr_SetString(PyExc_ValueError, "invalid point range");
         return NULL;
     }
     return Py_NewRef(self);
@@ -130,7 +129,6 @@ PyObject *query_cursor_matches(QueryCursor *self, PyObject *args, PyObject *kwar
     if (result == NULL) {
         return NULL;
     }
-
     TSQueryMatch match;
     uint32_t name_length;
     Node *node = (Node *)node_obj;
@@ -144,39 +142,77 @@ PyObject *query_cursor_matches(QueryCursor *self, PyObject *args, PyObject *kwar
     } else {
         ts_query_cursor_exec_with_options(self->cursor, query->query, node->node, &options);
     }
+    PyObject *captures_for_match = NULL;
     while (ts_query_cursor_next_match(self->cursor, &match)) {
-        if (!query_satisfies_predicates(query, match, (Tree *)node->tree, predicate)) {
+        bool satisfies_predicates =
+            query_satisfies_predicates(query, match, (Tree *)node->tree, predicate);
+        if (PyErr_Occurred()) {
+            goto error;
+        }
+        if (!satisfies_predicates) {
             continue;
         }
 
-        PyObject *captures_for_match = PyDict_New();
+        captures_for_match = PyDict_New();
+        if (captures_for_match == NULL) {
+            goto error;
+        }
         for (uint16_t i = 0; i < match.capture_count; ++i) {
             TSQueryCapture capture = match.captures[i];
             const char *capture_name =
                 ts_query_capture_name_for_id(query->query, capture.index, &name_length);
             PyObject *capture_name_obj = PyUnicode_FromStringAndSize(capture_name, name_length);
+            if (capture_name_obj == NULL) {
+                goto error;
+            }
             PyObject *capture_node = node_new_internal(state, capture.node, node->tree);
+            if (capture_node == NULL) {
+                Py_DECREF(capture_name_obj);
+                goto error;
+            }
             PyObject *default_list = PyList_New(0);
+            if (default_list == NULL) {
+                Py_DECREF(capture_name_obj);
+                Py_DECREF(capture_node);
+                goto error;
+            }
             PyObject *capture_list =
                 PyDict_SetDefault(captures_for_match, capture_name_obj, default_list);
             Py_DECREF(capture_name_obj);
             Py_DECREF(default_list);
-            PyList_Append(capture_list, capture_node);
-            Py_XDECREF(capture_node);
+            if (capture_list == NULL) {
+                Py_DECREF(capture_node);
+                goto error;
+            }
+            if (PyList_Append(capture_list, capture_node) < 0) {
+                Py_DECREF(capture_node);
+                goto error;
+            }
+            Py_DECREF(capture_node);
         }
         PyObject *pattern_index = PyLong_FromUnsignedLong(match.pattern_index);
         PyObject *tuple_match = PyTuple_Pack(2, pattern_index, captures_for_match);
         Py_DECREF(pattern_index);
-        Py_DECREF(captures_for_match);
-        PyList_Append(result, tuple_match);
-        Py_XDECREF(tuple_match);
+        Py_CLEAR(captures_for_match);
+        if (tuple_match == NULL) {
+            goto error;
+        }
+        if (PyList_Append(result, tuple_match) < 0) {
+            Py_DECREF(tuple_match);
+            goto error;
+        }
+        Py_DECREF(tuple_match);
     }
 
     if (PyErr_Occurred()) {
-        Py_DECREF(result);
-        return NULL;
+        goto error;
     }
     return result;
+
+error:
+    Py_XDECREF(captures_for_match);
+    Py_DECREF(result);
+    return NULL;
 }
 
 PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwargs) {
@@ -202,7 +238,6 @@ PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwa
     if (result == NULL) {
         return NULL;
     }
-
     uint32_t capture_index;
     TSQueryMatch match;
     uint32_t name_length;
@@ -218,24 +253,45 @@ PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwa
         ts_query_cursor_exec_with_options(self->cursor, query->query, node->node, &options);
     }
     while (ts_query_cursor_next_capture(self->cursor, &match, &capture_index)) {
-        if (!query_satisfies_predicates(query, match, (Tree *)node->tree, predicate)) {
-            continue;
-        }
+        bool satisfies_predicates =
+            query_satisfies_predicates(query, match, (Tree *)node->tree, predicate);
         if (PyErr_Occurred()) {
-            return NULL;
+            goto error;
+        }
+        if (!satisfies_predicates) {
+            continue;
         }
 
         TSQueryCapture capture = match.captures[capture_index];
         const char *capture_name =
             ts_query_capture_name_for_id(query->query, capture.index, &name_length);
         PyObject *capture_name_obj = PyUnicode_FromStringAndSize(capture_name, name_length);
+        if (capture_name_obj == NULL) {
+            goto error;
+        }
         PyObject *capture_node = node_new_internal(state, capture.node, node->tree);
+        if (capture_node == NULL) {
+            Py_DECREF(capture_name_obj);
+            goto error;
+        }
         PyObject *default_set = PySet_New(NULL);
+        if (default_set == NULL) {
+            Py_DECREF(capture_name_obj);
+            Py_DECREF(capture_node);
+            goto error;
+        }
         PyObject *capture_set = PyDict_SetDefault(result, capture_name_obj, default_set);
         Py_DECREF(capture_name_obj);
         Py_DECREF(default_set);
-        PySet_Add(capture_set, capture_node);
-        Py_XDECREF(capture_node);
+        if (capture_set == NULL) {
+            Py_DECREF(capture_node);
+            goto error;
+        }
+        if (PySet_Add(capture_set, capture_node) < 0) {
+            Py_DECREF(capture_node);
+            goto error;
+        }
+        Py_DECREF(capture_node);
     }
 
     Py_ssize_t pos = 0;
@@ -243,15 +299,24 @@ PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwa
     // convert each set to a list so it can be subscriptable
     while (PyDict_Next(result, &pos, &key, &value)) {
         PyObject *list = PySequence_List(value);
-        PyDict_SetItem(result, key, list);
+        if (list == NULL) {
+            goto error;
+        }
+        if (PyDict_SetItem(result, key, list) < 0) {
+            Py_DECREF(list);
+            goto error;
+        }
         Py_DECREF(list);
     }
 
-    if (PyErr_Occurred() != NULL) {
-        Py_DECREF(result);
-        return NULL;
+    if (PyErr_Occurred()) {
+        goto error;
     }
     return result;
+
+error:
+    Py_DECREF(result);
+    return NULL;
 }
 
 PyObject *query_cursor_get_did_exceed_match_limit(QueryCursor *self, void *Py_UNUSED(payload)) {

@@ -43,7 +43,7 @@ PyObject *tree_walk(Tree *self, PyObject *Py_UNUSED(args)) {
     tree_cursor->tree = Py_NewRef(self);
     tree_cursor->node = NULL;
     tree_cursor->cursor = ts_tree_cursor_new(ts_tree_root_node(self->tree));
-    return PyObject_Init((PyObject *)tree_cursor, state->tree_cursor_type);
+    return (PyObject *)tree_cursor;
 }
 
 PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
@@ -73,10 +73,7 @@ PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
     };
 
     ts_tree_edit(self->tree, &edit);
-
-    Py_XDECREF(self->source);
-    self->source = Py_None;
-    Py_INCREF(self->source);
+    Py_CLEAR(self->source);
     Py_RETURN_NONE;
 }
 
@@ -92,7 +89,7 @@ PyObject *tree_copy(Tree *self, PyObject *Py_UNUSED(args)) {
     Py_XINCREF(self->language);
     copied->source = self->source;
     Py_XINCREF(self->source);
-    return PyObject_Init((PyObject *)copied, state->tree_type);
+    return (PyObject *)copied;
 }
 
 PyObject *tree_print_dot_graph(Tree *self, PyObject *arg) {
@@ -132,7 +129,11 @@ PyObject *tree_changed_ranges(Tree *self, PyObject *args, PyObject *kwargs) {
             return NULL;
         }
         range->range = ranges[i];
-        PyList_SetItem(result, i, PyObject_Init((PyObject *)range, state->range_type));
+        if (PyList_SetItem(result, i, (PyObject *)range) < 0) {
+            Py_DECREF(result);
+            PyMem_RawFree(ranges);
+            return NULL;
+        }
     }
 
     PyMem_RawFree(ranges);
@@ -157,7 +158,11 @@ PyObject *tree_get_included_ranges(Tree *self, PyObject *Py_UNUSED(args)) {
             return NULL;
         }
         range->range = ranges[i];
-        PyList_SetItem(result, i, PyObject_Init((PyObject *)range, state->range_type));
+        if (PyList_SetItem(result, i, (PyObject *)range) < 0) {
+            Py_DECREF(result);
+            PyMem_RawFree(ranges);
+            return NULL;
+        }
     }
 
     PyMem_RawFree(ranges);
