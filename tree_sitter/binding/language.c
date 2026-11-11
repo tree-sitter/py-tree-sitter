@@ -176,7 +176,7 @@ PyObject *language_node_kind_is_supertype(Language *self, PyObject *args) {
         return NULL;
     }
     TSSymbolType symbol_type = ts_language_symbol_type(self->language, symbol);
-    return PyBool_FromLong(symbol_type <= TSSymbolTypeSupertype);
+    return PyBool_FromLong(symbol_type == TSSymbolTypeSupertype);
 }
 
 PyObject *language_field_name_for_id(Language *self, PyObject *args) {
