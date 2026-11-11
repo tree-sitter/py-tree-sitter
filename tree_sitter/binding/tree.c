@@ -72,6 +72,10 @@ PyObject *tree_edit(Tree *self, PyObject *args, PyObject *kwargs) {
         .new_end_point = {new_end_row, new_end_column},
     };
 
+    if (self->busy > 0) {
+        PyErr_SetString(PyExc_RuntimeError, "cannot edit a tree that is in use");
+        return NULL;
+    }
     ts_tree_edit(self->tree, &edit);
     Py_CLEAR(self->source);
     Py_RETURN_NONE;
@@ -84,6 +88,7 @@ PyObject *tree_copy(Tree *self, PyObject *Py_UNUSED(args)) {
         return NULL;
     }
 
+    copied->busy = 0;
     copied->tree = ts_tree_copy(self->tree);
     copied->language = self->language;
     Py_XINCREF(self->language);
@@ -97,9 +102,11 @@ PyObject *tree_print_dot_graph(Tree *self, PyObject *arg) {
     if (fd < 0) {
         return NULL;
     }
+    ++self->busy;
     Py_BEGIN_ALLOW_THREADS
     ts_tree_print_dot_graph(self->tree, fd);
     Py_END_ALLOW_THREADS
+    --self->busy;
     Py_RETURN_NONE;
 }
 

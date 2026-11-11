@@ -329,16 +329,16 @@ class QueryCursor:
     def captures(
         self,
         node: Node,
+        /,
         predicate: QueryPredicate | None = None,
         progress_callback: Callable[[int], bool] | None = None,
-        /,
     ) -> dict[str, list[Node]]: ...
     def matches(
         self,
         node: Node,
+        /,
         predicate: QueryPredicate | None = None,
         progress_callback: Callable[[int], bool] | None = None,
-        /,
     ) -> list[tuple[int, dict[str, list[Node]]]]: ...
 
 @final
