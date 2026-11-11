@@ -689,11 +689,13 @@ PyObject *node_get_text(Node *self, void *Py_UNUSED(payload)) {
 }
 
 Py_hash_t node_hash(Node *self) {
-    // __eq__ and __hash__ must be compatible. As __eq__ is defined by
-    // ts_node_eq, which in turn checks the tree pointer and the node
-    // id, we can use those values to compute the hash.
-    Py_hash_t id = (Py_hash_t)self->node.id, tree = (Py_hash_t)self->node.tree;
-    return id == tree ? id : id ^ tree;
+    Py_uhash_t acc = XXPRIME_5;
+    acc += (uintptr_t)self->node.id * XXPRIME_2;
+    acc = XXROTATE(acc) * XXPRIME_1;
+    acc += (uintptr_t)self->node.tree * XXPRIME_2;
+    acc = XXROTATE(acc) * XXPRIME_1;
+    acc += 2 ^ XXPRIME_5 ^ 3527539UL;
+    return acc == (Py_uhash_t)-1 ? 1546275796 : acc;
 }
 
 PyDoc_STRVAR(node_walk_doc, "walk(self, /)\n--\n\n"

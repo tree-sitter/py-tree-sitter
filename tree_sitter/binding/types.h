@@ -151,3 +151,19 @@ typedef struct {
 #define DOC_SEE_ALSO "\n\nSee Also\n--------\n"
 #define DOC_HINT "\n\nHint\n----\n"
 #define DOC_TIP "\n\nTip\n---\n"
+
+// Hashing
+
+// Based on the xxHash implementation used by tuple.__hash__
+// https://github.com/python/cpython/blob/main/Objects/tupleobject.c
+#if SIZEOF_SIZE_T > 4
+#define XXPRIME_1 ((Py_uhash_t)11400714785074694791ULL)
+#define XXPRIME_2 ((Py_uhash_t)14029467366897019727ULL)
+#define XXPRIME_5 ((Py_uhash_t)2870177450012600261ULL)
+#define XXROTATE(x) ((x << 31) | (x >> 33))
+#else
+#define XXPRIME_1 ((Py_uhash_t)2654435761UL)
+#define XXPRIME_2 ((Py_uhash_t)2246822519UL)
+#define XXPRIME_5 ((Py_uhash_t)374761393UL)
+#define XXROTATE(x) ((x << 13) | (x >> 19))
+#endif
