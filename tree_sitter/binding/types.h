@@ -32,6 +32,7 @@ typedef struct {
     TSParser *parser;
     PyObject *language;
     PyObject *logger;
+    bool locked;
 } Parser;
 
 typedef struct {
