@@ -2,6 +2,12 @@
 
 #include <string.h>
 
+// Only release the GIL when the cost exceeds a threshold which is computed as the
+// product of state count (N) and query length (L) and was chosen to apply when
+// N >= 5000 || (N >= 1000 && L >= 1024) i.e., 5000 * C == 1000 * (1024 + C)
+#define QUERY_RELEASE_GIL_THRESHOLD 1280000
+#define QUERY_RELEASE_GIL_C 256
+
 PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree);
 
 #define QUERY_ERROR(...) PyErr_Format(state->query_error, __VA_ARGS__)
@@ -66,8 +72,16 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
     if (query == NULL) {
         return NULL;
     }
+    uint64_t states = (uint64_t)ts_language_state_count(language_id);
+    PyThreadState *saved_thread = NULL;
+    if (states * ((uint64_t)source_len + QUERY_RELEASE_GIL_C) >= QUERY_RELEASE_GIL_THRESHOLD) {
+        saved_thread = PyEval_SaveThread();
+    }
     query->query =
         ts_query_new(language_id, source, (uint32_t)source_len, &error_offset, &error_type);
+    if (saved_thread != NULL) {
+        PyEval_RestoreThread(saved_thread);
+    }
     query->predicates = NULL;
     query->settings = NULL;
     query->assertions = NULL;
