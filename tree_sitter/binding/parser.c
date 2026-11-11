@@ -199,6 +199,9 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
             PyBuffer_Release(&source_view);
             return NULL;
         }
+        if (old_tree_obj != NULL) {
+            ++((Tree *)old_tree_obj)->busy;
+        }
         // Do not release the GIL when:
         // (A) the parser has a logger (the GIL is required for Python callbacks)
         // (B) the old_tree parameter is set (incremental parses are faster)
@@ -211,6 +214,9 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
                                                    input_encoding);
         if (saved_thread != NULL) {
             PyEval_RestoreThread(saved_thread);
+        }
+        if (old_tree_obj != NULL) {
+            --((Tree *)old_tree_obj)->busy;
         }
         unlock_parser(self);
         PyBuffer_Release(&source_view);
@@ -238,6 +244,9 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         if (!lock_parser(self)) {
             return NULL;
         }
+        if (old_tree_obj != NULL) {
+            ++((Tree *)old_tree_obj)->busy;
+        }
         TSParseOptions options = {
             .payload = progress_callback_obj,
             .progress_callback = parser_progress_callback,
@@ -246,6 +255,9 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
             new_tree = ts_parser_parse(self->parser, old_tree, input);
         } else {
             new_tree = ts_parser_parse_with_options(self->parser, old_tree, input, options);
+        }
+        if (old_tree_obj != NULL) {
+            --((Tree *)old_tree_obj)->busy;
         }
         unlock_parser(self);
         if (source_view.obj) {
@@ -272,6 +284,7 @@ PyObject *parser_parse(Parser *self, PyObject *args, PyObject *kwargs) {
         ts_tree_delete(new_tree);
         return NULL;
     }
+    tree->busy = 0;
     tree->tree = new_tree;
     tree->language = self->language;
     tree->source = source_or_callback;
