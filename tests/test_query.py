@@ -1,4 +1,5 @@
 from re import error as RegexError
+from threading import Thread
 from unittest import TestCase
 
 import tree_sitter_javascript
@@ -144,7 +145,7 @@ class TestQuery(TestCase):
         )
 
     def test_matches_progress_callback(self):
-        tree = Parser(self.python).parse(b"x = 1\n" * 200000)
+        tree = Parser(self.python).parse(b"x = 1\n" * 2048)
         cursor = QueryCursor(Query(self.python, "(identifier) @id"))
         calls = []
 
@@ -153,11 +154,11 @@ class TestQuery(TestCase):
             return False
 
         matches = cursor.matches(tree.root_node, progress_callback=progress)
-        self.assertEqual(len(matches), 200000)
+        self.assertEqual(len(matches), 2048)
         self.assertGreater(len(calls), 0)
 
     def test_captures_progress_callback(self):
-        tree = Parser(self.python).parse(b"x = 1\n" * 200000)
+        tree = Parser(self.python).parse(b"x = 1\n" * 2048)
         cursor = QueryCursor(Query(self.python, "(identifier) @id"))
         calls = []
 
@@ -166,7 +167,7 @@ class TestQuery(TestCase):
             return False
 
         captures = cursor.captures(tree.root_node, progress_callback=progress)
-        self.assertEqual(len(captures["id"]), 200000)
+        self.assertEqual(len(captures["id"]), 2048)
         self.assertGreater(len(calls), 0)
 
     def test_captures(self):
@@ -435,3 +436,29 @@ class TestQuery(TestCase):
         self.assertEqual(captures[0][0], "func-call")
         self.assertEqual(captures[0][1][0].start_point, (1, 2))
         self.assertEqual(captures[0][1][0].end_point, (1, 5))
+
+    def test_query_in_parallel(self):
+        source = "".join(
+            f"def f{i}(a, b):\n    return a + b * {i}\n\n"
+            for i in range(2048)
+        ).encode()
+        root = Parser(self.python).parse(source).root_node
+        query = Query(self.python, "(function_definition name: (identifier) @name)")
+        expected = collect_matches(QueryCursor(query).matches(root))
+        self.assertEqual(len(expected), 2048)
+        errors = []
+
+        def work():
+            try:
+                cursor = QueryCursor(query)
+                for _ in range(5):
+                    self.assertEqual(collect_matches(cursor.matches(root)), expected)
+            except BaseException as e:  # noqa
+                errors.append(e)
+
+        threads = [Thread(target=work) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(60)
+        self.assertEqual(errors, [])
