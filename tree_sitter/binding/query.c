@@ -622,6 +622,10 @@ PyObject *query_disable_pattern(Query *self, PyObject *args) {
         return NULL;
     }
     CHECK_INDEX(self->query, pattern_index);
+    if (self->busy > 0) {
+        PyErr_SetString(PyExc_RuntimeError, "cannot modify a query that is in use");
+        return NULL;
+    }
     ts_query_disable_pattern(self->query, pattern_index);
     return Py_NewRef(self);
 }
@@ -630,6 +634,10 @@ PyObject *query_disable_capture(Query *self, PyObject *args) {
     char *capture_name;
     Py_ssize_t length;
     if (!PyArg_ParseTuple(args, "s#:disable_capture", &capture_name, &length)) {
+        return NULL;
+    }
+    if (self->busy > 0) {
+        PyErr_SetString(PyExc_RuntimeError, "cannot modify a query that is in use");
         return NULL;
     }
     ts_query_disable_capture(self->query, capture_name, (uint32_t)length);
@@ -690,6 +698,7 @@ PyObject *query_copy(Query *self, PyObject *Py_UNUSED(args)) {
     if (copied == NULL) {
         return NULL;
     }
+    copied->busy = 0;
     copied->query = ts_query_copy(self->query);
     copied->assertions = Py_NewRef(self->assertions);
     copied->predicates = Py_NewRef(self->predicates);
