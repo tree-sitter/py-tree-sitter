@@ -1,3 +1,4 @@
+from threading import Thread
 from typing import cast
 from unittest import TestCase
 
@@ -549,3 +550,26 @@ class TestParser(TestCase):
             f.seek(0)
             lines = [f.readline(), f.readline(), f.readline()]
             self.assertListEqual(lines, new_parse)
+
+    def test_parse_in_parallel(self):
+        source = "".join(
+            f"def f{i}(a, b):\n    return a + b * {i}\n\n"
+            for i in range(2048)
+        ).encode()
+        expected = str(Parser(self.python).parse(source).root_node)
+        errors = []
+
+        def work():
+            try:
+                parser = Parser(self.python)
+                for _ in range(3):
+                    self.assertEqual(str(parser.parse(source).root_node), expected)
+            except BaseException as e:  # noqa
+                errors.append(e)
+
+        threads = [Thread(target=work) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(60)
+        self.assertEqual(errors, [])
