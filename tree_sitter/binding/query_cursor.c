@@ -274,20 +274,21 @@ PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwa
             Py_DECREF(capture_name_obj);
             goto error;
         }
-        PyObject *default_set = PySet_New(NULL);
-        if (default_set == NULL) {
+        // store the unique nodes as dict keys in insertion order
+        PyObject *default_nodes = PyDict_New();
+        if (default_nodes == NULL) {
             Py_DECREF(capture_name_obj);
             Py_DECREF(capture_node);
             goto error;
         }
-        PyObject *capture_set = PyDict_SetDefault(result, capture_name_obj, default_set);
+        PyObject *capture_nodes = PyDict_SetDefault(result, capture_name_obj, default_nodes);
         Py_DECREF(capture_name_obj);
-        Py_DECREF(default_set);
-        if (capture_set == NULL) {
+        Py_DECREF(default_nodes);
+        if (capture_nodes == NULL) {
             Py_DECREF(capture_node);
             goto error;
         }
-        if (PySet_Add(capture_set, capture_node) < 0) {
+        if (PyDict_SetItem(capture_nodes, capture_node, Py_None) < 0) {
             Py_DECREF(capture_node);
             goto error;
         }
@@ -296,7 +297,7 @@ PyObject *query_cursor_captures(QueryCursor *self, PyObject *args, PyObject *kwa
 
     Py_ssize_t pos = 0;
     PyObject *key, *value;
-    // convert each set to a list so it can be subscriptable
+    // convert to a list so it can be subscriptable
     while (PyDict_Next(result, &pos, &key, &value)) {
         PyObject *list = PySequence_List(value);
         if (list == NULL) {
