@@ -159,10 +159,10 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
             goto error;
         }
 
-        PyObject *predicate_obj = NULL;
         const TSQueryPredicateStep *predicate_step =
             ts_query_predicates_for_pattern(query->query, i, &steps);
         for (uint32_t j = 0; j < steps; ++j) {
+            PyObject *predicate_obj = NULL;
             uint32_t predicate_len = 0;
             while ((predicate_step + predicate_len)->type != TSQueryPredicateStepTypeDone) {
                 ++predicate_len;
