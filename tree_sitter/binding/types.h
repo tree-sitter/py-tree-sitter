@@ -18,6 +18,7 @@ typedef struct {
     TSTree *tree;
     PyObject *source;
     PyObject *language;
+    uint32_t busy;
 } Tree;
 
 typedef struct {
@@ -32,6 +33,7 @@ typedef struct {
     TSParser *parser;
     PyObject *language;
     PyObject *logger;
+    bool locked;
 } Parser;
 
 typedef struct {
@@ -85,12 +87,15 @@ typedef struct {
     PyObject *predicates;
     PyObject *settings;
     PyObject *assertions;
+    uint32_t busy;
 } Query;
 
 typedef struct {
     PyObject_HEAD
     TSQueryCursor *cursor;
     PyObject *query;
+    bool locked;
+    uint32_t range_bytes;
 } QueryCursor;
 
 typedef struct {

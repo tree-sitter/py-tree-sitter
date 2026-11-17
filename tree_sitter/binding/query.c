@@ -2,6 +2,12 @@
 
 #include <string.h>
 
+// Only release the GIL when the cost exceeds a threshold which is computed as the
+// product of state count (N) and query length (L) and was chosen to apply when
+// N >= 5000 || (N >= 1000 && L >= 1024) i.e., 5000 * C == 1000 * (1024 + C)
+#define QUERY_RELEASE_GIL_THRESHOLD 1280000
+#define QUERY_RELEASE_GIL_C 256
+
 PyObject *node_new_internal(ModuleState *state, TSNode node, PyObject *tree);
 
 #define QUERY_ERROR(...) PyErr_Format(state->query_error, __VA_ARGS__)
@@ -66,8 +72,16 @@ PyObject *query_new(PyTypeObject *cls, PyObject *args, PyObject *Py_UNUSED(kwarg
     if (query == NULL) {
         return NULL;
     }
+    uint64_t states = (uint64_t)ts_language_state_count(language_id);
+    PyThreadState *saved_thread = NULL;
+    if (states * ((uint64_t)source_len + QUERY_RELEASE_GIL_C) >= QUERY_RELEASE_GIL_THRESHOLD) {
+        saved_thread = PyEval_SaveThread();
+    }
     query->query =
         ts_query_new(language_id, source, (uint32_t)source_len, &error_offset, &error_type);
+    if (saved_thread != NULL) {
+        PyEval_RestoreThread(saved_thread);
+    }
     query->predicates = NULL;
     query->settings = NULL;
     query->assertions = NULL;
@@ -608,6 +622,10 @@ PyObject *query_disable_pattern(Query *self, PyObject *args) {
         return NULL;
     }
     CHECK_INDEX(self->query, pattern_index);
+    if (self->busy > 0) {
+        PyErr_SetString(PyExc_RuntimeError, "cannot modify a query that is in use");
+        return NULL;
+    }
     ts_query_disable_pattern(self->query, pattern_index);
     return Py_NewRef(self);
 }
@@ -616,6 +634,10 @@ PyObject *query_disable_capture(Query *self, PyObject *args) {
     char *capture_name;
     Py_ssize_t length;
     if (!PyArg_ParseTuple(args, "s#:disable_capture", &capture_name, &length)) {
+        return NULL;
+    }
+    if (self->busy > 0) {
+        PyErr_SetString(PyExc_RuntimeError, "cannot modify a query that is in use");
         return NULL;
     }
     ts_query_disable_capture(self->query, capture_name, (uint32_t)length);
@@ -676,6 +698,7 @@ PyObject *query_copy(Query *self, PyObject *Py_UNUSED(args)) {
     if (copied == NULL) {
         return NULL;
     }
+    copied->busy = 0;
     copied->query = ts_query_copy(self->query);
     copied->assertions = Py_NewRef(self->assertions);
     copied->predicates = Py_NewRef(self->predicates);
