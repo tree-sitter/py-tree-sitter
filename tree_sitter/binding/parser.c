@@ -58,8 +58,8 @@ PyObject *parser_new(PyTypeObject *cls, PyObject *Py_UNUSED(args), PyObject *Py_
 
 void parser_dealloc(Parser *self) {
     free_logger(self->parser);
-    ts_parser_delete(self->parser);
     ts_parser_print_dot_graphs(self->parser, -1);
+    ts_parser_delete(self->parser);
     Py_XDECREF(self->language);
     Py_XDECREF(self->logger);
     PyTypeObject *tp = Py_TYPE(self);
