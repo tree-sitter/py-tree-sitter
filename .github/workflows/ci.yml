@@ -19,7 +19,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Lint
+        continue-on-error: true
+        run: pipx run ruff check . --output-format=github
+  test:
     strategy:
       fail-fast: false
       matrix:
@@ -41,12 +55,33 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: ${{matrix.python}}
-      - name: Lint
-        continue-on-error: true
-        run: pipx run ruff check . --output-format=github
-      - name: Build
+      - name: Build extension
         run: pip install -v -e .[tests]
         env:
           CFLAGS: -Wextra -Og -g -fno-omit-frame-pointer
-      - name: Test
+      - name: Run unit tests
         run: python -munittest -v
+  valgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+      - name: Install valgrind
+        run: sudo apt-get update && sudo apt-get install -y valgrind
+      - name: Set up suppressions
+        run: curl -OLSsf https://github.com/python/cpython/raw/3.15/Misc/valgrind-python.supp
+      - name: Build extension
+        run: pip install -v -e .[tests]
+      - name: Run with valgrind
+        run: |-
+          valgrind --error-exitcode=1 --leak-check=full \
+            --show-leak-kinds=definite --errors-for-leak-kinds=definite \
+            --suppressions=valgrind-python.supp python -munittest -v
+        env:
+          PYTHONMALLOC: mimalloc
