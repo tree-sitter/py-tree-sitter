@@ -1,3 +1,4 @@
+import threading
 from typing import cast
 from unittest import TestCase
 
@@ -508,3 +509,38 @@ class TestNode(TestCase):
         another_tree = parser.parse(source_code)
         another_node = another_tree.root_node.children[0]
         self.assertNotEqual(hash(first_function_node), hash(another_node))
+
+    def test_concurrent_node_children_and_fields(self):
+        num_threads = 8
+        iterations = 200
+        trees = [
+            Parser(self.python).parse(b"x = 1\n" * 64 if tid % 2 == 0 else b"y = 2\n" * 2)
+            for tid in range(num_threads)
+        ]
+        expected_counts = [64 if tid % 2 == 0 else 2 for tid in range(num_threads)]
+        barrier = threading.Barrier(num_threads)
+        errors = []
+
+        def worker(tid):
+            tree = trees[tid]
+            expected = expected_counts[tid]
+            try:
+                barrier.wait(timeout=30)
+                for _ in range(iterations):
+                    root = tree.root_node
+                    children = [child.type for child in root.children]
+                    if len(children) != expected:
+                        raise AssertionError(f"Expected {expected} children, got {len(children)}")
+                    stmt = root.children[0].children[0]
+                    left = stmt.children_by_field_name("left")
+                    if len(left) != 1 or left[0].type != "identifier":
+                        raise AssertionError(f"Unexpected left children: {left}")
+            except BaseException as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, args=(tid,)) for tid in range(num_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])

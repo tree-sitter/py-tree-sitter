@@ -192,21 +192,23 @@ static PyObject *node_children_by_field_id_internal(Node *self, TSFieldId field_
         return result;
     }
 
-    ts_tree_cursor_reset(&state->default_cursor, self->node);
-    int ok = ts_tree_cursor_goto_first_child(&state->default_cursor);
+    TSTreeCursor cursor = ts_tree_cursor_new(self->node);
+    int ok = ts_tree_cursor_goto_first_child(&cursor);
     while (ok) {
-        if (ts_tree_cursor_current_field_id(&state->default_cursor) == field_id) {
-            TSNode tsnode = ts_tree_cursor_current_node(&state->default_cursor);
+        if (ts_tree_cursor_current_field_id(&cursor) == field_id) {
+            TSNode tsnode = ts_tree_cursor_current_node(&cursor);
             PyObject *node = node_new_internal(state, tsnode, self->tree);
             if (node == NULL || PyList_Append(result, node) < 0) {
                 Py_XDECREF(node);
                 Py_DECREF(result);
+                ts_tree_cursor_delete(&cursor);
                 return NULL;
             }
             Py_DECREF(node);
         }
-        ok = ts_tree_cursor_goto_next_sibling(&state->default_cursor);
+        ok = ts_tree_cursor_goto_next_sibling(&cursor);
     }
+    ts_tree_cursor_delete(&cursor);
 
     return result;
 }
@@ -452,17 +454,19 @@ PyObject *node_get_children(Node *self, void *Py_UNUSED(payload)) {
         return NULL;
     }
     if (length > 0) {
-        ts_tree_cursor_reset(&state->default_cursor, self->node);
-        ts_tree_cursor_goto_first_child(&state->default_cursor);
+        TSTreeCursor cursor = ts_tree_cursor_new(self->node);
+        ts_tree_cursor_goto_first_child(&cursor);
         uint32_t i = 0;
         do {
-            TSNode child = ts_tree_cursor_current_node(&state->default_cursor);
+            TSNode child = ts_tree_cursor_current_node(&cursor);
             PyObject *node = node_new_internal(state, child, self->tree);
             if (node == NULL || PyList_SetItem(result, i++, node) < 0) {
+                ts_tree_cursor_delete(&cursor);
                 Py_DECREF(result);
                 return NULL;
             }
-        } while (ts_tree_cursor_goto_next_sibling(&state->default_cursor));
+        } while (ts_tree_cursor_goto_next_sibling(&cursor));
+        ts_tree_cursor_delete(&cursor);
     }
     self->children = Py_NewRef(result);
     return self->children;
