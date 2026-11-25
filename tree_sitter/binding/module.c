@@ -28,7 +28,6 @@ static inline PyObject *import_attribute(const char *mod, const char *attr) {
 
 static void module_free(void *self) {
     ModuleState *state = PyModule_GetState((PyObject *)self);
-    ts_tree_cursor_delete(&state->default_cursor);
     Py_XDECREF(state->language_type);
     Py_XDECREF(state->log_type_type);
     Py_XDECREF(state->lookahead_iterator_type);

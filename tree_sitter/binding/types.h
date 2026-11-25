@@ -110,7 +110,6 @@ typedef struct {
 } LookaheadIterator;
 
 typedef struct {
-    TSTreeCursor default_cursor;
     PyObject *re_compile;
     PyObject *query_error;
     PyTypeObject *language_type;
